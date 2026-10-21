@@ -1,0 +1,53 @@
+# neuromap work list
+
+Status: [x] done and tested · [ ] open
+
+## From the conversation
+- [x] neurons = cards in physical space, pairs = distinct links (colour by type, width by strength, dashed uncertain, bar head I)
+- [x] layouts: physical, embedding, axes, manual (drag)
+- [x] browser first; Tauri later (same build, Python sidecar)
+- [x] explorer + tagging (pairs/neurons into groups, undo toast, backup before first write, refuse while Qt GUI open)
+- [x] tag write round trip on real data: add confirmed on disk from a fresh process, remove confirmed, files restored byte-identical (leftover empty tag record fixed in NeuroPy mirror_groups_into_tags)
+- [x] React Flow for neurons/areas, canvas links
+- [x] project switch fixed; map error boundary; click-select loop fixed
+- [x] side panel + legend floating, draggable, collapsible, resizable
+- [x] 3D view (embedding 3D t-SNE, physical/axes lifted by a metric)
+- [x] group filter multi-select (any/all)
+- [x] CCG instant (bulk traces in memory, fit async), persists through fit polls and reloads
+- [x] place restored after reload (no jump to first session)
+- [x] 3D probes per shank; shank neurons fan out on hover, pin on click; inferred extents when no probe
+- [x] spacing control
+- [x] xyz gizmo in 3D
+- [x] + area inline naming (prompt was blocked); hint text at bottom
+- [x] "strength" label (no z); "reverse pair" renamed "other direction"
+- [x] data editable: pair state (selected / unselected / deleted), peak calls (certain / uncertain) from the CCG plot — logic tested with saves mocked; on-disk round trip waits for the Qt GUI to close
+- [x] neuron labels: firing rate per segment (e.g. maze), ratio between segments, tag specs (values + labels), place cells
+- [x] neuron detail: rates per segment, tag labels, place-field curves
+- [x] pair changes across segments: strength in a segment (gradient), change A→B (diverging), on/off pattern
+- [x] CCG time slider: segments on a timeline, step through a family (post_ninth01..), drives CCG + links
+- [x] CCG plot follows the chosen segment
+- [x] multiple maps in one space (one per segment), side by side
+- [x] panels in the space (React Flow nodes): selection/details, time slider
+- [x] legend follows the colour modes (gradients)
+- [x] focus render speed: plot on screen 31 ms median after a click (dev build)
+- [x] 3D: panning must not snap back to the centre (OrbitControls target reset each render)
+- [x] selection/details panel resizable: drag an edge once selected (space panel) or the corner (floating, 3D)
+- [x] CCG panel options as in Qt: baseline, ACG ref / tgt overlays, fit curve, line vs bars, test window, lo/hi res
+- [x] spacing handle somewhere obvious (on the map itself, not only the top bar)
+- [x] legend and details easy to find: blue outline; a "panels" button that brings back hidden/off-screen panels
+- [x] 3D height control works in physical layout too (it only lifted expanded shanks)
+- [x] clearer counters: "peak fits 390 of 3182 pairs" and "1310 of 3182 links shown"
+- [x] link encodings chosen by the user: what a dash means (uncertain fit / off in segment / unselected / nothing), what width means (strength / constant)
+- [x] spacing visibly spreads neurons (stretch the layout, not only the within-shank fan)
+- [x] top bar: few controls per line, more lines instead of a crowded row
+- [x] CCG options added from the Qt panel: p and corrected p (−log10, own scale), normalisations (÷ ref rate, ÷ tgt rate, ÷ hours, ÷ seconds, ÷ area, − baseline; NeuroPy's order), ref waveform overlay, jitter (whole session, own process, one job at a time)
+- [x] neuron detail: peak-channel waveform
+- [x] panels in the space collapse; spread control moved to the top left so it never covers a panel
+- [x] memory: opening a session releases the others' CCG arrays and traces; test servers stopped after each test
+- [x] Qt GUI detection matches the GUI script only (run_ccg_gui.py), not commands that mention it
+- [x] strength measure selectable: excess over baseline, or the Qt GUI's CS (STG); widths scale to each measure
+- [x] pair list panel (the Qt review loop): ↑/↓ or k/j step, group hotkeys from the registry tag the focused or selected pairs, shift S/U/D set the pair state
+- [x] filters: hide same channel, hide same shank
+- [x] fixed: background peak fits starved other requests of the data lock (CCG and tag requests could wait minutes)
+- [x] time slider shows epoch themes (paradigm, brain states, runs, ripples) as bands
+- [x] CCG window: stored extend units (wider windows saved from Qt) with their ACGs and a refitted baseline; computing new extends stays in Qt

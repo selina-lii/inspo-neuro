@@ -1,0 +1,27 @@
+# dependencies and builds
+web/node_modules/
+web/dist/
+web/.vite/
+*.tsbuildinfo
+
+# per-project state: workspaces, layouts, backups (user data, never committed)
+state/
+
+# python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+
+# logs, env, editors, OS
+*.log
+.env
+.env.*
+.vscode/
+.idea/
+.DS_Store
+
+# test output
+playwright-report/
+test-results/

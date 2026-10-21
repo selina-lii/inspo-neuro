@@ -1,0 +1,166 @@
+// Ties between stats boards and networks: the cable, the session stack it grows (fetched a layer at a time), row playback.
+import { closePanel, fail, removeNetwork, setMainHidden } from "./actions";
+import { closeTest, moveBoard } from "./statsActions";
+import { removeGrid } from "./gridActions";
+import { sessionPairs, stackRows, testSessions, type StackLayer, type StackRow, type Tie } from "./core/stack";
+import { axisQuat, type Quat, type StatsResult, type StatsTest, type Vec3 } from "./core/stats";
+import { store, type Picked3 } from "./core/store";
+import { api } from "./io/api";
+import { undo } from "./history";
+import { same3, selection3 } from "./core/select";
+import { pointer } from "./ui/galaxy/pointer";
+
+export const setTies = (ties: Tie[]) => store.set({ ties });
+
+/** The workspace's ties whose boards are open; called once its boards are back. */
+export function loadTies(saved: Tie[]): void {
+  const boards = new Map(store.get().stats.boards.map((b) => [b.id, b]));
+  const side = axisQuat("+x");
+  // a tied board turned off the side wall goes back to it
+  const ties = saved.filter((t) => boards.has(t.board));
+  store.set({ ties: ties.map((t) => (boards.get(t.board)!.pose.q.every((v, i) => Math.abs(v - side[i]!) < 1e-3) ? t : { ...t, fresh: true })) });
+}
+
+/** One board, one network: cabling a board again moves its cable. */
+export const tie = (board: string, network: string) => setTies([...store.get().ties.filter((t) => t.board !== board), { board, network, fresh: true }]);
+
+export function arranged(board: string): void {
+  const at = store.get().stats.boards.find((b) => b.id === board)!.pose.p;
+  setTies(store.get().ties.map((t) => (t.board === board ? { board: t.board, network: t.network, at } : t)));
+}
+
+/** The board alone moves by its title bar: its tie's reference point moves too, so the layers it brought in stay. */
+export function slideBoard(board: string, p: Vec3, q: Quat): void {
+  const old = store.get().stats.boards.find((b) => b.id === board)!.pose.p;
+  moveBoard(board, { p, q });
+  setTies(store.get().ties.map((t) => (t.board === board && t.at ? { ...t, at: t.at.map((v, i) => v + p[i]! - old[i]!) as Vec3 } : t)));
+}
+
+export function untie(board: string): void {
+  setTies(store.get().ties.filter((t) => t.board !== board));
+  if (store.get().playback?.board === board) stopPlayback();
+}
+
+/** What a tied board's stack is built from: its test, the result it shows, the sessions and rows. */
+export function stackOf(board: string): { test: StatsTest; result: StatsResult; sessions: string[]; rows: StackRow[] } | null {
+  const { stats } = store.get();
+  const test = stats.tests.find((t) => t.id === board);
+  const b = stats.boards.find((x) => x.id === board);
+  const result = test?.results.find((r) => r.resolution === b?.res) ?? test?.results[0];
+  if (!test || !result || !stats.options) return null;
+  return { test, result, sessions: testSessions(result, stats.values), rows: stackRows(result, test.config, stats.options) };
+}
+
+/** The pairs (ref-tgt) of *session* in the tests tied to *network*; null when nothing is tied to it. */
+export function tiedPairs(network: string, session: string): Set<string> | null {
+  const boards = store.get().ties.filter((t) => t.network === network).map((t) => stackOf(t.board)).filter((x) => x !== null);
+  return boards.length ? new Set(boards.flatMap((st) => sessionPairs(st.result, store.get().stats.values, session))) : null;
+}
+
+let chain: Promise<void> = Promise.resolve();
+
+/** Fetch the layers a tied board needs, one session at a time (the server holds one session's CCGs at once). */
+export function ensureStack(board: string): void {
+  const st = stackOf(board);
+  if (!st) return;
+  const segments = [...new Set(st.rows.flatMap((r) => r.segments))];
+  const { norms } = store.get().ccg;
+  for (const session of st.sessions) {
+    const pairs = sessionPairs(st.result, store.get().stats.values, session);
+    const want = `${segments}|${pairs}|${st.result.resolution}|${norms}`;
+    if (store.get().stack[session]?.want === want) continue;
+    chain = chain.then(async () => {
+      if (store.get().stack[session]?.want === want) return;
+      const d = await api.stack(session, segments, pairs, st.result.resolution, norms);
+      const layer: StackLayer = {
+        session, neurons: d.neurons, links: d.links.map((l, i) => ({ ...l, i })), shanks: d.shanks, hours: d.hours,
+        segLinks: d.seg_links, lags: d.lags ?? [], traces: d.traces, want,
+      };
+      store.set({ stack: { ...store.get().stack, [session]: layer } });
+    }).catch(fail);
+  }
+}
+
+let timer = 0;
+
+export function playRows(board: string): void {
+  const pb = store.get().playback;
+  const ms = pb?.ms ?? 1200;
+  store.set({ playback: { board, row: pb?.board === board ? pb.row : 0, playing: true, ms } });
+  window.clearInterval(timer);
+  timer = window.setInterval(() => stepRow(1), ms);
+}
+
+export function pausePlayback(): void {
+  window.clearInterval(timer);
+  const pb = store.get().playback;
+  if (pb) store.set({ playback: { ...pb, playing: false } });
+}
+
+export function stopPlayback(): void {
+  window.clearInterval(timer);
+  store.set({ playback: null });
+}
+
+export function stepRow(d: number, board?: string): void {
+  const pb = store.get().playback ?? (board ? { board, row: -d, playing: false, ms: 1200 } : null);
+  const n = pb && stackOf(pb.board)?.rows.length;
+  if (!pb || !n) return;
+  store.set({ playback: { ...pb, row: (((pb.row + d) % n) + n) % n } });
+}
+
+export function setPlaybackSpeed(ms: number): void {
+  const pb = store.get().playback;
+  if (!pb) return;
+  store.set({ playback: { ...pb, ms } });
+  if (pb.playing) playRows(pb.board);
+}
+
+/** The picked dot's pair alone, every row's segments, for the card beside its board: no session switch, no full layer. */
+export async function loadPickCard(board: string, session: string, ref: number, tgt: number): Promise<void> {
+  const st = stackOf(board);
+  if (!st) return;
+  const segments = [...new Set(st.rows.flatMap((r) => r.segments))];
+  const want = `pick|${board}|${session}|${ref}-${tgt}|${segments}|${st.result.resolution}`;
+  if (store.get().pickCard?.want === want) return;
+  try {
+    const d = await api.stack(session, segments, [`${ref}-${tgt}`], st.result.resolution, [], true);
+    if (store.get().stats.pick.pair !== `${session}|${ref}|${tgt}`) return;
+    store.set({ pickCard: { session, neurons: d.neurons, links: [], shanks: [], hours: d.hours, segLinks: {}, lags: d.lags ?? [], traces: d.traces, want } });
+  } catch (error) {
+    fail(error);
+  }
+}
+
+/** Delete whatever is selected in 3D: close a board's test or a panel, close or remove a network, cut a cable. */
+export function deletePicked(): void {
+  const all = selection3(store.get());
+  if (!all.length) return;
+  store.set({ picked3: null, more3: [], toast: { text: `Removed ${all.length > 1 ? `${all.length} objects` : all[0]!.kind}`, undo } });
+  all.forEach(remove3);
+}
+
+function remove3(p: Picked3): void {
+  if (p.kind === "board") closeTest(p.id);
+  else if (p.kind === "panel") closePanel(p.id);
+  else if (p.kind === "tie") untie(p.id);
+  else if (p.kind === "grid") removeGrid(p.id);
+  else if (p.id === "main") setMainHidden(true);
+  else {
+    for (const t of store.get().ties.filter((x) => x.network === p.id)) untie(t.board);
+    removeNetwork(p.id);
+  }
+}
+
+/** Select an object in 3D; it stays selected until another is, or Escape; with Shift held it joins or leaves the selection. */
+export const pick3 = (kind: Picked3["kind"], id: string) => {
+  const s = store.get();
+  const p = { kind, id };
+  if (pointer.shift && s.picked3) {
+    const all = selection3(s);
+    const rest = all.some((x) => same3(x, p)) ? all.filter((x) => !same3(x, p)) : [...all, p];
+    return void store.set({ picked3: rest[0] ?? null, more3: rest.slice(1), gizmo: false });
+  }
+  const cur = s.picked3;
+  if (cur?.kind !== kind || cur.id !== id) store.set({ picked3: p, more3: [], gizmo: false });
+};
