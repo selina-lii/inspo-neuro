@@ -3,7 +3,6 @@ import { boot, movePairs, saveEdits, stepFocus, targetPairs, toggleGroup } from 
 import { store } from "../core/store";
 import { clearPick } from "../statsActions";
 import { deletePicked, settleTies } from "../stackActions";
-import { stopMoves } from "./galaxy/pointer";
 import { redo, undo } from "../history";
 import { MapBoundary } from "./map/MapBoundary";
 import { MapView } from "./map/MapView";
@@ -59,7 +58,7 @@ export function App() {
       if (e.key === "ArrowUp" || e.key === "k") return e.preventDefault(), stepFocus(-1);
       // whatever is selected in 3D: Delete removes it
       if ((e.key === "Delete" || e.key === "Backspace") && st.picked3) return e.preventDefault(), deletePicked();
-      if (e.key === "Escape") return stopMoves(), settleTies(), store.set({ focus: null, picked3: null, more3: [], gizmo: false, sweep: { ...st.sweep, open: new Set() }, cells: new Set() }), clearPick();
+      if (e.key === "Escape") return settleTies(), store.set({ focus: null, picked3: null, more3: [], gizmo: false, sweep: { ...st.sweep, open: new Set() }, cells: new Set() }), clearPick();
       // G: the selection's move and turn gizmo, on or off
       if (e.key === "g" && st.picked3) return store.set({ gizmo: !st.gizmo });
       const pairs = targetPairs();

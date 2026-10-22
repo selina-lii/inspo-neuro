@@ -1,11 +1,11 @@
 // The selected object's transform gizmo, on the object's own axes: press an arrow and drag to move along it, a square to
 // move in its plane, a ring to turn about its axis. The move is relative to where the handle was grabbed.
 import { useFrame, useThree, type ThreeEvent } from "@react-three/fiber";
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { type Group, type Intersection, Mesh, Plane, Quaternion, type Raycaster, Vector3 } from "three";
 import { useStore } from "../useStore";
-import { onStopMoves, pointer } from "./pointer";
-import { commit, commitGroup, groupOf, movable, placeOf, preview, previewGroup, startOf, TRIAD, transformed, type Group3, type Placement } from "./select3";
+import { begin } from "./gesture";
+import { commit, commitGroup, groupOf, movable, placeOf, preview, previewGroup, startOf, TRIAD, transformed } from "./select3";
 
 const AXES = [
   { name: "x", dir: new Vector3(1, 0, 0), color: "#e05555" },
@@ -30,7 +30,6 @@ function first(this: Mesh, raycaster: Raycaster, hits: Intersection[]): void {
 }
 
 type Handle = { move: number } | { plane: number } | { ring: number };
-type Drag = { handle: Handle; from: Placement; start: ReturnType<typeof startOf>; plane: Plane; grab: Vector3; axis: Vector3; pose: ReturnType<typeof transformed> | null; group: Group3; shift: Vector3; turn: Quaternion };
 
 const nameOf = (h: Handle) => ("move" in h ? AXES[h.move]!.name : "plane" in h ? PLANES[h.plane]!.name : `r${AXES[h.ring]!.name}`);
 
@@ -38,12 +37,12 @@ export function MoveTriad() {
   const { picked3: picked, gizmo } = useStore();
   const camera = useThree((t) => t.camera);
   const group = useRef<Group>(null);
-  const drag = useRef<Drag | null>(null);
+  const held = useRef(false);
   const [lit, setLit] = useState<string | null>(null);
 
   useFrame(() => {
     const g = group.current;
-    if (!g || !picked || drag.current) return;
+    if (!g || !picked || held.current) return;
     const place = placeOf(picked);
     g.visible = Boolean(place);
     if (!place) return;
@@ -53,8 +52,6 @@ export function MoveTriad() {
     g.scale.setScalar(Math.min(camera.position.distanceTo(g.position) * SCREEN, place.size * 0.33));
   });
 
-  const ended = useRef<() => void>(() => {});
-  useEffect(() => onStopMoves(() => ended.current()), []);
   if (!picked || !gizmo || !movable(picked)) return null;
   const turns = picked.kind !== "network";
 
@@ -63,7 +60,6 @@ export function MoveTriad() {
     const from = placeOf(picked);
     if (!from) return;
     e.stopPropagation();
-    (e.target as unknown as Element).setPointerCapture(e.pointerId);
     const local = (i: number) => AXES[i]!.dir.clone().applyQuaternion(from.q);
     const view = camera.getWorldDirection(new Vector3());
     // an arrow drags on the plane through it that faces the camera most; a square on its own plane; a ring on its disc
@@ -71,53 +67,42 @@ export function MoveTriad() {
     const normal = "move" in handle ? new Vector3().crossVectors(axis, new Vector3().crossVectors(view, axis)).normalize() : axis;
     const plane = new Plane().setFromNormalAndCoplanarPoint(normal, from.at);
     const grab = e.ray.intersectPlane(plane, new Vector3()) ?? from.at.clone();
-    drag.current = { handle, from, start: startOf(picked), plane, grab, axis, pose: null, group: groupOf(picked, from.pivot), shift: new Vector3(), turn: NO_TURN };
-    pointer.busy = true;
+    const [startPose, members] = [startOf(picked), groupOf(picked, from.pivot)];
+    let [shift, turn, moved] = [new Vector3(), NO_TURN, false];
+    held.current = true;
     setLit(nameOf(handle));
-  };
-  const move = (e: ThreeEvent<PointerEvent>) => {
-    const d = drag.current;
-    if (!d) return;
-    e.stopPropagation();
-    const hit = e.ray.intersectPlane(d.plane, new Vector3());
-    if (!hit) return;
-    let shift = new Vector3();
-    let turn = NO_TURN;
-    if ("ring" in d.handle) {
-      const [a, b] = [d.grab.clone().sub(d.from.at), hit.clone().sub(d.from.at)];
-      turn = new Quaternion().setFromAxisAngle(d.axis, Math.atan2(d.axis.dot(new Vector3().crossVectors(a, b)), a.dot(b)));
-    } else {
-      shift = hit.sub(d.grab);
-      if ("move" in d.handle) shift = d.axis.clone().multiplyScalar(shift.dot(d.axis));
-    }
-    group.current!.position.copy(d.from.at).add(shift);
-    group.current!.quaternion.copy(turn).multiply(d.from.q);
-    d.pose = transformed(d.from, shift, turn);
-    [d.shift, d.turn] = [shift, turn];
-    preview(picked, d.from, d.start, shift, turn);
-    previewGroup(d.group, shift, turn);
-  };
-  const finish = () => {
-    const d = drag.current;
-    if (!d) return;
-    drag.current = null;
-    pointer.busy = false;
-    setLit(null);
-    if (d.pose) commit(picked, d.pose);
-    commitGroup(d.group, d.shift, d.turn);
-  };
-  ended.current = finish;
-  const end = (e: ThreeEvent<PointerEvent>) => {
-    if (!drag.current) return;
-    e.stopPropagation();
-    finish();
+    begin({
+      move(r) {
+        const hit = r.ray.intersectPlane(plane, new Vector3());
+        if (!hit) return;
+        if ("ring" in handle) {
+          const [a, b] = [grab.clone().sub(from.at), hit.clone().sub(from.at)];
+          turn = new Quaternion().setFromAxisAngle(axis, Math.atan2(axis.dot(new Vector3().crossVectors(a, b)), a.dot(b)));
+        } else {
+          shift = hit.sub(grab);
+          if ("move" in handle) shift = axis.clone().multiplyScalar(shift.dot(axis));
+        }
+        moved = true;
+        group.current!.position.copy(from.at).add(shift);
+        group.current!.quaternion.copy(turn).multiply(from.q);
+        preview(picked, from, startPose, shift, turn);
+        previewGroup(members, shift, turn);
+      },
+      end() {
+        held.current = false;
+        setLit(null);
+        if (!moved) return;
+        commit(picked, transformed(from, shift, turn));
+        commitGroup(members, shift, turn);
+      },
+    });
   };
   const handlers = (handle: Handle) => ({
-    onPointerDown: start(handle), onPointerMove: move, onPointerUp: end,
+    onPointerDown: start(handle),
     onClick: (e: ThreeEvent<MouseEvent>) => e.stopPropagation(),
     onDoubleClick: (e: ThreeEvent<MouseEvent>) => e.stopPropagation(),
-    onPointerOver: (e: ThreeEvent<PointerEvent>) => (e.stopPropagation(), drag.current || setLit(nameOf(handle))),
-    onPointerOut: () => drag.current || setLit(null),
+    onPointerOver: (e: ThreeEvent<PointerEvent>) => (e.stopPropagation(), held.current || setLit(nameOf(handle))),
+    onPointerOut: () => held.current || setLit(null),
   });
 
   return (

@@ -68,4 +68,46 @@ test("nothing moves by itself: hover, wait, reload", async () => {
   assert.equal(await poses(), before, "hovering and waiting moved something");
 });
 
+/** A point on the board's title bar, clear of its title text. */
+async function titleSpot() {
+  const [c, top] = await app.page.evaluate(async (id) => {
+    const { centers, anchors } = await import("/src/ui/galaxy/tie/portAt.ts");
+    return [centers.get(`board:${id}`).at.toArray(), anchors.get(id).at.toArray()];
+  }, board);
+  const [mid, corner] = [await app.screen(c), await app.screen(top)];
+  return { x: mid.x + (mid.x - corner.x) * 0.8, y: corner.y + (mid.y - corner.y) * 0.08 };
+}
+
+test("a title-bar drag moves the board and ends at release", async () => {
+  const from = await boardPose();
+  const at = await titleSpot();
+  const { mouse } = app.page;
+  await mouse.move(at.x, at.y);
+  await mouse.down();
+  for (let k = 1; k <= 8; k++) await mouse.move(at.x - k * 10, at.y + k * 4);
+  await mouse.up();
+  await app.settle();
+  const dropped = await boardPose();
+  assert.notDeepEqual(dropped, from);
+  for (let k = 1; k <= 8; k++) await mouse.move(at.x + k * 15, at.y + k * 10);
+  await app.settle();
+  assert.deepEqual(await boardPose(), dropped);
+});
+
+test("menu move follows the pointer until a click, which does nothing else", async () => {
+  const at = await boardSpot();
+  const { mouse } = app.page;
+  await mouse.click(at.x, at.y, { button: "right" });
+  await app.page.getByRole("button", { name: "move", exact: true }).click();
+  const from = await boardPose();
+  for (let k = 1; k <= 8; k++) await mouse.move(at.x + k * 10, at.y - k * 5);
+  await mouse.click(at.x + 80, at.y - 40);
+  await app.settle();
+  const set = await boardPose();
+  assert.notDeepEqual(set, from, "the board followed the pointer to where the click set it down");
+  for (let k = 1; k <= 6; k++) await mouse.move(at.x - k * 20, at.y);
+  await app.settle();
+  assert.deepEqual(await boardPose(), set, "after the click it stays put");
+});
+
 test("no page errors", () => assert.deepEqual(app.errors, []));

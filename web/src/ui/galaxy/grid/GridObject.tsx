@@ -12,10 +12,10 @@ import { useBody } from "../select3";
 import { useStore } from "../../useStore";
 import { drawCcg } from "../CcgCards";
 import { PANEL_PX } from "../Panels3D";
-import { modKey, pointer } from "../pointer";
+import { modKey } from "../pointer";
+import { begin } from "../gesture";
 import { claimMenu } from "../SpaceMenu";
 import { Corners } from "../stats/BoardCorners";
-import { useBoardDrag } from "../stats/boardDrag";
 import { Label3D } from "../stats/Label3D";
 import { anchors, centers, ports } from "../tie/portAt";
 import { drawOverlay } from "../tie/OverlayCards";
@@ -29,6 +29,7 @@ import { useNear } from "../useNear";
 import { selected3 } from "../../../core/select";
 import { gridConfig, gridLegend, gridSource, gridStyle } from "../../../core/wires";
 import { rename, titleTip } from "../titleTip";
+import { barPress } from "../gesture";
 
 const BAR = 0.44;
 const HINT_PAGES = 5;
@@ -47,7 +48,6 @@ export function GridObject({ grid, dark }: { grid: CcgGrid; dark: boolean }) {
   const page = Math.min(grid.page, pages - 1);
   const { w, h } = pageSize(grid, n);
   const picked = selected3(s, "grid", grid.id);
-  const drag = useBoardDrag(grid.id, group, (p, q) => patchGrid(grid.id, { p, q }), "grid");
   const body = useBody("grid", grid.id, group);
   const scale = s.objectScale * (grid.s ?? 1);
 
@@ -110,7 +110,7 @@ export function GridObject({ grid, dark }: { grid: CcgGrid; dark: boolean }) {
 
   return (
     <group ref={group} position={grid.p} quaternion={grid.q} scale={scale} {...body} onContextMenu={() => claimMenu({ kind: "grid", id: grid.id })}>
-      <mesh position={[w / 2, BAR / 2, -0.01]} {...drag} {...titleTip(title, drag.onPointerMove)} onDoubleClick={(e) => (e.stopPropagation(), rename({ kind: "grid", id: grid.id }))}>
+      <mesh position={[w / 2, BAR / 2, -0.01]} onPointerDown={barPress({ kind: "grid", id: grid.id })} {...titleTip(title)} onDoubleClick={(e) => (e.stopPropagation(), rename({ kind: "grid", id: grid.id }))}>
         <planeGeometry args={[w + 0.2, BAR]} />
         <meshBasicMaterial color={picked ? PICK_COLOR : "#3a6df0"} transparent opacity={0.85} side={2} />
       </mesh>
@@ -157,11 +157,6 @@ function paint(key: string): void {
   const cells = new Set(sweep.base);
   for (const k of sweep.order.slice(Math.min(sweep.from, to), Math.max(sweep.from, to) + 1)) sweep.add ? cells.add(k) : cells.delete(k);
   store.set({ cells });
-}
-
-function endSweep(): void {
-  sweep = null;
-  pointer.busy = false;
 }
 
 function Cell({ item, grid, n, at, dark, group, order, series, metric, ylim }: { item: GridItem; grid: CcgGrid; n: number; at: [number, number]; dark: boolean; group: React.RefObject<Group | null>; order: string[]; series: Series | null; metric: string; ylim?: [number, number] }) {
@@ -240,11 +235,10 @@ function Cell({ item, grid, n, at, dark, group, order, series, metric, ylim }: {
             if (!grid.picking || e.button !== 0) return;
             e.stopPropagation();
             // select mode: the press picks (or drops) this card, and a drag on sweeps every card in between
-            pointer.busy = true;
             anchor = item.key;
             sweep = { order, from: order.indexOf(item.key), add: !s.cells.has(item.key), base: new Set(s.cells) };
             paint(item.key);
-            window.addEventListener("pointerup", endSweep, { once: true });
+            begin({ move() {}, end: () => void (sweep = null) });
           }}
           onPointerEnter={() => sweep?.order === order && paint(item.key)}>
           <planeGeometry args={grid.compact ? [CELL.w, CELL.h] : [CELL.w * 0.98, CELL.h * 0.98]} />
@@ -257,7 +251,6 @@ function Cell({ item, grid, n, at, dark, group, order, series, metric, ylim }: {
 
 /** ⇲ at the bottom-right corner: drag it to set how many columns and rows a page holds. */
 function SlotHandle({ grid, n, at, group }: { grid: CcgGrid; n: number; at: [number, number]; group: React.RefObject<Group | null> }) {
-  const plane = useRef<Plane | null>(null);
   const c = cellSize(grid, n);
   return (
     <group position={[at[0], at[1], 0.02]}>
@@ -265,27 +258,22 @@ function SlotHandle({ grid, n, at, group }: { grid: CcgGrid; n: number; at: [num
         onPointerDown={(e) => {
           if (e.button !== 0) return;
           e.stopPropagation();
-          (e.target as unknown as Element).setPointerCapture(e.pointerId);
           const g = group.current!;
-          plane.current = new Plane().setFromNormalAndCoplanarPoint(new Vector3(0, 0, 1).applyQuaternion(g.getWorldQuaternion(g.quaternion.clone())), g.getWorldPosition(new Vector3()));
-          pointer.busy = true;
-        }}
-        onPointerMove={(e) => {
-          if (!plane.current) return;
-          e.stopPropagation();
-          const hit = e.ray.intersectPlane(plane.current, new Vector3());
-          if (!hit) return;
-          const local = group.current!.worldToLocal(hit);
-          const gap = gapOf(grid);
-          const cols = grid.list ? grid.cols : Math.max(1, Math.round((local.x + gap) / (c.w + gap)));
-          const rows = Math.max(1, Math.round((-local.y + gap) / (c.h + gap)));
-          if (cols !== grid.cols || rows !== grid.rows) patchGrid(grid.id, { cols, rows, page: 0 });
-        }}
-        onPointerUp={(e) => {
-          if (!plane.current) return;
-          e.stopPropagation();
-          plane.current = null;
-          pointer.busy = false;
+          const plane = new Plane().setFromNormalAndCoplanarPoint(new Vector3(0, 0, 1).applyQuaternion(g.getWorldQuaternion(g.quaternion.clone())), g.getWorldPosition(new Vector3()));
+          let last = [grid.cols, grid.rows];
+          begin({
+            move(r) {
+              const hit = r.ray.intersectPlane(plane, new Vector3());
+              if (!hit) return;
+              const local = group.current!.worldToLocal(hit);
+              const gap = gapOf(grid);
+              const cols = grid.list ? grid.cols : Math.max(1, Math.round((local.x + gap) / (c.w + gap)));
+              const rows = Math.max(1, Math.round((-local.y + gap) / (c.h + gap)));
+              if (cols !== last[0] || rows !== last[1]) patchGrid(grid.id, { cols, rows, page: 0 });
+              last = [cols, rows];
+            },
+            end() {},
+          });
         }}>
         <circleGeometry args={[0.28, 20]} />
         <meshBasicMaterial color={PICK_COLOR} />

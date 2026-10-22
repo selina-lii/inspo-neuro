@@ -16,10 +16,10 @@ const show = (text: string, e: ThreeEvent<PointerEvent>) => {
 };
 const hide = () => void (tip && (tip.style.display = "none"));
 
-/** Hover handlers for a title bar; *move* is the bar's own drag handler, which runs first. */
-export const titleTip = (text: string, move?: (e: ThreeEvent<PointerEvent>) => void) => ({
+/** Hover handlers for a title bar. */
+export const titleTip = (text: string) => ({
   onPointerOver: (e: ThreeEvent<PointerEvent>) => show(text, e),
-  onPointerMove: (e: ThreeEvent<PointerEvent>) => (move?.(e), show(text, e)),
+  onPointerMove: (e: ThreeEvent<PointerEvent>) => show(text, e),
   onPointerOut: hide,
 });
 

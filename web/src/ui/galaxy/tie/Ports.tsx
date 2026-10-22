@@ -1,14 +1,14 @@
 // Cable ports on every object, and a cable per wire: a drag from one port to another wires them as their ends allow
 // (core/wires); a click selects a cable (Delete cuts it), a right-click opens its object's menu.
 import { useFrame, useThree, type ThreeEvent } from "@react-three/fiber";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { BufferGeometry, Float32BufferAttribute, type Group, type Mesh, Plane, Quaternion, Vector3 } from "three";
 import { connect } from "../../../wireActions";
 import { idOf, wiresOf } from "../../../core/wires";
 import { selected3 } from "../../../core/select";
 import type { Picked3 } from "../../../core/store";
 import { useStore } from "../../useStore";
-import { onStopMoves, pointer } from "../pointer";
+import { begin } from "../gesture";
 import { claimMenu, type Target } from "../SpaceMenu";
 import { ports } from "./portAt";
 
@@ -23,51 +23,47 @@ export function TiePorts() {
     ...(s.mainHidden ? [] : ["net:main"]), ...s.networks.map((n) => `net:${n.id}`), ...s.grids.map((g) => `grid:${g.id}`),
     ...s.pairNodes.map((n) => `node:${n.id}`), ...s.styleNodes.map((n) => `style:${n.id}`), ...s.panels.filter((p) => (p.kind === "ccg" || p.kind === "legend" || p.kind === "stats") && !p.closed && p.pose).map((p) => `panel:${p.id}`)];
   const { camera, size } = useThree();
-  const [drag, setDrag] = useState<{ from: string; plane: Plane } | null>(null);
+  const [drag, setDrag] = useState<string | null>(null);
   const end = useRef(new Vector3());
-  useEffect(() => onStopMoves(() => setDrag(null)), []);
+  const live = useRef(ids);
+  live.current = ids;
   const line = useMemo(() => new BufferGeometry().setAttribute("position", new Float32BufferAttribute(new Float32Array(6), 3)), []);
 
   const screen = (v: Vector3) => {
     const p = v.clone().project(camera);
     return { x: ((p.x + 1) / 2) * size.width, y: ((1 - p.y) / 2) * size.height };
   };
-  const start = (id: string) => (e: ThreeEvent<PointerEvent>) => {
+  // a drag from a port draws a cable to the pointer; released near another kind's port, it wires the two
+  const start = (from: string) => (e: ThreeEvent<PointerEvent>) => {
     if (e.button !== 0) return;
     e.stopPropagation();
-    (e.target as unknown as Element).setPointerCapture(e.pointerId);
-    pointer.busy = true;
-    end.current.copy(ports.get(id)!);
-    setDrag({ from: id, plane: new Plane().setFromNormalAndCoplanarPoint(camera.getWorldDirection(new Vector3()), ports.get(id)!) });
-  };
-  const handlers = {
-    onPointerMove(e: ThreeEvent<PointerEvent>) {
-      if (drag) e.ray.intersectPlane(drag.plane, end.current);
-    },
-    onPointerUp(e: ThreeEvent<PointerEvent>) {
-      if (!drag) return;
-      e.stopPropagation();
-      pointer.busy = false;
-      const at = screen(end.current);
-      const kind = drag.from.split(":")[0];
-      const target = ids.filter((id) => id.split(":")[0] !== kind && ports.get(id))
-        .map((id) => ({ id, d: Math.hypot(screen(ports.get(id)!).x - at.x, screen(ports.get(id)!).y - at.y) }))
-        .sort((a, b) => a.d - b.d)[0];
-      setDrag(null);
-      if (target && target.d <= HIT_PX) connect(drag.from, target.id);
-    },
+    const plane = new Plane().setFromNormalAndCoplanarPoint(camera.getWorldDirection(new Vector3()), ports.get(from)!);
+    end.current.copy(ports.get(from)!);
+    setDrag(from);
+    begin({
+      move: (r) => void r.ray.intersectPlane(plane, end.current),
+      end() {
+        setDrag(null);
+        const at = screen(end.current);
+        const kind = from.split(":")[0];
+        const target = live.current.filter((id) => id.split(":")[0] !== kind && ports.get(id))
+          .map((id) => ({ id, d: Math.hypot(screen(ports.get(id)!).x - at.x, screen(ports.get(id)!).y - at.y) }))
+          .sort((a, b) => a.d - b.d)[0];
+        if (target && target.d <= HIT_PX) connect(from, target.id);
+      },
+    });
   };
   useFrame(() => {
     if (!drag) return;
     const a = line.getAttribute("position") as Float32BufferAttribute;
-    a.setXYZ(0, ...(ports.get(drag.from)!.toArray() as [number, number, number]));
+    a.setXYZ(0, ...(ports.get(drag)!.toArray() as [number, number, number]));
     a.setXYZ(1, ...(end.current.toArray() as [number, number, number]));
     a.needsUpdate = true;
   });
 
   return (
     <>
-      {ids.map((id) => <Port key={id} id={id} lit={drag?.from === id} {...handlers} onPointerDown={start(id)} />)}
+      {ids.map((id) => <Port key={id} id={id} lit={drag === id} onPointerDown={start(id)} />)}
       {drag && <lineSegments geometry={line}><lineBasicMaterial color="#ff1dce" /></lineSegments>}
       {/* a cable shows while both its ends do */}
       {wiresOf(s).filter((w) => ids.includes(w.from) && ids.includes(w.to)).map((w) => {

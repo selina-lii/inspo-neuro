@@ -1,22 +1,19 @@
 // Right-click in the 3D space: add an object, or pick up a board, panel or network copy and carry it.
 // A board's own right-click names it here first (three's handler runs before the DOM's), so the menu knows what it is on.
-import { useFrame } from "@react-three/fiber";
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { Plane, Raycaster, Vector3 } from "three";
-import type { Vec3 } from "../../core/stats";
-import { closePanel, moveNetwork, openSession, patchPanel, removeNetwork, setMainHidden } from "../../actions";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { closePanel, openSession, patchPanel, removeNetwork, setMainHidden } from "../../actions";
 import { PANEL_TITLES } from "../map/SpacePanelNode";
 import { facePanel } from "./Panels3D";
-import { settleTies, untie } from "../../stackActions";
-import { addToNode, dropFromNode, patchGrid, patchNode, patchStyle, removeGrid, removeNode, removeStyle } from "../../gridActions";
-import { closeTest, moveBoard } from "../../statsActions";
+import { untie } from "../../stackActions";
+import { addToNode, dropFromNode, removeGrid, removeNode, removeStyle } from "../../gridActions";
+import { closeTest } from "../../statsActions";
 import { AddMenu } from "../menu/AddMenu";
 import { TrayMenu } from "./grid/TrayMenu";
 import { store } from "../../core/store";
 import { useStore } from "../useStore";
 import { cut } from "../../wireActions";
 import { wiresOf, type Role } from "../../core/wires";
-import { onStopMoves } from "./pointer";
+import { begin, objectGesture, pointerAt } from "./gesture";
 import { rename } from "./titleTip";
 import { actsOn, align3, duplicate3, snapTo3 } from "./select3";
 
@@ -30,46 +27,6 @@ export const claimMenu = (target: Target) => void (pending ??= target);
 
 /** A right press starts a fresh claim. */
 export const resetClaim = () => void (pending = null);
-
-// the construct being carried; Esc or a click sets it down where it is
-let carrying: Target | null = null;
-const carryListeners = new Set<(t: Target | null) => void>();
-onStopMoves(() => carrying && carry(null));
-function carry(t: Target | null) {
-  if (t?.kind === "board") settleTies(t.id);
-  carrying = t;
-  for (const f of carryListeners) f(t);
-}
-
-/** Inside the canvas: the carried board follows the pointer across the plane facing the camera. */
-export function CarrySync() {
-  const ray = useMemo(() => new Raycaster(), []);
-  const plane = useMemo(() => new Plane(), []);
-  const hit = useMemo(() => new Vector3(), []);
-  const { stats, networks, panels, grids, pairNodes, styleNodes } = useStore();
-  useFrame(({ camera, pointer }) => {
-    if (!carrying) return;
-    const board = carrying.kind === "board" ? stats.boards.find((b) => b.id === carrying!.id) : undefined;
-    const net = carrying.kind === "network" ? networks.find((n) => n.id === carrying!.id) : undefined;
-    const panel = carrying.kind === "panel" ? panels.find((q) => q.id === carrying!.id) : undefined;
-    const grid = carrying.kind === "grid" ? grids.find((g) => g.id === carrying!.id) : undefined;
-    const node = carrying.kind === "node" ? pairNodes.find((n) => n.id === carrying!.id) : undefined;
-    const style = carrying.kind === "style" ? styleNodes.find((n) => n.id === carrying!.id) : undefined;
-    const p = board?.pose.p ?? net?.p ?? panel?.pose?.p ?? grid?.p ?? node?.p ?? style?.p;
-    if (!p) return;
-    const at = new Vector3(...p);
-    plane.setFromNormalAndCoplanarPoint(camera.getWorldDirection(new Vector3()).negate(), at);
-    ray.setFromCamera(pointer, camera);
-    if (!ray.ray.intersectPlane(plane, hit) || hit.distanceTo(at) < 1e-3) return;
-    if (board) moveBoard(board.id, { ...board.pose, p: hit.toArray() as Vec3 });
-    else if (grid) patchGrid(grid.id, { p: hit.toArray() as Vec3 });
-    else if (node) patchNode(node.id, { p: hit.toArray() as Vec3 });
-    else if (style) patchStyle(style.id, { p: hit.toArray() as Vec3 });
-    else if (panel) patchPanel(panel.id, { pose: { ...panel.pose!, p: hit.toArray() as Vec3 } });
-    else moveNetwork(net!.id, hit.toArray() as Vec3);
-  });
-  return null;
-}
 
 /** Duplicate and align: on the whole selection when the menu's object is in it. */
 function Many({ target, act }: { target: Target; act: (f: () => void) => () => void }) {
@@ -89,31 +46,21 @@ function Many({ target, act }: { target: Target; act: (f: () => void) => () => v
 
 export function SpaceMenu({ at, onClose, onCenter }: { at: { x: number; y: number } | null; onClose(): void; onCenter(t: Target, face: boolean): void }) {
   const { stats: s, networks, panels, grids, pairNodes, styleNodes } = useStore();
-  const [moving, setMoving] = useState<Target | null>(carrying);
+  const [moving, setMoving] = useState(false);
+  // menu "move": the object follows the pointer, no button held, until a click or Esc sets it down
+  const carry = (t: Target) => {
+    const g = objectGesture(t, pointerAt.x, pointerAt.y, "move", "click");
+    if (!g) return;
+    setMoving(true);
+    begin({ ...g, end: () => (g.end(), setMoving(false)) });
+  };
   const [target, setTarget] = useState<Target | null>(null);
-  useEffect(() => {
-    carryListeners.add(setMoving);
-    return () => void carryListeners.delete(setMoving);
-  }, []);
   useEffect(() => {
     if (at) {
       setTarget(pending);
       pending = null;
     }
   }, [at]);
-  useEffect(() => {
-    if (!moving) return;
-    const esc = (e: KeyboardEvent) => e.key === "Escape" && carry(null);
-    // the press that sets it down is spent on that: it must not start a drag of what lies under it
-    const drop = (e: PointerEvent) => (e.stopPropagation(), carry(null));
-    window.addEventListener("keydown", esc);
-    window.addEventListener("pointerdown", drop, true);
-    return () => {
-      window.removeEventListener("keydown", esc);
-      window.removeEventListener("pointerdown", drop, true);
-    };
-  }, [moving]);
-
   // the menu opens where clicked, kept inside the view; its grip moves it
   const menu = useRef<HTMLDivElement>(null);
   const grab = useRef<{ dx: number; dy: number } | null>(null);
@@ -152,7 +99,7 @@ export function SpaceMenu({ at, onClose, onCenter }: { at: { x: number; y: numbe
               <button onClick={act(() => rename({ kind: "board", id: board.id }))}>rename</button>
               <button onClick={act(() => onCenter(target!, false))}>center on this item</button>
               <button onClick={act(() => onCenter(target!, true))}>face me</button>
-              <button onClick={act(() => carry(target))}>move</button>
+              <button onClick={act(() => carry(target!))}>move</button>
               <Many target={target!} act={act} />
               <button onClick={act(() => closeTest(board.id))}>close</button>
             </>
@@ -170,7 +117,7 @@ export function SpaceMenu({ at, onClose, onCenter }: { at: { x: number; y: numbe
               <button onClick={act(() => rename({ kind: "grid", id: grid.id }))}>rename</button>
               <button onClick={act(() => onCenter(target!, false))}>center on this item</button>
               <button onClick={act(() => onCenter(target!, true))}>face me</button>
-              <button onClick={act(() => carry(target))}>move</button>
+              <button onClick={act(() => carry(target!))}>move</button>
               <Many target={target!} act={act} />
               <TrayMenu grid={grid} act={act} />
               {wiresOf(store.get()).filter((w) => w.to === `grid:${grid.id}` || w.from === `grid:${grid.id}`).map((w) => (
@@ -183,7 +130,7 @@ export function SpaceMenu({ at, onClose, onCenter }: { at: { x: number; y: numbe
               <div className="space-menu-title">pair filter</div>
               <button onClick={act(() => onCenter(target!, false))}>center on this item</button>
               <button onClick={act(() => onCenter(target!, true))}>face me</button>
-              <button onClick={act(() => carry(target))}>move</button>
+              <button onClick={act(() => carry(target!))}>move</button>
               <Many target={target!} act={act} />
               <button onClick={act(() => addToNode(node.id))}>add the picked or selected pairs</button>
               {node.added.length > 0 && <button onClick={act(() => dropFromNode(node.id))}>drop the picked or selected pairs</button>}
@@ -194,7 +141,7 @@ export function SpaceMenu({ at, onClose, onCenter }: { at: { x: number; y: numbe
               <div className="space-menu-title">curve style</div>
               <button onClick={act(() => onCenter(target!, false))}>center on this item</button>
               <button onClick={act(() => onCenter(target!, true))}>face me</button>
-              <button onClick={act(() => carry(target))}>move</button>
+              <button onClick={act(() => carry(target!))}>move</button>
               <button onClick={act(() => removeStyle(target.id))}>close</button>
             </>
           ) : panel ? (
@@ -202,7 +149,7 @@ export function SpaceMenu({ at, onClose, onCenter }: { at: { x: number; y: numbe
               <div className="space-menu-title">{PANEL_TITLES[panel.kind]}</div>
               <button onClick={act(() => onCenter(target!, false))}>center on this item</button>
               <button onClick={act(() => onCenter(target!, true))}>face me</button>
-              <button onClick={act(() => carry(target))}>move</button>
+              <button onClick={act(() => carry(target!))}>move</button>
               <Many target={target!} act={act} />
               <button onClick={act(() => facePanel(panel.id))}>turn it toward me</button>
               <button onClick={act(() => patchPanel(panel.id, { collapsed: !panel.collapsed }))}>{panel.collapsed ? "expand" : "collapse"}</button>
@@ -223,7 +170,7 @@ export function SpaceMenu({ at, onClose, onCenter }: { at: { x: number; y: numbe
               <div className="space-menu-title">network · {net.segment}</div>
               <button onClick={act(() => onCenter(target!, false))}>center on this item</button>
               <button onClick={act(() => onCenter(target!, true))}>face me</button>
-              <button onClick={act(() => carry(target))}>move</button>
+              <button onClick={act(() => carry(target!))}>move</button>
               <Many target={target!} act={act} />
               <button onClick={act(() => removeNetwork(net.id))}>remove</button>
             </>

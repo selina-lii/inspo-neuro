@@ -4,11 +4,10 @@ import { useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useImperativeHandle, useMemo, useRef, type Ref } from "react";
 import { Matrix4, Object3D, PerspectiveCamera, Plane, Quaternion, Raycaster, Vector2, Vector3 } from "three";
 import { carryPanels } from "./Panels3D";
-import { modKey, onStopMoves, pointer, secondary } from "./pointer";
-import { carried, commit, commitGroup, groupOf, pickAt, placeOf, preview, previewGroup, rayPick, startOf, transformed, type Group3, type Placement } from "./select3";
-import { selected3 } from "../../core/select";
-import { store, type Picked3 } from "../../core/store";
-import { pick3 } from "../../stackActions";
+import { begin, dragging, objectGesture, setGestureView, type Gesture } from "./gesture";
+import { modKey, secondary } from "./pointer";
+import { carried, pickAt, rayPick } from "./select3";
+import type { Picked3 } from "../../core/store";
 
 export type CadHandle = {
   target: Vector3;
@@ -73,9 +72,8 @@ export function CadControls({ ref }: { ref?: Ref<CadHandle> }) {
   useEffect(() => {
     const el = gl.domElement;
     const ray = new Raycaster();
-    let drag: { mode: Mode | null; want: Mode; x: number; y: number; pivot: Vector3; moved: boolean; body: Picked3 | null } | null = null;
-    // a drag that began on a movable object's body moves it in the screen plane, relative to where it was grabbed
-    let carry: { pick: Picked3; from: Placement; start: ReturnType<typeof startOf>; plane: Plane; grab: Vector3; pose: ReturnType<typeof transformed> | null; group: Group3; shift: Vector3 } | null = null;
+    let press: { moved: boolean; want: Mode; button: number; x: number; y: number; pivot: Vector3; body: Picked3 | null } | null = null;
+    setGestureView(camera, el);
 
     const ndc = (x: number, y: number) => {
       const r = el.getBoundingClientRect();
@@ -118,6 +116,8 @@ export function CadControls({ ref }: { ref?: Ref<CadHandle> }) {
       if (d < MIN_VIEW) target.copy(camera.position).addScaledVector(ahead, MIN_VIEW);
     };
 
+    // a press waits to see whether it is a click (it selects) or the start of a drag (it moves the object under it, else
+    // the view); an object's own handler that already began a gesture on the press keeps it
     const onDown = (e: PointerEvent) => {
       tween.current = null;
       if (secondary(e)) return;
@@ -126,66 +126,33 @@ export function CadControls({ ref }: { ref?: Ref<CadHandle> }) {
       ray.setFromCamera(ndc(e.clientX, e.clientY), camera);
       const hit = e.button === 0 && !mod ? rayPick(ray, scene) : null;
       const body = hit && hit !== "triad" && carried(hit) ? hit : null;
-      drag = { mode: null, moved: false, body, want, x: e.clientX, y: e.clientY, pivot: e.button === 1 || e.button === 0 ? under(e.clientX, e.clientY) : target.clone() };
+      press = { moved: false, body, want, button: e.button, x: e.clientX, y: e.clientY, pivot: e.button === 1 || e.button === 0 ? under(e.clientX, e.clientY) : target.clone() };
       if (e.button === 1) e.preventDefault();
     };
     const onMove = (e: PointerEvent) => {
-      if (!drag) return;
-      const [dx, dy] = [e.clientX - drag.x, e.clientY - drag.y];
-      if (Math.hypot(dx, dy) >= START_PX) drag.moved = true;
-      if (pointer.busy && !carry) return;
-      // an object's own handler (title bar, corner, gizmo) already holds the pointer by the time it moves
-      if (!carry && drag.moved && !drag.mode && drag.body) {
-        const from = placeOf(drag.body);
-        if (from) {
-          const plane = new Plane().setFromNormalAndCoplanarPoint(camera.getWorldDirection(new Vector3()), from.at);
-          ray.setFromCamera(ndc(drag.x, drag.y), camera);
-          // a selected object carries the rest of the selection with it
-          const group = groupOf(drag.body, from.pivot, selected3(store.get(), drag.body.kind, drag.body.id));
-          carry = { pick: drag.body, from, start: startOf(drag.body), plane, grab: ray.ray.intersectPlane(plane, new Vector3()) ?? from.at.clone(), pose: null, group, shift: new Vector3() };
-          pointer.busy = true;
-          el.setPointerCapture(e.pointerId);
-        }
-      }
-      if (carry) {
-        ray.setFromCamera(ndc(e.clientX, e.clientY), camera);
-        const now = ray.ray.intersectPlane(carry.plane, new Vector3());
-        if (!now) return;
-        const shift = now.sub(carry.grab);
-        carry.shift = shift;
-        carry.pose = transformed(carry.from, shift, new Quaternion());
-        preview(carry.pick, carry.from, carry.start, shift, new Quaternion());
-        previewGroup(carry.group, shift, new Quaternion());
-        return;
-      }
-      if (pointer.busy) return;
-      if (!drag.mode) {
-        if (Math.hypot(dx, dy) < START_PX) return;
-        drag.mode = drag.want;
-        el.setPointerCapture(e.pointerId);
-      }
-      [drag.x, drag.y] = [e.clientX, e.clientY];
-      if (drag.mode === "rotate") rotate(dx, dy, drag.pivot);
-      else if (drag.mode === "pan") pan(dx, dy);
-      else zoomAt(target, Math.exp(dy * 0.006));
+      if (!press || press.moved || Math.hypot(e.clientX - press.x, e.clientY - press.y) < START_PX) return;
+      press.moved = true;
+      if (dragging()) return;
+      const p = press;
+      begin((p.body && objectGesture(p.body, p.x, p.y)) || viewGesture(p.want, p.x, p.y, p.pivot));
     };
     const onUp = (e: PointerEvent) => {
-      if (drag?.mode && el.hasPointerCapture(e.pointerId)) el.releasePointerCapture(e.pointerId);
-      // a press and release in place on the canvas is a click: it selects the nearest object
-      // the release ends the move before anything is written: a write that fails must not leave the object on the cursor
-      const [c, d] = [carry, drag];
-      [carry, drag] = [null, null];
-      // an object's drag holds the pointer for one press: a release it missed must not lock the camera
-      pointer.busy = false;
-      if (c) {
-        if (el.hasPointerCapture(e.pointerId)) el.releasePointerCapture(e.pointerId);
-        setDown(c);
-        if (!selected3(store.get(), c.pick.kind, c.pick.id)) pick3(c.pick.kind, c.pick.id);
-      } else if (d && !d.moved && e.button === 0) {
+      if (press && !press.moved && press.button === 0) {
         ray.setFromCamera(ndc(e.clientX, e.clientY), camera);
         pickAt(ray, scene);
       }
+      press = null;
     };
+    const viewGesture = (mode: Mode, x: number, y: number, pivot: Vector3): Gesture => ({
+      move(_, e) {
+        const [dx, dy] = [e.clientX - x, e.clientY - y];
+        [x, y] = [e.clientX, e.clientY];
+        if (mode === "rotate") rotate(dx, dy, pivot);
+        else if (mode === "pan") pan(dx, dy);
+        else zoomAt(target, Math.exp(dy * 0.006));
+      },
+      end() {},
+    });
     const onWheel = (e: WheelEvent) => {
       e.preventDefault();
       tween.current = null;
@@ -201,22 +168,12 @@ export function CadControls({ ref }: { ref?: Ref<CadHandle> }) {
       target.add(step);
     };
     const onMenu = (e: Event) => e.preventDefault();
-    const setDown = (c: NonNullable<typeof carry>) => {
-      if (c.pose) commit(c.pick, c.pose);
-      commitGroup(c.group, c.shift, new Quaternion());
-    };
-    const stop = onStopMoves(() => {
-      const c = carry;
-      [carry, drag] = [null, null];
-      if (c) setDown(c);
-    });
     el.addEventListener("pointerdown", onDown);
     window.addEventListener("pointermove", onMove);
     window.addEventListener("pointerup", onUp);
     el.addEventListener("wheel", onWheel, { passive: false });
     el.addEventListener("contextmenu", onMenu);
     return () => {
-      stop();
       el.removeEventListener("pointerdown", onDown);
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerup", onUp);

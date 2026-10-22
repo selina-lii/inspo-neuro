@@ -3,11 +3,10 @@
 import { useFrame } from "@react-three/fiber";
 import { useMemo, useRef } from "react";
 import { Vector3, type Group } from "three";
-import { moveNetwork, resizeNetwork } from "../../actions";
+import { resizeNetwork } from "../../actions";
 import { tiedPairs } from "../../stackActions";
 import { useBody } from "./select3";
 import { NetworkFrame } from "./NetworkFrame";
-import { useBoardDrag } from "./stats/boardDrag";
 import { linkStyle } from "../../core/colors";
 import type { NetworkCopy } from "../../core/store";
 import { linkKey, type Link, type Point3 } from "../../core/types";
@@ -17,6 +16,7 @@ import { claimMenu } from "./SpaceMenu";
 import { Corners } from "./stats/BoardCorners";
 import { ports } from "./tie/portAt";
 import { selected3 } from "../../core/select";
+import { barPress } from "./gesture";
 
 const NONE = new Set<string>();
 const shownAll = () => false;
@@ -46,14 +46,12 @@ function Copy({ net, links: all, pts, center, extent, dark }: CopyProps & { net:
   }), [shown, styles, s.linkAlpha, s.filters.onOnly, s.segLinks, net.segment]);
   const scale = net.s ?? 1;
   const picked = selected3(s, "network", net.id);
-  // the bar drags the group; its centre is where the copy's network centre now sits
-  const drag = useBoardDrag(net.id, group, (p) => moveNetwork(net.id, [p[0] + center[0] * scale, p[1] + center[1] * scale, p[2] + center[2] * scale]), "network");
   // its cable port sits right of its label
   useFrame(() => group.current && ports.set(`net:${net.id}`, group.current.localToWorld(new Vector3(box[2] + 0.6, box[3] + 0.3, center[2]))));
   return (
     <group ref={group} position={[net.p[0] - center[0] * scale, net.p[1] - center[1] * scale, net.p[2] - center[2] * scale]} scale={scale}
       {...body} onContextMenu={() => claimMenu({ kind: "network", id: net.id })}>
-      <NetworkFrame box={box} z={center[2]} label={`network · ${net.segment}`} picked={picked} drag={drag}
+      <NetworkFrame box={box} z={center[2]} label={`network · ${net.segment}`} picked={picked} onPress={barPress({ kind: "network", id: net.id })}
         onMenu={() => claimMenu({ kind: "network", id: net.id })} />
       {batches.map((b) => <LinkBatch key={b.key} batch={b} pts={pts} dark={dark} onHover={() => undefined} />)}
       <Heads links={shown} styles={styles} pts={pts} touch={null} />

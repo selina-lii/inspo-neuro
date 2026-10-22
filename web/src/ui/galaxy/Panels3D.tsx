@@ -3,7 +3,7 @@
 import { useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useMemo, useRef, type RefObject } from "react";
 import { createPortal } from "react-dom";
-import { BoxGeometry, DoubleSide, Matrix4, Mesh, MeshBasicMaterial, NoBlending, PlaneGeometry, Plane, Quaternion, Raycaster, Scene, Vector2, Vector3, type Camera, type Object3D } from "three";
+import { BoxGeometry, DoubleSide, Matrix4, Mesh, MeshBasicMaterial, NoBlending, PlaneGeometry, Quaternion, Scene, Vector3, type Camera, type Object3D } from "three";
 import { CSS3DObject, CSS3DRenderer } from "three/examples/jsm/renderers/CSS3DRenderer.js";
 import { patchPanel } from "../../actions";
 import { newScale } from "../../statsActions";
@@ -24,10 +24,9 @@ import { anchors, ports } from "./tie/portAt";
 import { PANEL_PX, TITLE_FONT } from "../../core/store";
 import { selected3 } from "../../core/select";
 import { pick3 } from "../../stackActions";
-import { onStopMoves, pointer } from "./pointer";
+import { begin, dragging, objectGesture, rayAt } from "./gesture";
 import { dockedOn } from "../../core/grid";
 import { gridConfig } from "../../core/wires";
-import { commit, commitGroup, groupOf, placeOf, preview, previewGroup, startOf, transformed, type Group3, type Placement } from "./select3";
 
 /** 3D units per panel pixel, at object size 1. */
 export { PANEL_PX };
@@ -42,14 +41,7 @@ const elements = new Map<string, HTMLDivElement>();
 export const bars = new Set<string>();
 export const elementFor = (id: string) => elements.get(id) ?? elements.set(id, document.createElement("div")).get(id)!;
 let view: { camera: Camera; host: HTMLElement; canvas: HTMLCanvasElement } | null = null;
-const ray = new Raycaster();
 const ahead = new Vector3();
-
-function rayAt(x: number, y: number): Raycaster {
-  const r = view!.host.getBoundingClientRect();
-  ray.setFromCamera(new Vector2(((x - r.left) / r.width) * 2 - 1, -((y - r.top) / r.height) * 2 + 1), view!.camera);
-  return ray;
-}
 
 const shown = (p: SpacePanel) => !p.closed && p.pose;
 const scaleOf = (p: SpacePanel) => PANEL_PX * store.get().objectScale * (p.pose?.s ?? 1);
@@ -219,11 +211,9 @@ export function PanelLayer({ host, box }: { host: RefObject<HTMLDivElement | nul
   const slabs = useMemo(() => new Map<string, Mesh>(), []);
   useEffect(() => {
     // the pointer goes to whichever is nearest under it: a page through its window, else the canvas
-    const ray = new Raycaster();
     const route = (e: PointerEvent) => {
       if (e.buttons) return;
-      const r = gl.domElement.getBoundingClientRect();
-      ray.setFromCamera(new Vector2(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1), camera);
+      const ray = rayAt(e.clientX, e.clientY);
       const solids: Object3D[] = [];
       world.traverse((o) => (o.type === "Mesh" || o.type === "InstancedMesh") && o.visible && solids.push(o));
       const hit = ray.intersectObjects(solids, false)[0];
@@ -248,8 +238,8 @@ export function Panels3D() {
   const { panels } = useStore();
   const s = useStore();
   useEffect(() => {
-    // a press on the panel's own gizmo (it has just set pointer.busy) keeps the panel selected
-    const away = (e: PointerEvent) => !e.shiftKey && !pointer.busy && !(e.target as HTMLElement).closest?.(".panel3d") && store.get().picked3?.kind === "panel" && store.set({ picked3: null });
+    // a press on the panel's own gizmo (it has just begun a gesture) keeps the panel selected
+    const away = (e: PointerEvent) => !e.shiftKey && !dragging() && !(e.target as HTMLElement).closest?.(".panel3d") && store.get().picked3?.kind === "panel" && store.set({ picked3: null });
     window.addEventListener("pointerdown", away);
     return () => window.removeEventListener("pointerdown", away);
   }, []);
@@ -257,7 +247,6 @@ export function Panels3D() {
 }
 
 function Panel3D({ panel, picked, onPick }: { panel: SpacePanel; picked: boolean; onPick(e: React.PointerEvent): void }) {
-  const drag = useRef<{ plane: Plane; hit: Vector3; from: Placement; start: ReturnType<typeof startOf>; group: Group3; shift: Vector3 } | null>(null);
   const root = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const el = root.current!;
@@ -265,38 +254,14 @@ function Panel3D({ panel, picked, onPick }: { panel: SpacePanel; picked: boolean
     return () => el.removeEventListener("wheel", onWheel);
   }, []);
   const Body = BODY[panel.kind];
+  // the head drags the panel through the shared transform path: a docked panel takes its grid along
   const head = {
     onPointerDown(e: React.PointerEvent) {
       if (e.button !== 0 || (e.target as HTMLElement).closest("button")) return;
-      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-      // through the shared transform path: a docked panel takes its grid along, a selected one the selection
-      const me = { kind: "panel" as const, id: panel.id };
-      const from = placeOf(me)!;
-      const plane = new Plane().setFromNormalAndCoplanarPoint(view!.camera.getWorldDirection(new Vector3()), from.pivot);
-      const group = selected3(store.get(), "panel", panel.id) ? groupOf(me, from.pivot) : [];
-      drag.current = { plane, from, start: startOf(me), group, shift: new Vector3(), hit: rayAt(e.clientX, e.clientY).ray.intersectPlane(plane, new Vector3()) ?? from.pivot.clone() };
-      pointer.busy = true;
-    },
-    onPointerMove(e: React.PointerEvent) {
-      const d = drag.current;
-      const now = d && rayAt(e.clientX, e.clientY).ray.intersectPlane(d.plane, new Vector3());
-      if (!now) return;
-      d.shift = now.sub(d.hit);
-      preview({ kind: "panel", id: panel.id }, d.from, d.start, d.shift, new Quaternion());
-      previewGroup(d.group, d.shift, new Quaternion());
-    },
-    onPointerUp() {
-      const d = drag.current;
-      drag.current = null;
-      pointer.busy = false;
-      if (!d) return;
-      commit({ kind: "panel", id: panel.id }, transformed(d.from, d.shift, new Quaternion()));
-      commitGroup(d.group, d.shift, new Quaternion());
+      const g = objectGesture({ kind: "panel", id: panel.id }, e.clientX, e.clientY);
+      if (g) begin(g);
     },
   };
-  const ended = useRef(head.onPointerUp);
-  ended.current = head.onPointerUp;
-  useEffect(() => onStopMoves(() => drag.current && ended.current()), []);
   return (
     <div ref={root} className={`space-panel panel3d${picked ? " picked" : ""}`} style={{ width: panel.w, height: panel.collapsed ? "auto" : panel.h, zoom: RASTER }}
       onPointerDown={onPick}

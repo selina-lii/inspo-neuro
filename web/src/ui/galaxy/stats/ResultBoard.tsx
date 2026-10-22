@@ -3,7 +3,6 @@ import { useFrame } from "@react-three/fiber";
 import { useMemo, useRef } from "react";
 import { BufferGeometry, Float32BufferAttribute, Vector3, type Group, Quaternion } from "three";
 import { shownResult, type Board, type StatsPick, type StatsTest, type StatsValue } from "../../../core/stats";
-import { slideBoard } from "../../../stackActions";
 import { selected3 } from "../../../core/select";
 import { PICK_COLOR } from "../../../core/colors";
 import { useStore } from "../../useStore";
@@ -15,10 +14,10 @@ import { Corners } from "./BoardCorners";
 import { BRACKET_STEP, layoutBoard, MARGIN, ROW_W } from "./boardGeometry";
 import { BoardDots } from "./BoardDots";
 import { BoardPlot } from "./BoardPlot";
-import { useBoardDrag } from "./boardDrag";
 import { anchors } from "../tie/portAt";
 import { centers, ports } from "../tie/portAt";
 import { Label3D } from "./Label3D";
+import { barPress } from "../gesture";
 
 const RES_LABEL: Record<string, string> = { lowres: "lo-res", highres: "hi-res" };
 
@@ -30,7 +29,6 @@ export function ResultBoard({ board, test, values, grayed, pick, dark, active, o
   const played = playRow ?? -1;
   const layout = useMemo(() => layoutBoard(result, values, test.config.view), [result, values, test.config.view]);
   const group = useRef<Group>(null);
-  const drag = useBoardDrag(board.id, group, (p, q) => slideBoard(board.id, p, q));
   const body = useBody("board", board.id, group);
   const bar = selected3(useStore(), "board", board.id) ? PICK_COLOR : "#3a6df0";
   const [fg, muted, panel] = dark ? ["#e6e7ea", "#8b919c", "#1c1f24"] : ["#23252a", "#7a7f88", "#ffffff"];
@@ -58,7 +56,7 @@ export function ResultBoard({ board, test, values, grayed, pick, dark, active, o
         <planeGeometry args={[x1 - x0, yTop - y0]} />
         <meshBasicMaterial color={panel} transparent opacity={0.88} depthWrite={false} side={2} />
       </mesh>
-      <mesh position={[(x0 + x1) / 2, yTop + 0.22, -0.01]} {...drag} {...titleTip(title, drag.onPointerMove)} onClick={(e) => e.delta <= 4 && setActiveTest(test.id)}
+      <mesh position={[(x0 + x1) / 2, yTop + 0.22, -0.01]} onPointerDown={barPress({ kind: "board", id: board.id })} {...titleTip(title)} onClick={(e) => e.delta <= 4 && setActiveTest(test.id)}
         onDoubleClick={(e) => (e.stopPropagation(), rename({ kind: "board", id: board.id }))}>
         <planeGeometry args={[x1 - x0, 0.44]} />
         <meshBasicMaterial color={bar} transparent opacity={0.85} side={2} />

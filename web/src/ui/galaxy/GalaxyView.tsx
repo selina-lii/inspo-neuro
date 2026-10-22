@@ -3,7 +3,7 @@ import { GizmoHelper, GizmoViewport } from "@react-three/drei";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Quaternion, Vector3, type Group } from "three";
-import { ensureSegLinks, moveNetwork } from "../../actions";
+import { ensureSegLinks } from "../../actions";
 import { rowSegment } from "../../core/stack";
 import { stackOf, tiedPairs } from "../../stackActions";
 import { neighbourhood, pairHidden, visibleLinks } from "../../core/derive";
@@ -21,9 +21,8 @@ import { PickCard } from "./tie/OverlayCards";
 import { TiedStacks } from "./tie/TiedStacks";
 import { probes, positions3 } from "./layout3";
 import { buildBatches, Heads, LinkBatch, Neurons, ProbeShank } from "./networkParts";
-import { CarrySync, claimMenu, resetClaim, SpaceMenu } from "./SpaceMenu";
+import { claimMenu, resetClaim, SpaceMenu } from "./SpaceMenu";
 import { actsOn, useBody } from "./select3";
-import { useBoardDrag } from "./stats/boardDrag";
 import { NetworkFrame } from "./NetworkFrame";
 import { GridObject } from "./grid/GridObject";
 import { PairNodeObject } from "./grid/PairNodeObject";
@@ -34,6 +33,7 @@ import { StatsBoards } from "./stats/StatsBoards";
 import { lookAtBoard, ViewButtons } from "./ViewButtons";
 import { selected3 } from "../../core/select";
 import { secondary } from "./pointer";
+import { barPress } from "./gesture";
 
 /** Aim the camera at the cloud once per session and layout; afterwards panning is the viewer's own. */
 const NONE = new Set<number>();
@@ -191,7 +191,6 @@ export function GalaxyView({ dark }: { dark: boolean }) {
         <LabelSync labels={labels} elements={labelEls} />
         {!mainOff && <group position={s.mainAt}><CcgCards links={drawn} pts={pts} dark={dark} /></group>}
         <NetworkCopies links={shown} pts={pts} center={[center.x, center.y, center.z]} extent={extent} dark={dark} />
-        <CarrySync />
         <StatsBoards center={[center.x, center.y, center.z]} extent={extent} height={box.y1 - box.y0} dark={dark} onAdded={(board) => {
           const spot = centers.get(`board:${board}`);
           if (spot) controls.current?.center(spot.at, spot.size * 1.6);
@@ -262,11 +261,10 @@ function MainNetwork({ box, label, children }: { box: SceneBox; label: string; c
   const s = useStore();
   const group = useRef<Group>(null);
   const body = useBody("network", "main", group);
-  const drag = useBoardDrag("main", group, (p) => moveNetwork("main", p), "network");
   return (
     <group ref={group} position={s.mainAt} {...body} onContextMenu={() => claimMenu({ kind: "network", id: "main" })}>
       <NetworkFrame box={[box.x0 - 0.5, box.y0, box.x1 + 0.5, box.y1]} z={box.z} label={label} picked={selected3(s, "network", "main")}
-        onMenu={() => claimMenu({ kind: "network", id: "main" })} drag={drag} />
+        onMenu={() => claimMenu({ kind: "network", id: "main" })} onPress={barPress({ kind: "network", id: "main" })} />
       {children}
     </group>
   );
