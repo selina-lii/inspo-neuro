@@ -76,7 +76,8 @@ export function GridObject({ grid, dark }: { grid: CcgGrid; dark: boolean }) {
       ? Object.values(series ?? {}).flatMap((byPair) => order.flatMap((k) => (byPair[k] == null ? [] : [byPair[k]!])))
       : items.flatMap((it) => it.curves.flatMap((c) => [...c.trace.ccg, ...(o.baseline ? c.trace.baseline : [])]));
     if (!ys.length) return undefined;
-    const [lo, hi] = [Math.min(0, ...ys), Math.max(0, ...ys)];
+    // a loop, not a spread: a grid's every CCG bin is more arguments than the stack holds
+    const [lo, hi] = ys.reduce(([a, b], y) => [Math.min(a, y), Math.max(b, y)], [0, 0]);
     return grid.view === "stats" ? [lo, hi || 1] : [lo * 1.08, hi * 1.08 || 1];
   }, [grid.sameScale, grid.view, series, items, order, o.baseline]);
   const feeds = testsFedBy(grid.id).map((t) => t.id).join();
