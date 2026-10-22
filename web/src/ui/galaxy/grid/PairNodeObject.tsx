@@ -23,7 +23,7 @@ export function PairNodeObject({ node, dark }: { node: PairNode; dark: boolean }
     `${nodePairs(s, node).length} pairs`,
   ];
   return (
-    <NodeShell target={{ kind: "node", id: node.id }} title="pair filter" height={NODE_BAR + lines.length * ROW + 0.1} pose={node}
+    <NodeShell target={{ kind: "node", id: node.id }} title={node.label || "pair filter"} height={NODE_BAR + lines.length * ROW + 0.1} pose={node}
       place={(patch) => patchNode(node.id, patch)} output={`node:${node.id}`} dark={dark}>
       {lines.map((text, i) => (
         <Label3D key={i} text={text} position={[0.2, -(i + 0.5) * ROW - 0.05, 0]} height={0.2} color={dark ? "#d6d9de" : "#333333"} anchor="left" bold={i === lines.length - 1} />

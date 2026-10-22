@@ -15,6 +15,7 @@ import { TrayMenu } from "./grid/TrayMenu";
 import { store } from "../../core/store";
 import { useStore } from "../useStore";
 import { onStopMoves } from "./pointer";
+import { rename } from "./titleTip";
 import { actsOn, align3, duplicate3, snapTo3 } from "./select3";
 
 export type Target = { kind: "board" | "network" | "panel" | "tie" | "grid" | "node" | "style"; id: string };
@@ -143,7 +144,8 @@ export function SpaceMenu({ at, onClose, onCenter }: { at: { x: number; y: numbe
             onPointerUp={() => void (grab.current = null)}>⠿</div>
           {board ? (
             <>
-              <div className="space-menu-title">{board.name || "unsaved test"}</div>
+              <div className="space-menu-title">{s.boards.find((b) => b.id === board.id)?.label || board.name || "unsaved test"}</div>
+              <button onClick={act(() => rename({ kind: "board", id: board.id }))}>rename</button>
               <button onClick={act(() => onCenter(target!, false))}>center on this item</button>
               <button onClick={act(() => onCenter(target!, true))}>face me</button>
               <button onClick={act(() => carry(target))}>move</button>
@@ -160,7 +162,8 @@ export function SpaceMenu({ at, onClose, onCenter }: { at: { x: number; y: numbe
             </>
           ) : grid ? (
             <>
-              <div className="space-menu-title">CCG grid</div>
+              <div className="space-menu-title">{grid.label || "CCG grid"}</div>
+              <button onClick={act(() => rename({ kind: "grid", id: grid.id }))}>rename</button>
               <button onClick={act(() => onCenter(target!, false))}>center on this item</button>
               <button onClick={act(() => onCenter(target!, true))}>face me</button>
               <button onClick={act(() => carry(target))}>move</button>

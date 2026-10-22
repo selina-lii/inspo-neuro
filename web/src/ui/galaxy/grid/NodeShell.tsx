@@ -8,6 +8,7 @@ import { PICK_COLOR } from "../../../core/colors";
 import { selected3 } from "../../../core/select";
 import { useBody } from "../select3";
 import { claimMenu, type Target } from "../SpaceMenu";
+import { rename, titleTip } from "../titleTip";
 import { useBoardDrag } from "../stats/boardDrag";
 import { Label3D } from "../stats/Label3D";
 import { anchors, centers, ports } from "../tie/portAt";
@@ -44,7 +45,7 @@ export function NodeShell({ target, title, height, pose, place, output, dark, ch
 
   return (
     <group ref={group} position={pose.p} quaternion={pose.q} scale={objectScale} {...body} onContextMenu={() => claimMenu(target)}>
-      <mesh position={[NODE_W / 2, NODE_BAR / 2, -0.01]} {...drag}>
+      <mesh position={[NODE_W / 2, NODE_BAR / 2, -0.01]} {...drag} {...titleTip(title, drag.onPointerMove)} onDoubleClick={(e) => (e.stopPropagation(), rename({ kind, id: target.id }))}>
         <planeGeometry args={[NODE_W, NODE_BAR]} />
         <meshBasicMaterial color={picked ? PICK_COLOR : "#3a6df0"} side={2} />
       </mesh>

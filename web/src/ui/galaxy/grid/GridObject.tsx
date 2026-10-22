@@ -27,6 +27,7 @@ import { syncFeeds, testsFedBy } from "../../../feedActions";
 import { newScale, pickPair } from "../../../statsActions";
 import { useNear } from "../useNear";
 import { selected3 } from "../../../core/select";
+import { rename, titleTip } from "../titleTip";
 
 const BAR = 0.44;
 const HINT_PAGES = 5;
@@ -102,11 +103,11 @@ export function GridObject({ grid, dark }: { grid: CcgGrid; dark: boolean }) {
   }, [w, h, page, pages]);
   const frame = useMemo(() => new BufferGeometry().setAttribute("position", new Float32BufferAttribute(rect(-0.1, -h - 0.1, w + 0.1, BAR, 0), 3)), [w, h]);
   const trays = traysOf(s, grid);
-  const title = `CCG grid · ${sourceLabel(grid.source)}${trays.length > 1 ? ` · tray ${trays.indexOf(grid) + 1}/${trays.length}` : ""} · ${items.length} pairs${pages > 1 ? ` · page ${page + 1}/${pages}` : ""}`;
+  const title = `${grid.label || "CCG grid"} · ${sourceLabel(grid.source)}${trays.length > 1 ? ` · tray ${trays.indexOf(grid) + 1}/${trays.length}` : ""} · ${items.length} pairs${pages > 1 ? ` · page ${page + 1}/${pages}` : ""}`;
 
   return (
     <group ref={group} position={grid.p} quaternion={grid.q} scale={scale} {...body} onContextMenu={() => claimMenu({ kind: "grid", id: grid.id })}>
-      <mesh position={[w / 2, BAR / 2, -0.01]} {...drag}>
+      <mesh position={[w / 2, BAR / 2, -0.01]} {...drag} {...titleTip(title, drag.onPointerMove)} onDoubleClick={(e) => (e.stopPropagation(), rename({ kind: "grid", id: grid.id }))}>
         <planeGeometry args={[w + 0.2, BAR]} />
         <meshBasicMaterial color={picked ? PICK_COLOR : "#3a6df0"} transparent opacity={0.85} side={2} />
       </mesh>

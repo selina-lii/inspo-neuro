@@ -21,7 +21,7 @@ export function StyleNodeObject({ node, dark }: { node: StyleNode; dark: boolean
   const lines = styleLabels(s, node).reverse();
   const width = (label: string) => node.curves.find((c) => c.label === label);
   return (
-    <NodeShell target={{ kind: "style", id: node.id }} title="curve style" height={NODE_BAR + Math.max(lines.length, 1) * ROW + 0.1} pose={node}
+    <NodeShell target={{ kind: "style", id: node.id }} title={node.label || "curve style"} height={NODE_BAR + Math.max(lines.length, 1) * ROW + 0.1} pose={node}
       place={(patch) => patchStyle(node.id, patch)} output={`style:${node.id}`} dark={dark}>
       {lines.length ? lines.map(([label, color], i) => (
         <Label3D key={label} text={`━━ ${label}${width(label) ? ` · ${width(label)!.width}px · ${Math.round(width(label)!.alpha * 100)}%` : ""}`}

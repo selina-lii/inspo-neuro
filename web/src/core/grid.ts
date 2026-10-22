@@ -7,7 +7,7 @@ export type GridSort = "session" | "strength" | "on" | "ref";
 
 /** `source`: the port it is cabled to ("net:main", "net:<copy>", "board:<test>"); pages past the first stack behind it. */
 export type CcgGrid = {
-  id: string; p: Vec3; q: Quat; s?: number; source: string | null;
+  id: string; p: Vec3; q: Quat; s?: number; source: string | null; label?: string;
   cols: number; rows: number; sort: GridSort; segMode: "overlay" | "series"; axis: "x" | "y";
   segments: string[]; pairs: "shown" | "selected"; page: number; summon?: boolean; compact?: boolean; config?: string | null;
   legend?: string | null;   // a legend panel cabled to it: one key for the grid, so its cells drop their own
@@ -32,7 +32,7 @@ export const linkedTest = (s: State, grid: CcgGrid) => {
 export type CurveStyle = { label: string; color: string; width: number; alpha: number };
 
 /** Its curves' order is the draw order: later ones lie on top. */
-export type StyleNode = { id: string; p: Vec3; q: Quat; summon?: boolean; curves: CurveStyle[] };
+export type StyleNode = { id: string; p: Vec3; q: Quat; summon?: boolean; curves: CurveStyle[]; label?: string };
 
 export const CURVE_DEFAULT = { width: 1.4, alpha: 1 };
 
@@ -48,7 +48,7 @@ export type PairRange = { field: "strength" | "cs" | "rate"; segment: string; si
 
 /** A pair source: the server resolves its sessions, rules, states and ranges; pairs added by hand join them. */
 export type PairNode = {
-  id: string; p: Vec3; q: Quat; summon?: boolean;
+  id: string; p: Vec3; q: Quat; summon?: boolean; label?: string;
   sessions: string[]; rules: Rule[]; states: string[]; ranges: PairRange[]; added: string[];
 };
 
