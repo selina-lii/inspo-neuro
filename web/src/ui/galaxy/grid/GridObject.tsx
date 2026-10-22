@@ -61,6 +61,13 @@ export function GridObject({ grid, dark }: { grid: CcgGrid; dark: boolean }) {
 
   useEffect(() => void (grid.page > pages - 1 && patchGrid(grid.id, { page: pages - 1 })), [grid.page, pages]);
 
+  // a pair focused elsewhere brings up the page that holds it
+  const focusKey = s.stats.pick.pair ?? (s.focus?.kind === "pair" ? `${s.session}|${s.focus.ref}|${s.focus.tgt}` : null);
+  useEffect(() => {
+    const at = focusKey ? order.indexOf(focusKey) : -1;
+    if (at >= 0 && Math.floor(at / per) !== page) patchGrid(grid.id, { page: Math.floor(at / per) });
+  }, [focusKey]);
+
   useFrame(() => {
     const g = group.current;
     if (!g) return;
