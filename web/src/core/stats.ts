@@ -77,7 +77,7 @@ export type Pose = { p: Vec3; q: Quat; s?: number };   // s: the board's own siz
 export type PairLines = "off" | "faint" | "picked";
 
 /** A test's results drawn on one board in 3D; one board per test. */
-export type Board = { id: string; res: string; pose: Pose; lines?: PairLines; unplaced?: boolean };   // unplaced: opened before the 3D view measured the network
+export type Board = { id: string; res: string; pose: Pose; lines?: PairLines; unplaced?: boolean; hidden?: string[] };   // unplaced: opened before the 3D view measured the network; hidden: row names left off its plot
 
 export type StatsPick = { ids: Set<string>; pair: string | null; lineage: boolean };
 

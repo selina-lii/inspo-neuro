@@ -220,6 +220,7 @@ export function pickPair(board: string, session: string, ref: number, tgt: numbe
 }
 
 export const setBoardLines = (id: string, lines: Board["lines"]) => patchBoard(id, { lines });
+export const setBoardHidden = (id: string, hidden: string[]) => patchBoard(id, { hidden });
 
 export const hoverValue = (hover: StatsState["hover"]) => store.setStats({ hover });
 

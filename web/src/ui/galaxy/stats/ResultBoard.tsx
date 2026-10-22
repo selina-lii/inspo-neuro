@@ -24,7 +24,13 @@ const RES_LABEL: Record<string, string> = { lowres: "lo-res", highres: "hi-res" 
 type Props = { board: Board; test: StatsTest; values: Record<string, StatsValue>; grayed: Set<string>; pick: StatsPick; dark: boolean; active: boolean; objectScale: number; playRow: number | null };
 
 export function ResultBoard({ board, test, values, grayed, pick, dark, active, objectScale, playRow }: Props) {
-  const result = test.results.find((r) => r.resolution === board.res) ?? test.results[0]!;
+  const full = test.results.find((r) => r.resolution === board.res) ?? test.results[0]!;
+  const result = useMemo(() => {
+    const keep = full.rows.map((r) => !board.hidden?.includes(r.name));
+    return { ...full, rows: full.rows.filter((_, i) => keep[i]), n: full.n.filter((_, i) => keep[i]) };
+  }, [full, board.hidden?.join()]);
+  // playback steps through every row: a hidden one lights nothing
+  const played = playRow === null ? -1 : result.rows.findIndex((r) => r.name === full.rows[playRow]?.name);
   const layout = useMemo(() => layoutBoard(result, values, test.config.view), [result, values, test.config.view]);
   const group = useRef<Group>(null);
   const drag = useBoardDrag(board.id, group, (p, q) => slideBoard(board.id, p, q));
@@ -62,8 +68,8 @@ export function ResultBoard({ board, test, values, grayed, pick, dark, active, o
       <lineSegments geometry={border}><lineBasicMaterial color={bar} /></lineSegments>
       <Label3D text={title} position={[x0 + 0.12, yTop + 0.22, 0]} height={0.24} color="#ffffff" anchor="left" bold />
       <BoardPlot layout={layout} result={result} fg={fg} muted={muted} fade={layout.dots.some((d) => pick.ids.has(d.id)) ? 0.2 : 1} />
-      {playRow !== null && layout.rows[playRow] && (
-        <mesh position={[layout.rows[playRow]!.x, (y0 + yTop) / 2, -0.015]}>
+      {played >= 0 && (
+        <mesh position={[layout.rows[played]!.x, (y0 + yTop) / 2, -0.015]}>
           <planeGeometry args={[ROW_W, yTop - y0]} />
           <meshBasicMaterial color="#ffb000" transparent opacity={0.18} depthWrite={false} side={2} />
         </mesh>

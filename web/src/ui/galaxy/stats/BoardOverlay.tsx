@@ -6,7 +6,8 @@ import { NodeBar } from "../grid/NodeBar";
 import { StyleBar } from "../grid/StyleBar";
 import { Quaternion, Vector3 } from "three";
 import type { Board } from "../../../core/stats";
-import { setActiveTest, setBoardLines, setBoardRes } from "../../../statsActions";
+import { setActiveTest, setBoardHidden, setBoardLines, setBoardRes } from "../../../statsActions";
+import { ListPicker } from "../../stats/ListPicker";
 import { openPanelAt } from "../../../actions";
 import { bars, elementFor, PANEL_PX } from "../Panels3D";
 import { anchors } from "../tie/portAt";
@@ -49,6 +50,7 @@ export function BoardToolbars({ onNormalTo }: { onNormalTo(board: Board, size: n
               <option value="faint">pair lines faint</option>
               <option value="picked">picked pair only</option>
             </select>
+            <BoardColumns board={b} names={(test.results.find((r) => r.resolution === b.res) ?? test.results[0]!).rows.map((r) => r.name)} />
             {s.ties.some((t) => t.board === b.id) && <TieTools board={b.id} />}
           </FloatBar>
         );
@@ -63,6 +65,12 @@ export function BoardToolbars({ onNormalTo }: { onNormalTo(board: Board, size: n
       )}
     </div>
   );
+}
+
+/** Which of the result's rows the board plots: a hidden one stays in the test, only off the plot. */
+function BoardColumns({ board, names }: { board: Board; names: string[] }) {
+  const shown = names.filter((n) => !board.hidden?.includes(n));
+  return <ListPicker plural="columns" items={names} selected={shown} empty="none" onChange={(next) => setBoardHidden(board.id, names.filter((n) => !next.includes(n)))} />;
 }
 
 const foldKey = (id: string) => `neuromap:fold:${id}`;
