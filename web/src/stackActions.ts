@@ -33,6 +33,9 @@ export function tie(board: string, network: string): void {
   setTies([...store.get().ties.filter((t) => t.board !== board), { board, network: own, fresh: true }]);
 }
 
+/** Boards still being placed on their stacks stay where they are now. */
+export const settleTies = (board?: string) => store.get().ties.filter((t) => t.fresh && (!board || t.board === board)).forEach((t) => arranged(t.board));
+
 export function arranged(board: string): void {
   const at = store.get().stats.boards.find((b) => b.id === board)!.pose.p;
   setTies(store.get().ties.map((t) => (t.board === board ? { board: t.board, network: t.network, at } : t)));
