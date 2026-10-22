@@ -203,7 +203,7 @@ export function PanelLayer({ host, box }: { host: RefObject<HTMLDivElement | nul
       if (!m) slabs.set(key, (m = new Mesh(BOX, SLAB_MAT))), st.scene.add(m);
       const depth = SLAB * store.get().objectScale;
       m.quaternion.copy(o.quaternion);
-      m.position.copy(o.position).add(new Vector3(0, 0, -depth / 2 - 0.002).applyQuaternion(o.quaternion));
+      m.position.copy(o.position).add(new Vector3(0, 0, -depth / 2 - depth * 0.1).applyQuaternion(o.quaternion));
       m.scale.set(o.element.offsetWidth * o.scale.x, o.element.offsetHeight * o.scale.x, depth);
     }
     renderer.render(scene, st.camera);
@@ -238,7 +238,8 @@ export function PanelLayer({ host, box }: { host: RefObject<HTMLDivElement | nul
 const UNIT = new PlaneGeometry(1, 1);
 const HOLE = new MeshBasicMaterial({ color: 0x000000, opacity: 0, blending: NoBlending, side: DoubleSide });
 const BOX = new BoxGeometry(1, 1, 1);
-const SLAB_MAT = new MeshBasicMaterial();
+// pushed back in depth: from afar the slab's face and the page's window would otherwise tie, and the slab would hide the page
+const SLAB_MAT = new MeshBasicMaterial({ polygonOffset: true, polygonOffsetFactor: 4, polygonOffsetUnits: 4 });
 const SLAB = 0.12;   // its depth, in 3D units at objectScale 1
 
 /** Outside the canvas: each shown panel's content, rendered into the element its CSS3D object places. */
