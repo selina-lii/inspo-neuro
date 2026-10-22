@@ -101,6 +101,14 @@ export const patchGrid = (id: string, patch: Partial<CcgGrid>) => setGrids(store
 
 export const patchNode = (id: string, patch: Partial<PairNode>) => setNodes(store.get().pairNodes.map((n) => (n.id === id ? { ...n, ...patch } : n)));
 
+/** Every pair of tray `from` moves into tray `into`, and `from` closes; into the first tray, or from it, the result is the first tray. */
+export function mergeTray(from: string, into: string): void {
+  const grids = store.get().grids;
+  const [a, b] = [grids.find((g) => g.id === from)!, grids.find((g) => g.id === into)!];
+  const keys = a.keys && b.keys ? [...new Set([...b.keys, ...a.keys])] : undefined;
+  setGrids(grids.filter((g) => g.id !== from).map((g) => (g.id === into ? { ...g, keys } : g)));
+}
+
 export function removeGrid(id: string): void {
   const gone = store.get().grids.find((g) => g.id === id)!;
   const rest = store.get().grids.filter((g) => g.id !== id);
