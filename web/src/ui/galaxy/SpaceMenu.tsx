@@ -11,6 +11,7 @@ import { untie } from "../../stackActions";
 import { patchGrid, patchNode, removeGrid, removeNode } from "../../gridActions";
 import { closeTest, moveBoard } from "../../statsActions";
 import { AddMenu } from "../menu/AddMenu";
+import { TrayMenu } from "./grid/TrayMenu";
 import { store } from "../../core/store";
 import { useStore } from "../useStore";
 import { actsOn, align3, duplicate3 } from "./select3";
@@ -156,6 +157,7 @@ export function SpaceMenu({ at, onClose, onCenter }: { at: { x: number; y: numbe
               <button onClick={act(() => onCenter(target!, true))}>face me</button>
               <button onClick={act(() => carry(target))}>move</button>
               <Many target={target!} act={act} />
+              <TrayMenu grid={grid} act={act} />
               {grid.source && <button onClick={act(() => patchGrid(grid.id, { source: null }))}>disconnect its cable</button>}
               {grid.config && <button onClick={act(() => patchGrid(grid.id, { config: null }))}>disconnect its CCG config</button>}
               {grid.legend && <button onClick={act(() => patchGrid(grid.id, { legend: null }))}>disconnect its legend</button>}

@@ -523,22 +523,25 @@ async function writePairState(session: string, pairs: [number, number][], state:
 /** What a hotkey acts on: the grid's picked cells, else the selected pairs, else the focused one. */
 export function targetPairs(): SessionPairs {
   const s = store.get();
+  if (s.cells.size) return keyedPairs(s.cells);
   const out: SessionPairs = new Map();
-  if (s.cells.size) {
-    for (const key of s.cells) {
-      const [session, r, t] = key.split("|") as [string, string, string];
-      out.set(session, [...(out.get(session) ?? []), [Number(r), Number(t)]]);
-    }
-    return out;
-  }
   const keys = s.selection.links.size ? s.selection.links : s.focus?.kind === "pair" ? new Set([linkKey(s.focus.ref, s.focus.tgt)]) : null;
   if (keys) out.set(s.session!, s.links.filter((l) => keys.has(linkKey(l.ref, l.tgt))).map((l) => [l.ref, l.tgt]));
   return out;
 }
 
+/** `session|ref|tgt` keys, by session. */
+export function keyedPairs(keys: Iterable<string>): SessionPairs {
+  const out: SessionPairs = new Map();
+  for (const key of keys) {
+    const [session, r, t] = key.split("|") as [string, string, string];
+    out.set(session, [...(out.get(session) ?? []), [Number(r), Number(t)]]);
+  }
+  return out;
+}
+
 /** A group hotkey, as in the Qt GUI: tag the target pairs, or untag them when all are already in. */
-export function toggleGroup(group: string): Promise<void> {
-  const pairs = targetPairs();
+export function toggleGroup(group: string, pairs = targetPairs()): Promise<void> {
   if (!pairs.size) {
     store.set({ toast: { text: "Focus or select a pair first, then press a group's hotkey." } });
     return Promise.resolve();

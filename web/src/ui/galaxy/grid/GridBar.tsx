@@ -1,9 +1,9 @@
 // A CCG grid's float bar: sort, rows × cols, segments overlaid or in series (along x or y), which pairs, pages.
 import { movePairs, targetPairs, toggleGroup } from "../../../actions";
 import { realGroups } from "../../../core/colors";
-import { colsOf, sourceOf, traysOf, type CcgGrid, type GridSort } from "../../../core/grid";
+import { colsOf, sourceOf, type CcgGrid, type GridSort } from "../../../core/grid";
 import { store } from "../../../core/store";
-import { moveToTray, patchGrid } from "../../../gridActions";
+import { patchGrid } from "../../../gridActions";
 import { useGridItems } from "./gridItems";
 import { MAIN_SEGMENT } from "../../menu/AddMenu";
 import { useStore } from "../../useStore";
@@ -65,10 +65,8 @@ export function GridBar({ grid }: { grid: CcgGrid }) {
 function Picked({ grid }: { grid: CcgGrid }) {
   const s = useStore();
   const keys = useGridItems(grid).map((x) => x.key);
-  const mine = keys.filter((k) => s.cells.has(k));
-  if (!mine.length && !grid.picking) return null;
+  if (!keys.some((k) => s.cells.has(k)) && !grid.picking) return null;
   const per = colsOf(grid) * grid.rows;
-  const trays = traysOf(s, grid);
   const add = (more: string[]) => store.set({ cells: new Set([...s.cells, ...more]) });
   const states = [["S", "sel", "selected"], ["U", "unsel", "unselected"], ["D", "del", "deleted"]] as const;
   return (
@@ -78,11 +76,6 @@ function Picked({ grid }: { grid: CcgGrid }) {
       <button title="pick every card in the grid" onClick={() => add(keys)}>all</button>
       <button title="pick none" disabled={!s.cells.size} onClick={() => store.set({ cells: new Set() })}>none</button>
       <span className="sep" />
-      <select value="" disabled={!mine.length} title="move this grid's picked pairs to another tray of its set" onChange={(e) => moveToTray(grid.id, mine, e.target.value === "new" ? null : e.target.value)}>
-        <option value="">tray…</option>
-        <option value="new">new tray</option>
-        {trays.map((t, i) => t.id !== grid.id && <option key={t.id} value={t.id}>tray {i + 1}</option>)}
-      </select>
       <select value="" disabled={!s.cells.size} title="tag the picked pairs, or untag them when all are in" onChange={(e) => e.target.value && toggleGroup(e.target.value)}>
         <option value="">tag…</option>
         {realGroups(s.pairGroups).map((g) => <option key={g} value={g}>{g}{s.groupMeta[g]?.hotkey ? ` (${s.groupMeta[g]!.hotkey})` : ""}</option>)}
