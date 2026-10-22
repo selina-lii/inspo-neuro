@@ -80,5 +80,13 @@ test("stats 1 → tray → stats 2 keeps every pair's own values", async () => {
   await app.call("wireActions.ts", "connect", "panel:ccg", `grid:${g1}`);
   await app.call("actions.ts", "setCcgOptions", { res: "lowres" });
   await app.page.waitForFunction(() => Object.values(window.neuromapStore.get().stack).every((l) => l.ccgs.lowres && l.ccgs.highres), null, { timeout: 30000 });
+  const peaks = await app.page.evaluate(async () => {
+    const { rowTrace } = await import("/src/core/stack.ts");
+    const l = Object.values(window.neuromapStore.get().stack)[0];
+    const [seg, rows] = Object.entries(l.ccgs.lowres.traces)[0];
+    const [ref, tgt] = Object.keys(rows)[0].split("-").map(Number);
+    return ["lowres", "highres"].map((res) => Math.max(...rowTrace(l, { name: seg, color: "#000", segments: [seg] }, ref, tgt, [], res).ccg));
+  });
+  assert.ok(peaks[1] > peaks[0], `highres cards draw highres traces: ${peaks}`);
   assert.deepEqual(app.errors, []);
 });

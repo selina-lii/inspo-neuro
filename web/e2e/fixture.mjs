@@ -84,7 +84,8 @@ const segLinks = (session, segment) => {
   const links = DATA[session].links;
   return { segment, strength: links.map((l) => l.strength), cs: links.map((l) => valueOf(session, l.ref, l.tgt, segment)), on: links.map(() => true) };
 };
-const trace = (session, ref, tgt, segment) => [LAGS.map((lag) => 10 + 20 * valueOf(session, ref, tgt, segment) * Math.exp(-(lag ** 2) / 8)), LAGS.map(() => 10), LAGS.map(() => 5), LAGS.map(() => 5)];
+// highres peaks twice as tall, so a card shows which resolution it drew
+const trace = (session, ref, tgt, segment, res = "lowres") => [LAGS.map((lag) => 10 + (res === "highres" ? 40 : 20) * valueOf(session, ref, tgt, segment) * Math.exp(-(lag ** 2) / 8)), LAGS.map(() => 10), LAGS.map(() => 5), LAGS.map(() => 5)];
 
 /** The API as the server answers it, kept in memory: workspaces persist across reloads of one browser context. */
 export function makeApi() {
@@ -143,7 +144,7 @@ export function makeApi() {
       seg_links: Object.fromEntries(segs.map((s) => [s, segLinks(session, s)])),
       traces: Object.fromEntries(segs.map((s) => [s, Object.fromEntries(pairs.map((p) => {
         const [r, t] = p.split("-").map(Number);
-        return [p, trace(session, r, t, s)];
+        return [p, trace(session, r, t, s, q.get("res") ?? "lowres")];
       }))])),
     };
   };
@@ -155,7 +156,7 @@ export function makeApi() {
     if (res.endsWith("_p") || res.endsWith("_pc")) return new Float32Array(links.length * n).fill(0.5);
     const out = new Float32Array(links.length * n * 2);
     links.forEach((l, k) => {
-      const [ccg, base] = trace(session, l.ref, l.tgt, kind === "highres" ? segment : segment);
+      const [ccg, base] = trace(session, l.ref, l.tgt, segment, kind);
       out.set(ccg, k * n * 2);
       out.set(base, k * n * 2 + n);
     });
