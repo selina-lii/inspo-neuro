@@ -4,7 +4,7 @@ import { useState } from "react";
 import { addCcgPanel, addNetwork, openPanel, setMainHidden, setView } from "../../actions";
 import { newTest, openSaved, sceneFrame } from "../../statsActions";
 import { store } from "../../core/store";
-import { addGrid, addNode } from "../../gridActions";
+import { addGrid, addNode, addStyle } from "../../gridActions";
 import { useStore } from "../useStore";
 
 export const MAIN_SEGMENT = /^(pre|maze\d*|post|remaze\d*|sd\d*|rs\d*|nsd\d*)$/i;
@@ -32,7 +32,8 @@ export function AddMenu({ onDone }: { onDone(): void }) {
       {/* the first CCG panel opens; once it is out, each add is another with a copy of its options */}
       {PANELS.map(([id, label]) => <button key={id} onClick={done(() => (id === "ccg" && !panels.find((p) => p.id === "ccg")!.closed ? addCcgPanel() : openPanel(id)))}>{label}</button>)}
       <button title="small CCGs of many pairs as one object: cable it to a network or a stats board" onClick={done(() => (addGrid(), setView("3d")))}>CCG grid</button>
-      <button title="passes on only some pairs: cable a board or network into its left port, its right port into grids" onClick={done(() => (addNode(), setView("3d")))}>pair filter node</button>
+      <button title="picks pairs by session, rule, state and value range: cable its port into grids" onClick={done(() => (addNode(), setView("3d")))}>pair filter node</button>
+      <button title="colour, thickness, transparency and layer order of each segment's curves: cable its port into grids" onClick={done(() => (addStyle(), setView("3d")))}>curve style node</button>
       <button onClick={() => setNet(!net)}>neuron network {net ? "▾" : "▸"}</button>
       {net && (
         <div className="add-sub">

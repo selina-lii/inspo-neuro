@@ -27,6 +27,7 @@ import { useBoardDrag } from "./stats/boardDrag";
 import { NetworkFrame } from "./NetworkFrame";
 import { GridObject } from "./grid/GridObject";
 import { PairNodeObject } from "./grid/PairNodeObject";
+import { StyleNodeObject } from "./grid/StyleNodeObject";
 import { MoveTriad } from "./MoveTriad";
 import { BoardToolbars } from "./stats/BoardOverlay";
 import { StatsBoards } from "./stats/StatsBoards";
@@ -192,6 +193,7 @@ export function GalaxyView({ dark }: { dark: boolean }) {
         <PickCard dark={dark} />
         {s.grids.map((g) => <GridObject key={g.id} grid={g} dark={dark} />)}
         {s.pairNodes.map((n) => <PairNodeObject key={n.id} node={n} dark={dark} />)}
+        {s.styleNodes.map((n) => <StyleNodeObject key={n.id} node={n} dark={dark} />)}
         <MoveTriad />
         <TiedStacks pts={pts} probes={probeList} box={box} center={[center.x, center.y, center.z]} dark={dark} />
       </Canvas>
@@ -211,19 +213,19 @@ export function GalaxyView({ dark }: { dark: boolean }) {
         const spotOf = (u: Target) => {
           const net = s.networks.find((n) => n.id === u.id);
           const p = s.panels.find((q) => q.id === u.id);
-          return u.kind === "board" || u.kind === "tie" ? centers.get(`board:${u.id}`) : u.kind === "grid" || u.kind === "node" ? centers.get(`${u.kind}:${u.id}`)
+          return u.kind === "board" || u.kind === "tie" ? centers.get(`board:${u.id}`) : u.kind === "grid" || u.kind === "node" || u.kind === "style" ? centers.get(`${u.kind}:${u.id}`)
             : u.kind === "network" ? (net ? { at: new Vector3(...net.p), size: extent * (net.s ?? 1) } : { at: center.clone().add(new Vector3(...s.mainAt)), size: extent })
             : p?.pose ? { at: new Vector3(...p.pose.p), size: Math.max(p.w, p.h) * PANEL_PX * s.objectScale * (p.pose.s ?? 1) } : undefined;
         };
         const panel = s.panels.find((q) => q.id === t.id);
         // a selection is framed whole, as one sphere around its members
-        const spots = (t.kind === "node" ? [t] : actsOn({ kind: t.kind, id: t.id })).flatMap((u) => spotOf(u) ?? []);
+        const spots = (t.kind === "node" || t.kind === "style" ? [t] : actsOn({ kind: t.kind, id: t.id })).flatMap((u) => spotOf(u) ?? []);
         const mid = spots.reduce((m, x) => m.add(x.at), new Vector3()).divideScalar(spots.length || 1);
         const spot = spots.length > 1 ? { at: mid, size: Math.max(...spots.map((x) => 2 * x.at.distanceTo(mid) + x.size)) } : spotOf(t);
         if (!c || !spot) return;
         if (!face) return c.center(spot.at, spot.size);
         // the item's stored pose is its upright: front local +z, up local +y
-        const pose = t.kind === "board" || t.kind === "tie" ? s.stats.boards.find((b) => b.id === t.id)?.pose.q : t.kind === "grid" ? s.grids.find((g) => g.id === t.id)?.q : t.kind === "node" ? s.pairNodes.find((n) => n.id === t.id)?.q : panel?.pose?.q;
+        const pose = t.kind === "board" || t.kind === "tie" ? s.stats.boards.find((b) => b.id === t.id)?.pose.q : t.kind === "grid" ? s.grids.find((g) => g.id === t.id)?.q : t.kind === "node" ? s.pairNodes.find((n) => n.id === t.id)?.q : t.kind === "style" ? s.styleNodes.find((n) => n.id === t.id)?.q : panel?.pose?.q;
         const q = pose ? new Quaternion(...pose) : new Quaternion();
         c.look(spot.at, new Vector3(0, 0, 1).applyQuaternion(q), new Vector3(0, 1, 0).applyQuaternion(q), spot.size);
       }} />

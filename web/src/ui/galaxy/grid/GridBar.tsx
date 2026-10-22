@@ -5,7 +5,7 @@ import { colsOf, type CcgGrid, type GridSort } from "../../../core/grid";
 import { store } from "../../../core/store";
 import { patchGrid } from "../../../gridActions";
 import { useGridItems } from "./gridItems";
-import { MAIN_SEGMENT } from "../../menu/AddMenu";
+import { ListPicker } from "../../stats/ListPicker";
 import { useStore } from "../../useStore";
 import { FloatBar } from "../stats/BoardOverlay";
 
@@ -17,9 +17,13 @@ export function GridBar({ grid }: { grid: CcgGrid }) {
   const set = (patch: Partial<CcgGrid>) => patchGrid(grid.id, patch);
   const onNetwork = grid.source?.startsWith("net:");
   const bySegment = onNetwork || grid.source?.startsWith("node:");
-  const flip = (seg: string) => {
-    const next = grid.segments.includes(seg) ? grid.segments.filter((x) => x !== seg) : [...grid.segments, seg];
-    if (next.length) set({ segments: next });
+  const options = s.stats.options;
+  const items = options ? [...new Set(["all", ...options.pickers.seg.items])] : ["all", ...segments.map((x) => x.name)];
+  // a family stands for its members, each its own curve
+  const pickSegments = (next: string[]) => {
+    const family = (x: string) => (options && x.startsWith(options.family_prefix) ? options.families[x.slice(options.family_prefix.length)] : undefined);
+    const out = next.flatMap((x) => family(x) ?? [x]);
+    if (out.length) set({ segments: [...new Set(out)], page: 0 });
   };
   const count = (k: "cols" | "rows") => (
     <input type="number" min={1} value={grid[k]} title={k === "cols" ? "columns" : "rows"} style={{ width: 38 }}
@@ -49,9 +53,7 @@ export function GridBar({ grid }: { grid: CcgGrid }) {
               <option value="selected">selected pairs</option>
             </select>
           )}
-          {["all", ...segments.map((x) => x.name).filter((x) => MAIN_SEGMENT.test(x))].map((seg) => (
-            <button key={seg} className={grid.segments.includes(seg) ? "on" : ""} onClick={() => flip(seg)}>{seg}</button>
-          ))}
+          <ListPicker plural="segments" items={items} selected={grid.segments} empty="—" onChange={pickSegments} />
         </>
       )}
       <span className="sep" />

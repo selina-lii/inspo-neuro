@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef } from "react";
 import { BufferGeometry, Float32BufferAttribute, Plane, Vector3, type Group, Quaternion } from "three";
 import { focusPair, openPanelAt, patchPanel } from "../../../actions";
 import { PICK_COLOR } from "../../../core/colors";
-import { CELL, cellSize, colsOf, gapOf, optionsOf, pageSize, slotAt, traysOf, type CcgGrid, type GridItem } from "../../../core/grid";
+import { CELL, cellSize, colsOf, gapOf, optionsOf, pageSize, slotAt, styledCurve, traysOf, type CcgGrid, type GridItem } from "../../../core/grid";
 import type { Quat, Vec3 } from "../../../core/stats";
 import { store } from "../../../core/store";
 import { patchGrid } from "../../../gridActions";
@@ -152,14 +152,16 @@ function Cell({ item, grid, n, at, dark, group, order }: { item: GridItem; grid:
   const focused = s.cells.has(item.key) || (s.session === item.session && s.focus?.kind === "pair" && s.focus.ref === item.ref && s.focus.tgt === item.tgt);
   // a list's info line names the pair once, so its cards carry only their segment
   const title = grid.list ? "" : item.title;
+  const style = s.styleNodes.find((n) => n.id === grid.style);
   const textures = useMemo(() => {
     if (!item.curves.length) return [];
+    const styled = item.curves.map((c) => styledCurve(s, grid, c));
     if (grid.segMode === "overlay") {
-      const curves = item.curves.map((c) => ({ row: { name: keyed ? "" : c.label, color: c.color, segments: [] }, trace: c.trace }));
+      const curves = styled.sort((a, b) => a.layer - b.layer).map((c) => ({ row: { name: keyed ? "" : c.label, color: c.color, segments: [] }, trace: c.trace, width: c.width, alpha: c.alpha }));
       return [drawOverlay(curves, title, null, focused, o, near)];
     }
-    return item.curves.map((c) => drawCcg(c.trace, title ? `${title} · ${c.label}` : c.label, c.color, focused, { options: o, base: c.color }, near));
-  }, [item, grid.segMode, focused, dark, o, near, keyed, title]);
+    return styled.map((c) => drawCcg(c.trace, title ? `${title} · ${c.label}` : c.label, c.color, focused, { options: o, base: c.color, width: c.width, alpha: c.alpha }, near));
+  }, [item, grid.segMode, focused, dark, o, near, keyed, title, style]);
   useEffect(() => () => textures.forEach((t) => t.dispose()), [textures]);
   const c = cellSize(grid, n);
   const step = grid.axis === "x" ? [CELL.w, 0] : [0, -CELL.h];

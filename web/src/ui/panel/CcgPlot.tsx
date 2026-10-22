@@ -13,8 +13,8 @@ const MONO_WINDOW: [number, number] = [1, 6];
 
 export type Acgs = { ref: number[] | null; tgt: number[] | null };
 export type Waveform = { t_ms: number[] | null; amp: number[] | null } | null;
-/** One curve on the plot; *base* colours its baseline, *faint* dims it beside a bold one. */
-export type Curve = { trace: Trace; color: string; name?: string; base?: string; faint?: boolean; bold?: boolean };
+/** One curve on the plot; *base* colours its baseline, *faint* dims it beside a bold one; *width* and *alpha* override both. */
+export type Curve = { trace: Trace; color: string; name?: string; base?: string; faint?: boolean; bold?: boolean; width?: number; alpha?: number };
 
 const P_ALPHA = 0.05;
 
@@ -104,7 +104,7 @@ export function CcgPlot({ curves, fitScale, rawFit, options, acgs, wave, jitter,
       <line x1={sx(0)} x2={sx(0)} y1={PAD.t} y2={H - PAD.b} className="axis zero" />
       {/* overlaid curves read only as lines */}
       {options.line || curves.length > 1 ? curves.map((c, k) => (
-        <path key={k} d={path(lags, c.trace.ccg)} fill="none" stroke={c.color} strokeWidth={(c.bold ? 2.4 : 1.4) * stroke} opacity={c.faint ? 0.35 : 1} />
+        <path key={k} d={path(lags, c.trace.ccg)} fill="none" stroke={c.color} strokeWidth={(c.width ?? (c.bold ? 2.4 : 1.4)) * stroke} opacity={c.alpha ?? (c.faint ? 0.35 : 1)} />
       )) : (
         trace.ccg.map((v, i) => (
           <rect key={i} x={sx(lags[i]! - bin / 2)} width={Math.max(sx(bin) - sx(0) - (sx(bin) - sx(0) > 3 ? 0.3 : 0), 1)} y={Math.min(sy(v), sy(0))} height={Math.abs(sy(0) - sy(v))} fill={curves[0]!.color} opacity={0.9} />
@@ -116,7 +116,7 @@ export function CcgPlot({ curves, fitScale, rawFit, options, acgs, wave, jitter,
           <path d={path(lags, jit.avg)} className="jline" />
         </>
       )}
-      {options.baseline && curves.map((c, k) => <path key={k} d={path(lags, c.trace.baseline)} className="baseline" style={{ stroke: c.base, strokeWidth: 1.3 * stroke }} opacity={c.faint ? 0.35 : 1} />)}
+      {options.baseline && curves.map((c, k) => <path key={k} d={path(lags, c.trace.baseline)} className="baseline" style={{ stroke: c.base, strokeWidth: 1.3 * stroke }} opacity={c.alpha ?? (c.faint ? 0.35 : 1)} />)}
       {acgRef && <path d={line(acgRef)} className="acg ref" />}
       {acgTgt && <path d={line(acgTgt)} className="acg tgt" />}
       {fit?.lags && fit.curve && <path d={path(fit.lags, fit.curve)} className="fitcurve" />}

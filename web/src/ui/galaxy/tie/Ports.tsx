@@ -18,7 +18,7 @@ export function TiePorts() {
   const s = useStore();
   const ids = [...s.stats.boards.filter((b) => s.stats.tests.find((t) => t.id === b.id)?.results.length).map((b) => `board:${b.id}`),
     ...(s.mainHidden ? [] : ["net:main"]), ...s.networks.map((n) => `net:${n.id}`), ...s.grids.map((g) => `grid:${g.id}`),
-    ...s.pairNodes.map((n) => `node:${n.id}`), ...s.panels.filter((p) => (p.kind === "ccg" || p.kind === "legend") && !p.closed && p.pose).map((p) => `panel:${p.id}`)];
+    ...s.pairNodes.map((n) => `node:${n.id}`), ...s.styleNodes.map((n) => `style:${n.id}`), ...s.panels.filter((p) => (p.kind === "ccg" || p.kind === "legend") && !p.closed && p.pose).map((p) => `panel:${p.id}`)];
   const { camera, size } = useThree();
   const [drag, setDrag] = useState<{ from: string; plane: Plane } | null>(null);
   const end = useRef(new Vector3());
@@ -58,6 +58,9 @@ export function TiePorts() {
       const panel = ends.find((id) => id.startsWith("panel:"));
       const legend = panel && s.panels.find((p) => p.id === panel.slice(6))?.kind === "legend";
       if (panel) return void (grid && patchGrid(grid.slice(5), legend ? { legend: panel.slice(6) } : { config: panel.slice(6) }));
+      // a style node styles a grid's curves
+      const style = ends.find((id) => id.startsWith("style:"));
+      if (style) return void (grid && patchGrid(grid.slice(5), { style: style.slice(6) }));
       if (grid) return patchGrid(grid.slice(5), { source: other(grid) });
       if (ends.some((id) => id.startsWith("node:"))) return;
       const [board, net] = kind === "board" ? [drag.from, target.id] : [target.id, drag.from];
@@ -87,6 +90,9 @@ export function TiePorts() {
       ))}
       {s.grids.filter((g) => g.config && ids.includes(`panel:${g.config}`)).map((g) => (
         <Cable key={`cfg${g.id}`} a={`grid:${g.id}`} b={`panel:${g.config}`} picked={false} onPick={() => undefined} onMenu={() => claimMenu({ kind: "grid", id: g.id })} />
+      ))}
+      {s.grids.filter((g) => g.style && ids.includes(`style:${g.style}`)).map((g) => (
+        <Cable key={`sty${g.id}`} a={`grid:${g.id}`} b={`style:${g.style}`} picked={false} onPick={() => undefined} onMenu={() => claimMenu({ kind: "grid", id: g.id })} />
       ))}
       {s.grids.filter((g) => g.legend && ids.includes(`panel:${g.legend}`)).map((g) => (
         <Cable key={`key${g.id}`} a={`grid:${g.id}`} b={`panel:${g.legend}`} picked={false} onPick={() => undefined} onMenu={() => claimMenu({ kind: "grid", id: g.id })} />
