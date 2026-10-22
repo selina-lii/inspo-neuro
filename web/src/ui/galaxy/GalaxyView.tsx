@@ -36,6 +36,8 @@ import { selected3 } from "../../core/select";
 import { secondary } from "./pointer";
 
 /** Aim the camera at the cloud once per session and layout; afterwards panning is the viewer's own. */
+const NONE = new Set<number>();
+
 function RecenterOn({ controls, center, extent, when }: { controls: React.RefObject<CadHandle | null>; center: Vector3; extent: number; when: string }) {
   const camera = useThree((t) => t.camera);
   useEffect(() => {
@@ -120,22 +122,24 @@ export function GalaxyView({ dark }: { dark: boolean }) {
   const rightDown = useRef<{ x: number; y: number } | null>(null);
   const panelHost = useRef<HTMLDivElement>(null);
   const [menuAt, setMenuAt] = useState<{ x: number; y: number } | null>(null);
+  // the frame everything else is placed in comes from the network at rest: a fanned-out probe must not move the copies
+  const rest = useMemo(() => positions3(s, NONE), [layout, embedding3, positions, neurons, links, zMetric, spacing, shanks]);
   const extent = useMemo(() => {
-    const span = (f: (p: Point3) => number) => Math.max(...pts.map(f)) - Math.min(...pts.map(f));
-    return pts.length ? Math.max(span((p) => p.x), span((p) => p.y), 8) : 16;
-  }, [pts]);
+    const span = (f: (p: Point3) => number) => Math.max(...rest.map(f)) - Math.min(...rest.map(f));
+    return rest.length ? Math.max(span((p) => p.x), span((p) => p.y), 8) : 16;
+  }, [rest]);
   const center = useMemo(() => {
     const c = new Vector3();
-    for (const p of pts) c.add(new Vector3(p.x, p.y, p.z));
-    return c.multiplyScalar(1 / Math.max(pts.length, 1));
-  }, [pts]);
+    for (const p of rest) c.add(new Vector3(p.x, p.y, p.z));
+    return c.multiplyScalar(1 / Math.max(rest.length, 1));
+  }, [rest]);
 
   const box = useMemo(() => {
     // probes reach below their neurons and their labels above
-    const xs = [...pts.map((p) => p.x), ...probeList.map((p) => p.x)];
-    const ys = [...pts.map((p) => p.y), ...probeList.flatMap((p) => [p.y0 - 1, p.y1 + 1.5])];
+    const xs = [...rest.map((p) => p.x), ...probeList.map((p) => p.x)];
+    const ys = [...rest.map((p) => p.y), ...probeList.flatMap((p) => [p.y0 - 1, p.y1 + 1.5])];
     return xs.length ? { x0: Math.min(...xs), x1: Math.max(...xs), y0: Math.min(...ys), y1: Math.max(...ys), z: center.z } : { x0: -8, x1: 8, y0: -8, y1: 8, z: 0 };
-  }, [pts, probeList, center]);
+  }, [rest, probeList, center]);
   const hovered = hover?.kind === "neuron" ? neurons[hover.idx] : undefined;
   const hoverAt = hover?.kind === "neuron" ? pts[hover.idx] : undefined;
   const labelEls = useRef(new Map<string, HTMLDivElement>());

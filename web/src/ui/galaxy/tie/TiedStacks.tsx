@@ -32,16 +32,15 @@ export function TiedStacks(scene: Scene) {
 function TiedStack({ tie, pts, probes, box, center, dark }: Scene & { tie: Tie }) {
   const s = useStore();
   const layers = useLayers(tie, pts, probes);
-  // a new tie stands its board on the stack's side wall, placed again as layers arrive so it clears all of them
-  const loaded = layers.filter((l) => l.data || l.session === s.session).length;
+  // a new tie stands its board on the stack's side wall once; after that only a hand moves it
   useEffect(() => {
     if (!tie.fresh) return;
     const timer = window.setTimeout(() => {
       arrangeTie(tie, box, center, layers);
-      if (loaded === layers.length) arranged(tie.board);
+      arranged(tie.board);
     }, 100);
     return () => window.clearTimeout(timer);
-  }, [tie.fresh, layers.length, loaded]);
+  }, [tie.fresh, layers.length]);
   return (
     <>
       <StackLayers tie={tie} layers={layers} center={center} dark={dark} />

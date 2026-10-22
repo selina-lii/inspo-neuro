@@ -3,7 +3,7 @@ import { addNetwork, closePanel, fail, removeNetwork, setMainHidden } from "./ac
 import { closeTest, moveBoard, sceneFrame } from "./statsActions";
 import { cutCable, removeGrid, removeNode, removeStyle } from "./gridActions";
 import { sessionPairs, stackRows, testSessions, type StackLayer, type StackRow, type Tie } from "./core/stack";
-import { axisQuat, shownResult, type Quat, type StatsResult, type StatsTest, type Vec3 } from "./core/stats";
+import { shownResult, type Quat, type StatsResult, type StatsTest, type Vec3 } from "./core/stats";
 import { activeSegment, store, type Picked3 } from "./core/store";
 import { nodePairs, trayKeys, type CcgGrid } from "./core/grid";
 import { api } from "./io/api";
@@ -15,11 +15,9 @@ export const setTies = (ties: Tie[]) => store.set({ ties });
 
 /** The workspace's ties whose boards are open; called once its boards are back. */
 export function loadTies(saved: Tie[]): void {
-  const boards = new Map(store.get().stats.boards.map((b) => [b.id, b]));
-  const side = axisQuat("+x");
-  // a tied board turned off the side wall goes back to it
-  const ties = saved.filter((t) => boards.has(t.board));
-  store.set({ ties: ties.map((t) => (boards.get(t.board)!.pose.q.every((v, i) => Math.abs(v - side[i]!) < 1e-3) ? t : { ...t, fresh: true })) });
+  const boards = new Set(store.get().stats.boards.map((b) => b.id));
+  // a board stays where it was left: only a new tie places it
+  store.set({ ties: saved.filter((t) => boards.has(t.board)).map(({ fresh: _, ...t }) => t) });
   // boards saved on the main network or sharing one each get a network of their own
   const seen = new Set<string>();
   for (const t of store.get().ties) t.network === "main" || seen.has(t.network) ? tie(t.board, t.network) : seen.add(t.network);
