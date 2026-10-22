@@ -5,6 +5,7 @@ import { colsOf, type CcgGrid, type GridSort } from "../../../core/grid";
 import { store } from "../../../core/store";
 import { patchGrid } from "../../../gridActions";
 import { useGridItems } from "./gridItems";
+import { seriesResult } from "./gridSeries";
 import { ListPicker } from "../../stats/ListPicker";
 import { useStore } from "../../useStore";
 import { FloatBar } from "../stats/BoardOverlay";
@@ -37,7 +38,8 @@ export function GridBar({ grid }: { grid: CcgGrid }) {
       <span className="sep" />
       <button className={grid.view !== "stats" ? "on" : ""} title="each card: the pair's CCGs" onClick={() => set({ view: "ccg" })}>CCG</button>
       <button className={grid.view === "stats" ? "on" : ""} title="each card: the pair's value per curve, measured as its linked test measures it" onClick={() => set({ view: "stats" })}>stats</button>
-      {grid.view === "stats" && options && (
+      {/* a linked test's result already names its metric */}
+      {grid.view === "stats" && options && !seriesResult(s, grid) && (
         <select value={grid.metric ?? "Conn Strength"} title="the metric each card plots" onChange={(e) => set({ metric: e.target.value })}>
           {options.pickers.data.items.map((m) => <option key={m} disabled={options.disabled_metrics.includes(m)}>{m}</option>)}
         </select>

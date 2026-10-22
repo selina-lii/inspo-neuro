@@ -20,7 +20,7 @@ import { Label3D } from "../stats/Label3D";
 import { anchors, centers, ports } from "../tie/portAt";
 import { drawOverlay } from "../tie/OverlayCards";
 import { useGridItems } from "./gridItems";
-import { useSeries, type Series } from "./gridSeries";
+import { seriesResult, useSeries, type Series } from "./gridSeries";
 import { drawSeries } from "./seriesTexture";
 import { gridKey } from "../../panel/Legend";
 import { syncFeeds, testsFedBy } from "../../../feedActions";
@@ -175,7 +175,7 @@ function Cell({ item, grid, n, at, dark, group, order, series, ylim }: { item: G
     if (grid.view === "stats") {
       if (!series) return [];
       const points = gridKey(s, grid).map(([label, color]) => ({ label, color, value: series[label]?.[item.key] ?? null }));
-      return [drawSeries(item.title, points, grid.metric ?? "Conn Strength", focused, ylim)];
+      return [drawSeries(item.title, points, seriesResult(s, grid)?.result.metric ?? grid.metric ?? "Conn Strength", focused, ylim)];
     }
     if (!item.curves.length) return [];
     const styled = item.curves.map((c) => styledCurve(s, grid, c));
