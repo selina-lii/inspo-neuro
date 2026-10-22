@@ -1,6 +1,7 @@
 // What is open and how much of it shows: the project, session and segment, the links passing the filters, fit progress.
 import { openPanel, setMainHidden } from "../../actions";
 import { visibleLinks } from "../../core/derive";
+import { nodePairs } from "../../core/grid";
 import { activeSegment, type Picked3 } from "../../core/store";
 import { removeNode } from "../../gridActions";
 import { pick3, remove3 } from "../../stackActions";
@@ -45,7 +46,7 @@ function Objects() {
         {s.networks.map((n) => row(`net:${n.id}`, `network · ${n.segment}`, "copy", objects({ kind: "network", id: n.id })))}
         {s.stats.boards.map((b) => row(`board:${b.id}`, `stats · ${testName(b.id)}`, s.ties.some((t) => t.board === b.id) ? "tied" : "", objects({ kind: "board", id: b.id })))}
         {s.grids.map((g) => row(`grid:${g.id}`, `CCG grid · ${g.source ?? "not cabled"}`, "", objects({ kind: "grid", id: g.id })))}
-        {s.pairNodes.map((n) => row(`node:${n.id}`, "pair filter", n.source ?? "not cabled", [["remove", () => removeNode(n.id)]]))}
+        {s.pairNodes.map((n) => row(`node:${n.id}`, "pair filter", `${nodePairs(s, n).length} pairs`, [["remove", () => removeNode(n.id)]]))}
         {s.panels.map((p) => row(`panel:${p.id}`, PANEL_TITLES[p.kind], p.closed ? "closed" : p.collapsed ? "collapsed" : "open",
           p.closed ? [["open", () => openPanel(p.id)]] : objects({ kind: "panel", id: p.id }).map(([n, f]) => [n === "remove" ? "close" : n, f])))}
       </tbody>

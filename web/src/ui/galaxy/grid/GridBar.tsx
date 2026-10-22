@@ -1,7 +1,7 @@
 // A CCG grid's float bar: sort, rows × cols, segments overlaid or in series (along x or y), which pairs, pages.
 import { movePairs, targetPairs, toggleGroup } from "../../../actions";
 import { realGroups } from "../../../core/colors";
-import { colsOf, sourceOf, type CcgGrid, type GridSort } from "../../../core/grid";
+import { colsOf, type CcgGrid, type GridSort } from "../../../core/grid";
 import { store } from "../../../core/store";
 import { patchGrid } from "../../../gridActions";
 import { useGridItems } from "./gridItems";
@@ -15,7 +15,8 @@ export function GridBar({ grid }: { grid: CcgGrid }) {
   const s = useStore();
   const { segments } = s;
   const set = (patch: Partial<CcgGrid>) => patchGrid(grid.id, patch);
-  const onNetwork = sourceOf(s, grid)?.startsWith("net:");
+  const onNetwork = grid.source?.startsWith("net:");
+  const bySegment = onNetwork || grid.source?.startsWith("node:");
   const flip = (seg: string) => {
     const next = grid.segments.includes(seg) ? grid.segments.filter((x) => x !== seg) : [...grid.segments, seg];
     if (next.length) set({ segments: next });
@@ -39,13 +40,15 @@ export function GridBar({ grid }: { grid: CcgGrid }) {
         <button key={a} className={grid.axis === a ? "on" : ""} title={`series along ${a}`} onClick={() => set({ axis: a })}>{a}</button>
       ))}
       <button className={grid.compact ? "on" : ""} title="cells edge to edge, no margins" onClick={() => set({ compact: !grid.compact })}>compact</button>
-      {onNetwork && (
+      {bySegment && (
         <>
           <span className="sep" />
-          <select value={grid.pairs} onChange={(e) => set({ pairs: e.target.value as CcgGrid["pairs"], page: 0 })}>
-            <option value="shown">shown pairs</option>
-            <option value="selected">selected pairs</option>
-          </select>
+          {onNetwork && (
+            <select value={grid.pairs} onChange={(e) => set({ pairs: e.target.value as CcgGrid["pairs"], page: 0 })}>
+              <option value="shown">shown pairs</option>
+              <option value="selected">selected pairs</option>
+            </select>
+          )}
           {["all", ...segments.map((x) => x.name).filter((x) => MAIN_SEGMENT.test(x))].map((seg) => (
             <button key={seg} className={grid.segments.includes(seg) ? "on" : ""} onClick={() => flip(seg)}>{seg}</button>
           ))}

@@ -81,7 +81,8 @@ export type State = {
   mainHidden: boolean;
   mainAt: [number, number, number];   // the open session's network, moved from where its layout puts it
   grids: CcgGrid[];   // CCG grids placed in 3D
-  pairNodes: PairNode[];   // pair filters cabled between a source and grids   // the open session's own network closed in 3D
+  pairNodes: PairNode[];   // pair sources cabled to grids
+  picks: Record<string, string[]>;   // per pair node, the pairs its pick resolved to
   tieOnAdd: boolean;   // a stats test added to the space brings in its sessions' networks: its board is tied to the main network
   thumbs: "focused" | "selected" | "shown";   // which pairs carry a CCG card in 3D
   unsaved: number;   // edits the server holds in memory, not yet written
@@ -173,6 +174,7 @@ const initial: State = {
   more3: [],
   grids: [],
   pairNodes: [],
+  picks: {},
   mainHidden: false,
   mainAt: [0, 0, 0],
   tieOnAdd: true,

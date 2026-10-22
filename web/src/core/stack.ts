@@ -9,10 +9,10 @@ export type Tie = { board: string; network: string; fresh?: boolean; at?: [numbe
 
 export type Playback = { board: string; row: number; playing: boolean; ms: number };
 
-/** One session's layer as fetched: what it was fetched for, so a change of pairs, segments or norms refetches it. */
+/** One session's layer as fetched: the segments and pairs asked for, at a resolution and norms; `want` names a pick card's one pair. */
 export type StackLayer = {
   session: string; neurons: Neuron[]; links: Link[]; shanks: Shank[]; hours: Record<string, number>; segLinks: Record<string, SegLinks>;
-  lags: number[]; traces: Record<string, Record<string, [number[], number[]]>>; want: string;
+  lags: number[]; traces: Record<string, Record<string, [number[], number[]]>>; res: string; norms: string; segs: string[]; pairs: string[]; want?: string;
 };
 
 export type StackRow = { name: string; color: string; segments: string[] };

@@ -1,6 +1,8 @@
 // CCG grids and pair-filter nodes: add one, change its settings, cable it to a source, remove it.
-import type { CcgGrid, PairNode } from "./core/grid";
+import { fail, targetPairs } from "./actions";
+import { PICK_DEFAULTS, pickQuery, type CcgGrid, type PairNode } from "./core/grid";
 import { activeSegment, store } from "./core/store";
+import { api } from "./io/api";
 
 export const setGrids = (grids: CcgGrid[]) => store.set({ grids });
 
@@ -15,7 +17,32 @@ export function addGrid(): void {
   }]);
 }
 
-export const addNode = () => setNodes([...store.get().pairNodes, { id: `n${Date.now().toString(36)}`, p: [0, 0, 0], q: [0, 0, 0, 1], source: null, mode: "all", summon: true }]);
+export const addNode = () => setNodes([...store.get().pairNodes, { id: `n${Date.now().toString(36)}`, p: [0, 0, 0], q: [0, 0, 0, 1], summon: true, ...PICK_DEFAULTS }]);
+
+/** Resolve a node's pick on the server; a reply for a pick since changed is dropped. */
+export async function runPick(id: string): Promise<void> {
+  const query = JSON.stringify(pickQuery(store.get().pairNodes.find((n) => n.id === id)!));
+  try {
+    const { pairs } = await api.pick(JSON.parse(query));
+    const node = store.get().pairNodes.find((n) => n.id === id);
+    if (node && JSON.stringify(pickQuery(node)) === query) store.set({ picks: { ...store.get().picks, [id]: pairs } });
+  } catch (error) {
+    fail(error);
+  }
+}
+
+/** The pairs a hotkey would act on, as keys: picked cards, else the network's selected or focused pairs. */
+const targetKeys = () => [...targetPairs()].flatMap(([session, ps]) => ps.map(([r, t]) => `${session}|${r}|${t}`));
+
+export function addToNode(id: string): void {
+  const n = store.get().pairNodes.find((x) => x.id === id)!;
+  patchNode(id, { added: [...new Set([...n.added, ...targetKeys()])] });
+}
+
+export function dropFromNode(id: string): void {
+  const gone = new Set(targetKeys());
+  patchNode(id, { added: store.get().pairNodes.find((x) => x.id === id)!.added.filter((k) => !gone.has(k)) });
+}
 
 /** A copy of a grid, set beside it. */
 export function duplicateGrid(id: string): void {
@@ -62,8 +89,5 @@ export function removeNode(id: string): void {
 /** Grids configured or keyed by a panel that is gone fall back to the default options and their own keys. */
 export const dropConfig = (panel: string) => setGrids(store.get().grids.map((g) => ({ ...g, config: g.config === panel ? null : g.config, legend: g.legend === panel ? null : g.legend })));
 
-/** Grids and nodes cabled to a port that is gone lose their source. */
-export function dropSource(port: string): void {
-  setGrids(store.get().grids.map((g) => (g.source === port ? { ...g, source: null } : g)));
-  setNodes(store.get().pairNodes.map((n) => (n.source === port ? { ...n, source: null } : n)));
-}
+/** Grids cabled to a port that is gone lose their source. */
+export const dropSource = (port: string) => setGrids(store.get().grids.map((g) => (g.source === port ? { ...g, source: null } : g)));

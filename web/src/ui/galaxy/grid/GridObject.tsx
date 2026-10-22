@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef } from "react";
 import { BufferGeometry, Float32BufferAttribute, Plane, Vector3, type Group, Quaternion } from "three";
 import { focusPair, openPanelAt, patchPanel } from "../../../actions";
 import { PICK_COLOR } from "../../../core/colors";
-import { CELL, cellSize, colsOf, gapOf, optionsOf, sourceOf, pageSize, slotAt, traysOf, type CcgGrid, type GridItem } from "../../../core/grid";
+import { CELL, cellSize, colsOf, gapOf, optionsOf, pageSize, slotAt, traysOf, type CcgGrid, type GridItem } from "../../../core/grid";
 import type { Quat, Vec3 } from "../../../core/stats";
 import { store } from "../../../core/store";
 import { patchGrid } from "../../../gridActions";
@@ -176,7 +176,7 @@ function Cell({ item, grid, n, at, dark, group, order }: { item: GridItem; grid:
       return store.set({ cells });
     }
     if (s.cells.size) store.set({ cells: new Set() });
-    const [kind, id] = (sourceOf(s, grid) ?? ":").split(":");
+    const [kind, id] = (grid.source ?? ":").split(":");
     const board = kind === "board" ? id : s.ties.find((t) => t.network === id)?.board;
     if (board) pickPair(board, it.session, it.ref, it.tgt);
     else if (it.session === s.session) focusPair(it.ref, it.tgt);

@@ -8,7 +8,7 @@ import { closePanel, moveNetwork, openSession, patchPanel, removeNetwork, setMai
 import { PANEL_TITLES } from "../map/SpacePanelNode";
 import { facePanel } from "./Panels3D";
 import { untie } from "../../stackActions";
-import { patchGrid, patchNode, removeGrid, removeNode } from "../../gridActions";
+import { addToNode, dropFromNode, patchGrid, patchNode, removeGrid, removeNode } from "../../gridActions";
 import { closeTest, moveBoard } from "../../statsActions";
 import { AddMenu } from "../menu/AddMenu";
 import { TrayMenu } from "./grid/TrayMenu";
@@ -170,7 +170,8 @@ export function SpaceMenu({ at, onClose, onCenter }: { at: { x: number; y: numbe
               <button onClick={act(() => onCenter(target!, true))}>face me</button>
               <button onClick={act(() => carry(target))}>move</button>
               <Many target={target!} act={act} />
-              {node.source && <button onClick={act(() => patchNode(node.id, { source: null }))}>disconnect its input</button>}
+              <button onClick={act(() => addToNode(node.id))}>add the picked or selected pairs</button>
+              {node.added.length > 0 && <button onClick={act(() => dropFromNode(node.id))}>drop the picked or selected pairs</button>}
               <button onClick={act(() => removeNode(node.id))}>close</button>
             </>
           ) : panel ? (

@@ -19,6 +19,7 @@ from neuropy.analyses.utils import is_special_group
 
 from server import views
 from server.project import Project, state_json, update_state_json, writable, project, state
+from server.pick import router as pick_router
 from server.stack import router as stack_router
 from server.stats import router as stats_router
 from server.workspaces import router as workspaces_router
@@ -27,6 +28,7 @@ app = FastAPI(title='neuromap')
 app.add_middleware(CORSMiddleware, allow_origins=['*'], allow_methods=['*'], allow_headers=['*'])
 app.include_router(stats_router)
 app.include_router(stack_router)
+app.include_router(pick_router)
 app.include_router(workspaces_router)
 
 

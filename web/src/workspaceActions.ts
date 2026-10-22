@@ -1,6 +1,6 @@
 // Named workspaces: a project's space as arranged (open tests, boards, grids, ties, panels, network copies), a file each on the server, saved as it changes.
 import { fail, openSession, panelsFrom } from "./actions";
-import type { CcgGrid, PairNode } from "./core/grid";
+import { PICK_DEFAULTS, type CcgGrid, type PairNode } from "./core/grid";
 import type { Tie } from "./core/stack";
 import type { Board, StatsConfig } from "./core/stats";
 import { store, type NetworkCopy, type SpacePanel } from "./core/store";
@@ -71,7 +71,9 @@ export async function openWorkspace(name: string): Promise<void> {
     const { sessions, project } = store.get();
     store.set({
       workspace: name, picked3: null, panels: panelsFrom(doc.panels ?? legacy("panels", undefined)),
-      grids: doc.grids ?? legacy(`grids:${project}`, []), pairNodes: doc.pairNodes ?? legacy(`pairNodes:${project}`, []),
+      grids: doc.grids ?? legacy(`grids:${project}`, []),
+      // nodes saved as filters of another source take a pick's fields
+      pairNodes: (doc.pairNodes ?? legacy(`pairNodes:${project}`, [])).map((n) => ({ ...PICK_DEFAULTS, ...n })), picks: {},
     });
     await openSession(doc.session && sessions.includes(doc.session) ? doc.session : sessions[0]!);
     await loadStats(doc);

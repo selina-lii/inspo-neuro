@@ -1,5 +1,5 @@
 // A CCG grid: small CCG images of many pairs as one object in 3D, sorted and paged. No React, no three.
-import type { Quat, Vec3 } from "./stats";
+import type { Quat, Rule, Vec3 } from "./stats";
 import { DEFAULT_CCG, panelCcg, type CcgOptions, type State } from "./store";
 import type { Trace } from "./types";
 
@@ -17,13 +17,22 @@ export type CcgGrid = {
   list?: boolean;   // one column, an info line beside each pair
 };
 
-/** A node between a source and its grids: it passes on only the pairs its mode keeps. */
-export type PairMode = "all" | "selected" | "picked";
-export type PairNode = { id: string; p: Vec3; q: Quat; source: string | null; mode: PairMode; summon?: boolean };
+/** A value a pick keeps between `lo` and `hi`: a pair's strength or CS, or a neuron's firing rate, in one segment. */
+export type PairRange = { field: "strength" | "cs" | "rate"; segment: string; side: string; lo: number | null; hi: number | null };
 
-/** The port a grid's pairs come from, through its pair node if it has one. */
-export const sourceOf = (s: State, grid: CcgGrid): string | null =>
-  grid.source?.startsWith("node:") ? s.pairNodes.find((n) => `node:${n.id}` === grid.source)?.source ?? null : grid.source;
+/** A pair source: the server resolves its sessions, rules, states and ranges; pairs added by hand join them. */
+export type PairNode = {
+  id: string; p: Vec3; q: Quat; summon?: boolean;
+  sessions: string[]; rules: Rule[]; states: string[]; ranges: PairRange[]; added: string[];
+};
+
+export const PICK_DEFAULTS = { sessions: [], rules: [], states: [], ranges: [], added: [] };
+
+/** What the server resolves a node's pick from. */
+export const pickQuery = (n: PairNode) => ({ sessions: n.sessions, rules: n.rules, states: n.states, ranges: n.ranges });
+
+/** A node's pairs: its pick's, then the ones added by hand. */
+export const nodePairs = (s: State, n: PairNode): string[] => [...new Set([...(s.picks[n.id] ?? []), ...n.added])];
 
 /** A grid draws with the options of the CCG panel cabled to it, the defaults without one. */
 /** The one grid a CCG or legend panel is cabled to, which it then sits on. */
