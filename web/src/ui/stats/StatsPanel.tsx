@@ -1,5 +1,5 @@
-// Stats tests: one tab per open test, a saved test to open, and the active test's editor. Results draw as boards in 3D.
-import { closeTest, newTest, openSaved, setActiveTest } from "../../statsActions";
+// The stats editor: the one test it is linked to (its link dot, or a board's ⚙ edit), a new or saved test to open. Results draw as boards in 3D.
+import { closeTest, newTest, openSaved } from "../../statsActions";
 import { setView } from "../../actions";
 import { useStore } from "../useStore";
 import { StatsEditor } from "./StatsEditor";
@@ -13,12 +13,12 @@ export function StatsPanel() {
   return (
     <div className="stats-panel">
       <div className="row tabs">
-        {tests.map((t, i) => (
-          <span key={t.id} className={`tab${t.id === active ? " on" : ""}`}>
-            <button className="linkish" onClick={() => setActiveTest(t.id)}>{t.name || `test ${i + 1}`}{t.status === "running" ? " …" : ""}</button>
-            <button className="linkish" title="close" onClick={() => closeTest(t.id)}>✕</button>
+        {test && (
+          <span className="tab on">
+            <b>{test.name || "unsaved test"}</b>{test.status === "running" ? " …" : ""}
+            <button className="linkish" title="close this test" onClick={() => closeTest(test.id)}>✕</button>
           </span>
-        ))}
+        )}
         <button onClick={newTest}>+ new test</button>
         <select value="" onChange={(e) => e.target.value && openSaved(e.target.value)}>
           <option value="">open saved…</option>

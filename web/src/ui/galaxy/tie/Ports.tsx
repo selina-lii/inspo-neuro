@@ -5,6 +5,7 @@ import { useMemo, useRef, useState } from "react";
 import { BufferGeometry, Float32BufferAttribute, type Mesh, Plane, Quaternion, Vector3 } from "three";
 import { patchGrid } from "../../../gridActions";
 import { feedTest } from "../../../feedActions";
+import { setActiveTest } from "../../../statsActions";
 import { pick3, tie } from "../../../stackActions";
 import { useStore } from "../../useStore";
 import { pointer } from "../pointer";
@@ -19,7 +20,7 @@ export function TiePorts() {
   const s = useStore();
   const ids = [...s.stats.boards.filter((b) => s.stats.tests.find((t) => t.id === b.id)?.results.length).map((b) => `board:${b.id}`),
     ...(s.mainHidden ? [] : ["net:main"]), ...s.networks.map((n) => `net:${n.id}`), ...s.grids.map((g) => `grid:${g.id}`),
-    ...s.pairNodes.map((n) => `node:${n.id}`), ...s.styleNodes.map((n) => `style:${n.id}`), ...s.panels.filter((p) => (p.kind === "ccg" || p.kind === "legend") && !p.closed && p.pose).map((p) => `panel:${p.id}`)];
+    ...s.pairNodes.map((n) => `node:${n.id}`), ...s.styleNodes.map((n) => `style:${n.id}`), ...s.panels.filter((p) => (p.kind === "ccg" || p.kind === "legend" || p.kind === "stats") && !p.closed && p.pose).map((p) => `panel:${p.id}`)];
   const { camera, size } = useThree();
   const [drag, setDrag] = useState<{ from: string; plane: Plane } | null>(null);
   const end = useRef(new Vector3());
@@ -58,6 +59,9 @@ export function TiePorts() {
       // a CCG panel configures a grid, a legend keys it; anything else feeds it pairs
       const panel = ends.find((id) => id.startsWith("panel:"));
       const legend = panel && s.panels.find((p) => p.id === panel.slice(6))?.kind === "legend";
+      // the stats editor edits the test it is cabled to
+      const edited = ends.find((id) => id.startsWith("board:"));
+      if (panel === "panel:stats") return void (edited && setActiveTest(edited.slice(6)));
       if (panel) return void (grid && patchGrid(grid.slice(5), legend ? { legend: panel.slice(6) } : { config: panel.slice(6) }));
       // a style node styles a grid's curves
       const style = ends.find((id) => id.startsWith("style:"));
@@ -97,6 +101,9 @@ export function TiePorts() {
       {s.stats.tests.flatMap((t) => [...new Set(t.config.rows.flatMap((r) => (r.fed ? [r.fed] : [])))].filter((g) => ids.includes(`grid:${g}`) && ids.includes(`board:${t.id}`)).map((g) => (
         <Cable key={`feed${g}${t.id}`} a={`grid:${g}`} b={`board:${t.id}`} picked={false} onPick={() => undefined} onMenu={() => claimMenu({ kind: "grid", id: g })} />
       )))}
+      {s.stats.active && ids.includes("panel:stats") && ids.includes(`board:${s.stats.active}`) && (
+        <Cable key="edit" a="panel:stats" b={`board:${s.stats.active}`} picked={false} onPick={() => undefined} onMenu={() => claimMenu({ kind: "panel", id: "stats" })} />
+      )}
       {s.grids.filter((g) => g.style && ids.includes(`style:${g.style}`)).map((g) => (
         <Cable key={`sty${g.id}`} a={`grid:${g.id}`} b={`style:${g.style}`} picked={false} onPick={() => undefined} onMenu={() => claimMenu({ kind: "grid", id: g.id })} />
       ))}

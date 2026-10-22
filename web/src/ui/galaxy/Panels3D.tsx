@@ -79,10 +79,12 @@ export function carryPanels(from: Matrix4, to: Matrix4): void {
   store.set({ panels });
 }
 
-/** Turn a panel to face the viewer. */
+/** Turn a panel to face the viewer, upright. */
 export const facePanel = (id: string) => {
   const p = store.get().panels.find((q) => q.id === id)!;
-  patchPanel(id, { pose: { ...p.pose!, q: view!.camera.quaternion.toArray() as Quat } });
+  const at = new Vector3(...p.pose!.p);
+  const q = new Quaternion().setFromRotationMatrix(new Matrix4().lookAt(view!.camera.position, at, new Vector3(0, 1, 0)));
+  patchPanel(id, { pose: { ...p.pose!, q: q.toArray() as Quat } });
 };
 
 /** Where unplaced panels go around the network's box: a column left of it, a row under it, the stats editor above. */
@@ -154,8 +156,8 @@ export function PanelLayer({ host, box }: { host: RefObject<HTMLDivElement | nul
         const x = beside ? beside.element.offsetWidth * beside.scale.x + 0.2 : 0;
         o.position.copy(a.at).add(new Vector3(x + (o.element.offsetWidth * o.scale.x) / 2, lift, 0).applyQuaternion(a.q));
       }
-      // a CCG or legend panel's link dot, off its top-right corner by its title row, cables it into grids
-      if (p.kind === "ccg" || p.kind === "legend") {
+      // a CCG, legend or stats panel's link dot, off its top-right corner by its title row: into grids, or onto the test it edits
+      if (p.kind === "ccg" || p.kind === "legend" || p.kind === "stats") {
         const k = o.scale.x;
         ports.set(`panel:${p.id}`, new Vector3((o.element.offsetWidth / 2 + 12 * RASTER) * k, (o.element.offsetHeight / 2 - 14 * RASTER) * k, 0).applyQuaternion(o.quaternion).add(o.position));
       }
