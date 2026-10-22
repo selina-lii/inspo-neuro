@@ -4,13 +4,12 @@ import { useEffect, useMemo, useRef } from "react";
 import { BufferGeometry, Float32BufferAttribute, Plane, Vector3, type Group, Quaternion } from "three";
 import { focusPair, openPanelAt, patchPanel } from "../../../actions";
 import { PICK_COLOR } from "../../../core/colors";
-import { CELL, cellSize, colsOf, optionsOf, pageSize, slotAt, styledCurve, traysOf, type CcgGrid, type GridItem } from "../../../core/grid";
+import { CELL, cellSize, colsOf, optionsOf, pageSize, slotAt, traysOf, type CcgGrid, type GridItem } from "../../../core/grid";
 import type { Quat, Vec3 } from "../../../core/stats";
 import { store } from "../../../core/store";
 import { patchGrid } from "../../../gridActions";
 import { useBody } from "../select3";
 import { useStore } from "../../useStore";
-import { drawCcg } from "../CcgCards";
 import { PANEL_PX } from "../Panels3D";
 import { modKey } from "../pointer";
 import { begin } from "../gesture";
@@ -18,11 +17,9 @@ import { claimMenu } from "../SpaceMenu";
 import { Corners } from "../stats/BoardCorners";
 import { Label3D } from "../stats/Label3D";
 import { anchors, centers, ports } from "../tie/portAt";
-import { drawOverlay } from "../tie/OverlayCards";
 import { useGridItems } from "./gridItems";
-import { useSeries, type Series } from "./gridSeries";
-import { drawSeries } from "./seriesTexture";
-import { gridKey } from "../../panel/Legend";
+import { useSeries } from "./gridSeries";
+import { cardsOf, drawn, type Look } from "./gridCards";
 import { syncFeeds, testsFedBy } from "../../../feedActions";
 import { newScale, pickPair } from "../../../statsActions";
 import { useNear } from "../useNear";
@@ -80,6 +77,11 @@ export function GridObject({ grid, dark }: { grid: CcgGrid; dark: boolean }) {
     const [lo, hi] = ys.reduce(([a, b], y) => [Math.min(a, y), Math.max(b, y)], [0, 0]);
     return grid.view === "stats" ? [lo, hi || 1] : [lo * 1.08, hi * 1.08 || 1];
   }, [grid.sameScale, grid.view, series, items, order, o.baseline]);
+  // an open legend cabled to the grid keys every cell at once
+  const keyed = s.panels.some((p) => p.id === gridLegend(s, grid.id) && !p.closed);
+  const metric = fetched?.metric ?? "";
+  const look = useMemo((): Look => ({ keyed, ylim, series, metric }), [keyed, ylim?.join(), series, metric]);
+  drawn.set(grid.id, { items, look });
   const feeds = testsFedBy(grid.id).map((t) => t.id).join();
   const source = gridSource(s, grid.id);
   useEffect(() => syncFeeds(grid, order), [order.join(), grid.segments.join(), source, items, feeds]);
@@ -118,7 +120,7 @@ export function GridObject({ grid, dark }: { grid: CcgGrid; dark: boolean }) {
       <Label3D text={title} position={[0.05, BAR / 2, 0]} height={0.24} color="#ffffff" anchor="left" bold />
       <lineSegments geometry={frame}><lineBasicMaterial color={picked ? PICK_COLOR : "#3a6df0"} transparent opacity={0.6} /></lineSegments>
       {items.slice(page * per, (page + 1) * per).map((item, i) => (
-        <Cell key={item.key} item={item} grid={grid} n={n} at={slotAt(grid, n, i)} dark={dark} group={group} order={order} series={series} metric={fetched?.metric ?? ""} ylim={ylim} />
+        <Cell key={item.key} item={item} grid={grid} n={n} at={slotAt(grid, n, i)} dark={dark} group={group} order={order} look={look} />
       ))}
       {/* later pages: outlines only; a click on one brings its page to the front */}
       <lineSegments geometry={hints}><lineBasicMaterial color={dark ? "#8b919c" : "#7a7f88"} transparent opacity={0.35} /></lineSegments>
@@ -160,11 +162,9 @@ function paint(key: string): void {
   store.set({ cells });
 }
 
-function Cell({ item, grid, n, at, dark, group, order, series, metric, ylim }: { item: GridItem; grid: CcgGrid; n: number; at: [number, number]; dark: boolean; group: React.RefObject<Group | null>; order: string[]; series: Series | null; metric: string; ylim?: [number, number] }) {
+function Cell({ item, grid, n, at, dark, group, order, look }: { item: GridItem; grid: CcgGrid; n: number; at: [number, number]; dark: boolean; group: React.RefObject<Group | null>; order: string[]; look: Look }) {
   const s = useStore();
   const o = optionsOf(s, grid);
-  // an open legend cabled to the grid keys every cell at once
-  const keyed = s.panels.some((p) => p.id === gridLegend(s, grid.id) && !p.closed);
   const cells = useRef<Group>(null);
   const near = useNear(cells, CELL.w);
   // a stats pick names its pair outright; the network's focus only a pair of the open session
@@ -172,20 +172,7 @@ function Cell({ item, grid, n, at, dark, group, order, series, metric, ylim }: {
   // a list's info line names the pair once, so its cards carry only their segment
   const title = grid.list ? "" : item.title;
   const style = s.styleNodes.find((n) => n.id === gridStyle(s, grid.id));
-  const textures = useMemo(() => {
-    if (grid.view === "stats") {
-      if (!series) return [];
-      const points = gridKey(s, grid).map(([label, color]) => ({ label, color, value: series[label]?.[item.key] ?? null }));
-      return [drawSeries(item.title, points, metric, focused, ylim)];
-    }
-    if (!item.curves.length) return [];
-    const styled = item.curves.map((c) => styledCurve(s, grid, c));
-    if (grid.segMode === "overlay") {
-      const curves = styled.sort((a, b) => a.layer - b.layer).map((c) => ({ row: { name: keyed ? "" : c.label, color: c.color, segments: [] }, trace: c.trace, width: c.width, alpha: c.alpha }));
-      return [drawOverlay(curves, title, null, focused, o, near, ylim)];
-    }
-    return styled.map((c) => drawCcg(c.trace, title ? `${title} · ${c.label}` : c.label, c.color, focused, { options: o, base: c.color, width: c.width, alpha: c.alpha, ylim }, near));
-  }, [item, grid.segMode, focused, dark, o, near, keyed, title, style, series, metric, grid.view, ylim?.join()]);
+  const textures = useMemo(() => cardsOf(s, grid, item, look, title).map((c) => c.draw(focused, near)), [item, grid.segMode, focused, dark, o, near, title, style, look, grid.view]);
   useEffect(() => () => textures.forEach((t) => t.dispose()), [textures]);
   const c = cellSize(grid, n);
   const step = grid.axis === "x" ? [CELL.w, 0] : [0, -CELL.h];

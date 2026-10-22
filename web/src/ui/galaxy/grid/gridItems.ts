@@ -72,7 +72,7 @@ function layerItems(layer: StackLayer, grid: CcgGrid, links: Link[], o: CcgOptio
       return trace ? [{ label: seg, color: paletteColor(seg), trace }] : [];
     });
     return {
-      key: `${layer.session}|${l.ref}|${l.tgt}`, session: layer.session, ref: l.ref, tgt: l.tgt, title: `${layer.session} #${a?.id} → #${b?.id}`,
+      key: `${layer.session}|${l.ref}|${l.tgt}`, session: layer.session, ref: l.ref, tgt: l.tgt, pair: `${a?.id}-${b?.id}`, ei: l.ei, title: `${layer.session} #${a?.id} → #${b?.id}`,
       color: TYPE_COLORS[l.type] ?? "#888", strength: l.strength, on: grid.segments.filter((seg) => layer.segLinks[seg]?.on[l.i]).length, groups: l.groups, curves,
     };
   });
@@ -88,7 +88,7 @@ function networkItems(s: State, grid: CcgGrid, links: Link[], o: CcgOptions): Gr
       return raw ? [{ label: seg, color: paletteColor(seg), trace: normalize(raw, o.norms, { refRate: a?.rate ?? 1, tgtRate: b?.rate ?? 1, hours: hours(seg) }).trace }] : [];
     });
     return {
-      key: `${session}|${l.ref}|${l.tgt}`, session, ref: l.ref, tgt: l.tgt, title: `#${a?.id} → #${b?.id}`, color: TYPE_COLORS[l.type] ?? "#888",
+      key: `${session}|${l.ref}|${l.tgt}`, session, ref: l.ref, tgt: l.tgt, pair: `${a?.id}-${b?.id}`, ei: l.ei, title: `#${a?.id} → #${b?.id}`, color: TYPE_COLORS[l.type] ?? "#888",
       strength: l.strength, on: grid.segments.filter((seg) => s.segLinks[seg]?.on[l.i]).length, groups: l.groups, curves,
     };
   });
@@ -111,6 +111,6 @@ function boardItems(s: State, board: string, o: CcgOptions): GridItem[] {
     });
     const on = link ? rows.filter((i) => st.rows[i]!.segments.some((seg) => layer.segLinks[seg]?.on[link.i])).length : 0;
     const [a, b] = [layer.neurons[ref], layer.neurons[tgt]];
-    return [{ key: pair, session, ref, tgt, title: `${session} #${a?.id} → #${b?.id}`, color: TYPE_COLORS[link?.type ?? ""] ?? "#888", strength: link?.strength ?? 0, on, groups: link?.groups ?? [], curves }];
+    return [{ key: pair, session, ref, tgt, pair: `${a?.id}-${b?.id}`, ei: link?.ei ?? "E", title: `${session} #${a?.id} → #${b?.id}`, color: TYPE_COLORS[link?.type ?? ""] ?? "#888", strength: link?.strength ?? 0, on, groups: link?.groups ?? [], curves }];
   });
 }

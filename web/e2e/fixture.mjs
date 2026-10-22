@@ -90,6 +90,7 @@ const trace = (session, ref, tgt, segment) => [LAGS.map((lag) => 10 + 20 * value
 export function makeApi() {
   const workspaces = { main: { tests: [], boards: [], session: SESSIONS[0] } };
   const jobs = [];
+  const images = {};
   const json = (path, method, body) => {
     if (path === "/projects") return { projects: ["surrogate"], open: "surrogate" };
     if (path === "/sessions") return { name: "surrogate", sessions: SESSIONS, pair_groups: [], neuron_groups: [], group_meta: {} };
@@ -129,6 +130,7 @@ export function makeApi() {
       }
       return Object.fromEntries(Object.keys(body.members).map((s) => [s, DATA[s]]));
     }
+    if (path === "/images") return Object.assign(images, body.images), { folder: "/surrogate/images" };
     if (path === "/pick") return { pairs: (body.sessions.length ? body.sessions : SESSIONS).flatMap((s) => DATA[s].links.map((l) => `${s}|${l.ref}|${l.tgt}`)) };
     return undefined;
   };
@@ -159,5 +161,5 @@ export function makeApi() {
     });
     return out;
   };
-  return { json, stack, bin, workspaces };
+  return { json, stack, bin, workspaces, images };
 }

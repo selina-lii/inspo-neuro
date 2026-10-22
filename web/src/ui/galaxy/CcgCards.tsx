@@ -24,7 +24,7 @@ const SIZE = { w: 2.4, h: 1.4 };   // 3D units at objectScale 1
 export type CardLook = { options: CcgOptions; base: string; acgs?: { ref: number[] | null; tgt: number[] | null }; width?: number; alpha?: number; ylim?: [number, number] };
 
 /** One CCG card: the CCG panel's plot of it. */
-export const drawCcg = (trace: Trace, title: string, color: string, focused: boolean, look: CardLook, near = 0): CanvasTexture =>
+const drawCcg = (trace: Trace, title: string, color: string, focused: boolean, look: CardLook, near = 0): CanvasTexture =>
   ccgTexture({ curves: [{ trace, color, base: look.base, width: look.width, alpha: look.alpha }], fitScale: null, options: look.options, acgs: look.acgs, title, ylim: look.ylim }, focused, near);
 
 

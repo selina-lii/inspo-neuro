@@ -5,6 +5,7 @@ import { mergeTray, moveToTray } from "../../../gridActions";
 import { testFromGrid, testsFedBy, unfeedTest } from "../../../feedActions";
 import { useStore } from "../../useStore";
 import { useGridItems } from "./gridItems";
+import { exportCards } from "./gridCards";
 import { TagSelect } from "./TagSelect";
 
 export function TrayMenu({ grid, act }: { grid: CcgGrid; act: (f: () => void) => () => void }) {
@@ -16,6 +17,7 @@ export function TrayMenu({ grid, act }: { grid: CcgGrid; act: (f: () => void) =>
     <>
       {picked.length > 0 && (
         <>
+          <button onClick={act(() => void exportCards(grid, picked))}>export {picked.length} picked to images</button>
           <button onClick={act(() => moveToTray(grid.id, picked, null))}>move {picked.length} picked to a new tray</button>
           {trays.map((t, i) => t.id !== grid.id && <button key={t.id} onClick={act(() => moveToTray(grid.id, picked, t.id))}>move {picked.length} picked to tray {i + 1}</button>)}
         </>

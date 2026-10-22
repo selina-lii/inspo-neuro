@@ -18,8 +18,10 @@ export function srgb(t: CanvasTexture): CanvasTexture {
   return t;
 }
 
-/** `near`: 0 for a small card, else the texture scale that matches its pixels on screen. */
-export function ccgTexture(plot: Parameters<typeof CcgPlot>[0], picked: boolean, near = 0): CanvasTexture {
+export type Plot = Parameters<typeof CcgPlot>[0];
+
+/** The plot on a canvas of its own, its image still loading. */
+function canvasOf(plot: Plot, near: number): { c: HTMLCanvasElement; g: CanvasRenderingContext2D; img: HTMLImageElement } {
   const { scale, stroke } = near ? { scale: near, stroke: 1 } : FAR;
   const curves = near ? plot.curves : plot.curves.map((c) => ({ ...c, color: vivid(c.color), base: c.base && vivid(c.base) }));
   const root = getComputedStyle(document.documentElement);
@@ -31,11 +33,25 @@ export function ccgTexture(plot: Parameters<typeof CcgPlot>[0], picked: boolean,
   const g = c.getContext("2d")!;
   g.fillStyle = root.getPropertyValue("--map");
   g.fillRect(0, 0, c.width, c.height);
+  const img = new Image();
+  img.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+  return { c, g, img };
+}
+
+/** The plot as a PNG, drawn as the CCG panel draws it at *scale*. */
+export function plotPng(plot: Plot, scale = 4): Promise<string> {
+  const { c, g, img } = canvasOf(plot, scale);
+  return img.decode().then(() => (g.drawImage(img, 0, 0), c.toDataURL("image/png")));
+}
+
+/** `near`: 0 for a small card, else the texture scale that matches its pixels on screen. */
+export function ccgTexture(plot: Plot, picked: boolean, near = 0): CanvasTexture {
+  const { c, g, img } = canvasOf(plot, near);
+  const root = getComputedStyle(document.documentElement);
   const t = srgb(new CanvasTexture(c));
   t.anisotropy = 8;
   // up close the texture is drawn at screen resolution: mipmaps would only blur its detail
   if (near) [t.generateMipmaps, t.minFilter] = [false, LinearFilter];
-  const img = new Image();
   img.onload = () => {
     g.drawImage(img, 0, 0);
     g.strokeStyle = picked ? PICK_COLOR : root.getPropertyValue("--line");
@@ -43,6 +59,5 @@ export function ccgTexture(plot: Parameters<typeof CcgPlot>[0], picked: boolean,
     g.strokeRect(g.lineWidth / 2, g.lineWidth / 2, c.width - g.lineWidth, c.height - g.lineWidth);
     t.needsUpdate = true;
   };
-  img.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
   return t;
 }

@@ -1,6 +1,7 @@
 // A CCG grid: small CCG images of many pairs as one object in 3D, sorted and paged. No React, no three.
 import type { Quat, Rule, Vec3 } from "./stats";
 import { DEFAULT_CCG, panelCcg, type CcgOptions, type State } from "./store";
+import { strongestFirst } from "./pairs";
 import type { Trace } from "./types";
 import { gridConfig, gridLegend, gridStyle } from "./wires";
 
@@ -70,7 +71,7 @@ export const optionsOf = (s: State, grid: CcgGrid): CcgOptions => {
 
 export type GridCurve = { label: string; color: string; trace: Trace };
 
-export type GridItem = { key: string; session: string; ref: number; tgt: number; title: string; color: string; strength: number; on: number; groups: string[]; curves: GridCurve[] };
+export type GridItem = { key: string; session: string; ref: number; tgt: number; pair: string; ei: "E" | "I"; title: string; color: string; strength: number; on: number; groups: string[]; curves: GridCurve[] };
 
 /** *trace* cut to the lags inside *xlim*. */
 export function windowed(trace: Trace, [lo, hi]: [number | null, number | null]): Trace {
@@ -95,10 +96,11 @@ export const traysOf = (s: State, grid: CcgGrid): CcgGrid[] => (grid.tray ? s.gr
 
 export function sortItems(items: GridItem[], sort: GridSort, sessions: string[]): GridItem[] {
   const order = new Map(sessions.map((s, i) => [s, i]));
+  const strong = strongestFirst(items);
   const by: Record<GridSort, (a: GridItem, b: GridItem) => number> = {
     session: (a, b) => (order.get(a.session) ?? 0) - (order.get(b.session) ?? 0) || a.ref - b.ref || a.tgt - b.tgt,
-    strength: (a, b) => b.strength - a.strength,
-    on: (a, b) => b.on - a.on || b.strength - a.strength,
+    strength: strong,
+    on: (a, b) => b.on - a.on || strong(a, b),
     ref: (a, b) => a.ref - b.ref || a.tgt - b.tgt,
   };
   return [...items].sort(by[sort]);

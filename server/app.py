@@ -1,9 +1,11 @@
 """FastAPI over one open NeuroPy project; SD/CD stay the only owners of data and IO."""
+import base64
 import json
 import multiprocessing as mp
 import queue as queue_mod
 import threading
 import time
+from pathlib import Path
 
 import numpy as np
 
@@ -218,6 +220,20 @@ def tags(edit: TagEdit):
             p.drop(sess)
         p.unsaved += 1   # one edit however many sessions it spans
     return {sess: _session_data(p, sess) for sess in edit.members}
+
+
+class Images(BaseModel):
+    images: dict[str, str]   # file stem -> base64 PNG
+
+
+@app.post('/api/images')
+def save_images(body: Images):
+    """Cards exported from the viewer, into the project's own folder."""
+    folder = Path(project().cd.save_path) / 'images'
+    folder.mkdir(exist_ok=True)
+    for stem, png in body.images.items():
+        (folder / f'{Path(stem).name}.png').write_bytes(base64.b64decode(png))
+    return dict(folder=str(folder.resolve()))
 
 
 @app.get('/api/unsaved')

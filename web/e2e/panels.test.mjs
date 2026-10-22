@@ -66,6 +66,33 @@ test("a grid's lag window keeps only the lags inside it; clearing both ends show
   assert.equal(await app.state((s) => s.grids.at(-1).xlim), undefined);
 });
 
+test("picked cards export a PNG each, named by session, pair and segment alone", async () => {
+  const grid = await app.state((s) => s.grids.at(-1).id);
+  await app.page.waitForFunction(async (id) => {
+    const { drawn } = await import("/src/ui/galaxy/grid/gridCards.ts");
+    return drawn.get(id)?.items.filter((x) => x.curves.length).length >= 2;
+  }, grid, { timeout: 30000 });
+  await app.page.evaluate(async (id) => {
+    const { drawn, exportCards } = await import("/src/ui/galaxy/grid/gridCards.ts");
+    const keys = drawn.get(id).items.slice(0, 2).map((x) => x.key);
+    await exportCards(window.neuromapStore.get().grids.find((g) => g.id === id), keys);
+  }, grid);
+  const names = Object.keys(app.api.images);
+  assert.equal(names.length, 2);
+  for (const n of names) assert.match(n, /^day\d_\d+-\d+_\w+(\+\w+)*$/);
+  assert.ok(Object.values(app.api.images).every((png) => png.startsWith("iVBOR")), "PNG data");
+});
+
+test("strength sorts inhibitory pairs by how negative, and mixed E/I by size", async () => {
+  const order = await app.page.evaluate(async () => {
+    const { sortItems } = await import("/src/core/grid.ts");
+    const it = (key, ei, strength) => ({ key, ei, strength });
+    const keys = (xs) => sortItems(xs, "strength", []).map((x) => x.key).join("");
+    return [keys([it("a", "I", -0.1), it("b", "I", -0.9)]), keys([it("a", "E", 0.5), it("b", "I", -0.9), it("c", "E", 0.7)])];
+  });
+  assert.deepEqual(order, ["ba", "bca"]);
+});
+
 test("duplicating a workspace saves its copy and opens it", async () => {
   const grids = await app.state((s) => s.grids.length);
   await app.call("workspaceActions.ts", "duplicateWorkspace");

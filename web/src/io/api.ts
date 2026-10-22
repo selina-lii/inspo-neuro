@@ -72,6 +72,7 @@ export const api = {
     call<PairDetail["fit"]>("/peak_calls", { method: "POST", body: JSON.stringify({ session: s, ref, tgt, calls }) }),
   startFits: (s: string) => call<FitProgress>(`/fits/${encodeURIComponent(s)}`, { method: "POST" }),
   fits: (s: string, since: number) => call<FitProgress>(`/fits/${encodeURIComponent(s)}?since=${since}`),
+  saveImages: (images: Record<string, string>) => call<{ folder: string }>("/images", { method: "POST", body: JSON.stringify({ images }) }),
   tags: (edit: { kind: "pair" | "neuron"; group: string; op: "add" | "remove"; members: Record<string, (number | number[])[]> }) =>
     call<Record<string, { neurons: Neuron[]; links: Link[] }>>("/tags", { method: "POST", body: JSON.stringify(edit) }),
 };

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { ensureSegLinks, focusNeuron, focusPair, setMapSegment, setPairState } from "../../actions";
 import { areaColor, groupColor, neuronTypeColor, paletteColor, realGroups, TYPE_COLORS } from "../../core/colors";
 import { NORMS } from "../../core/norms";
+import { strongestFirst } from "../../core/pairs";
 import { activeSegment, type CcgOptions } from "../../core/store";
 import type { Link } from "../../core/types";
 import { api } from "../../io/api";
@@ -159,8 +160,8 @@ function NeuronInfo({ idx }: { idx: number }) {
   }, [key]);
   if (!n) return null;
   const v = s.neuronValues;
-  const out = s.links.filter((l) => l.ref === idx).sort((x, y) => y.strength - x.strength);
-  const into = s.links.filter((l) => l.tgt === idx).sort((x, y) => y.strength - x.strength);
+  const strongest = (xs: Link[]) => xs.sort(strongestFirst(xs));
+  const [out, into] = [strongest(s.links.filter((l) => l.ref === idx)), strongest(s.links.filter((l) => l.tgt === idx))];
   const order = new Map(s.segments.map((x, i) => [x.name, i]));
   const rates = v ? Object.entries(v.rates).filter(([seg]) => seg === "all" || MAIN.test(seg)).sort((a, b) => (order.get(a[0]) ?? -1) - (order.get(b[0]) ?? -1)) : [];
   const topRate = Math.max(1e-9, ...rates.map(([, r]) => r[idx] ?? 0));
