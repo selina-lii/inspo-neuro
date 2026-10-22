@@ -62,6 +62,10 @@ def sessions():
 def session(session: str):
     p = project()
     p.focus_session(session)
+    return _session_data(p, session)
+
+
+def _session_data(p, session: str) -> dict:
     neurons = p.cached(('neurons', session), lambda: views.neuron_table(p.nd, p.cd, p.sd, session))
     links = p.cached(('links', session), lambda: views.pair_links(p.cd, p.sd, session))
     fits = p.fits.get(session, {})
@@ -188,8 +192,7 @@ class TagEdit(BaseModel):
     kind: str            # 'pair' | 'neuron'
     group: str
     op: str              # 'add' | 'remove'
-    session: str
-    members: list        # [[ref, tgt]] pair positions, or [neuron_id]
+    members: dict        # session -> [[ref, tgt]] pair positions, or [neuron_id]
 
 
 @app.post('/api/tags')
@@ -197,23 +200,24 @@ def tags(edit: TagEdit):
     p = project()
     with p.lock:
         writable(p)
-        if edit.kind == 'pair':
-            for ref, tgt in edit.members:
-                key = views.key_for_pair(p.cd, edit.session, ref, tgt)
-                bucket = p.sd.get_selection_by_session(key).selections[key.ptr()]
-                if edit.op == 'add':
-                    p.sd.groups.add_to_group(edit.group, edit.session, (ref, tgt))
-                    if (ref, tgt) not in bucket.selected and (ref, tgt) not in bucket.deleted:
-                        bucket.set_pair_state((ref, tgt), 'sel')
-                else:
-                    p.sd.groups.discard_from_group(edit.group, edit.session, (ref, tgt))
-        else:
-            for nid in edit.members:
-                key = Key(session=edit.session, ref=int(nid))
-                (p.sd.neuron_groups.add_member if edit.op == 'add' else p.sd.neuron_groups.discard_member)(edit.group, key)
-        p.unsaved += 1
-        p.drop(edit.session)
-    return session(edit.session)
+        for sess, members in edit.members.items():
+            if edit.kind == 'pair':
+                for ref, tgt in members:
+                    key = views.key_for_pair(p.cd, sess, ref, tgt)
+                    bucket = p.sd.get_selection_by_session(key).selections[key.ptr()]
+                    if edit.op == 'add':
+                        p.sd.groups.add_to_group(edit.group, sess, (ref, tgt))
+                        if (ref, tgt) not in bucket.selected and (ref, tgt) not in bucket.deleted:
+                            bucket.set_pair_state((ref, tgt), 'sel')
+                    else:
+                        p.sd.groups.discard_from_group(edit.group, sess, (ref, tgt))
+            else:
+                for nid in members:
+                    key = Key(session=sess, ref=int(nid))
+                    (p.sd.neuron_groups.add_member if edit.op == 'add' else p.sd.neuron_groups.discard_member)(edit.group, key)
+            p.drop(sess)
+        p.unsaved += 1   # one edit however many sessions it spans
+    return {sess: _session_data(p, sess) for sess in edit.members}
 
 
 @app.get('/api/unsaved')

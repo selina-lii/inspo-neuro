@@ -469,11 +469,8 @@ async function editTags(kind: "pair" | "neuron", name: string, op: "add" | "remo
   const write = (o: "add" | "remove") => queued(async () => {
     store.set({ busy: "Saving tags…", error: null });
     try {
-      for (const [session, members] of edits) {
-        if (!members.length) continue;
-        const { neurons, links } = await api.tags({ kind, group: name, op: o, session, members });
-        takeSession(session, links, neurons);
-      }
+      const changed = await api.tags({ kind, group: name, op: o, members: Object.fromEntries([...edits].filter(([, m]) => m.length)) });
+      for (const [session, { neurons, links }] of Object.entries(changed)) takeSession(session, links, neurons);
       countUnsaved();
       const info = await api.sessions();
       store.set({ busy: null, pairGroups: info.pair_groups, neuronGroups: info.neuron_groups, groupMeta: info.group_meta });
