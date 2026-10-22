@@ -3,6 +3,7 @@ import { keyedPairs, toggleGroup } from "../../../actions";
 import { realGroups } from "../../../core/colors";
 import { traysOf, type CcgGrid } from "../../../core/grid";
 import { mergeTray, moveToTray } from "../../../gridActions";
+import { testFromGrid, testsFedBy, unfeedTest } from "../../../feedActions";
 import { useStore } from "../../useStore";
 import { useGridItems } from "./gridItems";
 
@@ -20,6 +21,8 @@ export function TrayMenu({ grid, act }: { grid: CcgGrid; act: (f: () => void) =>
         </>
       )}
       {trays.map((t, i) => t.id !== grid.id && <button key={`m${t.id}`} onClick={act(() => mergeTray(grid.id, t.id))}>merge this tray into tray {i + 1}</button>)}
+      {keys.length > 0 && <button onClick={act(() => testFromGrid(grid, keys))}>new stats test from this grid</button>}
+      {testsFedBy(grid.id).map((t) => <button key={`f${t.id}`} onClick={act(() => unfeedTest(grid.id, t.id))}>stop feeding {t.name || "unsaved test"}</button>)}
       {keys.length > 0 && (
         <select value="" title="tag every pair in this tray, or untag them when all are in" onChange={(e) => e.target.value && act(() => void toggleGroup(e.target.value, keyedPairs(keys)))()}>
           <option value="">tag all {keys.length} in this tray…</option>

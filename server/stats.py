@@ -8,6 +8,8 @@ import numpy as np
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
+from neuropy.analyses.pair_selection_data import DerivedRule
+from neuropy.analyses.utils import _SPECIAL_PREFIX
 from neuropy.ui.app_state import DisplayConfig
 from neuropy.ui.stats_tests_backend import StatsTestBackend
 
@@ -32,11 +34,55 @@ class SaveRequest(BaseModel):
     job: int
 
 
-def _backend(p, display: dict | None) -> StatsTestBackend:
+class PairsBackend(StatsTestBackend):
+    """Rows fed by a CCG grid draw from its pairs alone."""
+
+    def __init__(self, *args, **kw):
+        super().__init__(*args, **kw)
+        self.row_pairs: dict = {}   # row id -> {(session, ref, tgt)}
+        self._only = None
+
+    def collect_row(self, cfg, resolution: str) -> dict:
+        self._only = self.row_pairs.get(cfg.id)
+        try:
+            return super().collect_row(cfg, resolution)
+        finally:
+            self._only = None
+
+    def pairs_for_rules(self, rules: list, ptr_key) -> set:
+        out = super().pairs_for_rules(rules, ptr_key)
+        if self._only is None:
+            return out
+        s = str(ptr_key.session)
+        return {q for q in out if (s, int(q[0]), int(q[1])) in self._only}
+
+
+def _backend(p, display: dict | None) -> PairsBackend:
     dc = DisplayConfig()
     if display:
         dc.__setstate__(display)
-    return StatsTestBackend(p.cd, p.sd, display=dc)
+    return PairsBackend(p.cd, p.sd, display=dc)
+
+
+def _pair_keys(keys: list) -> set:
+    return {(sess, int(r), int(t)) for sess, r, t in (k.split('|') for k in keys)}
+
+
+def _tag_fed_rows(p, b: PairsBackend, name: str) -> None:
+    """A grid-fed row's pairs become a hidden pair tag it is ruled by, so Qt reproduces the row."""
+    groups = p.sd.groups
+    for row in b.rows:
+        if row.id not in b.row_pairs:
+            continue
+        tag = f'{_SPECIAL_PREFIX}grid · {name} · {row.name}'
+        if tag in groups.defined_groups:
+            groups.delete_group(tag)
+        groups.create_group(tag)
+        for sess, ref, tgt in b.row_pairs[row.id]:
+            groups.add_to_group(tag, sess, (ref, tgt))
+            p.drop(sess)
+        row.rules = [r for r in row.rules if tag not in r.values] + [DerivedRule(kind=DerivedRule.PAIR_TAG, values=[tag])]
+    groups.save()
 
 
 def _config(b: StatsTestBackend) -> dict:
@@ -83,7 +129,8 @@ def _run(p, job: dict):
 def run(cfg: StatsConfig):
     p = project()
     b = _backend(p, cfg.display)
-    b.from_dict(dict(rows=cfg.rows, test=cfg.test, view=cfg.view))
+    b.from_dict(dict(rows=[{k: v for k, v in r.items() if k not in ('pairs', 'fed')} for r in cfg.rows], test=cfg.test, view=cfg.view))
+    b.row_pairs = {r['id']: _pair_keys(r['pairs']) for r in cfg.rows if 'pairs' in r}
     b.test_config.thin_seed = int(np.random.default_rng().integers(1 << 31))   # each run draws a new sample
     if (err := b.validate()):
         raise HTTPException(400, err)
@@ -122,5 +169,6 @@ def save(req: SaveRequest):
             dest = STATE_DIR / p.name / 'backups' / 'stats_results' / time.strftime('%Y%m%d_%H%M%S')
             dest.mkdir(parents=True, exist_ok=True)
             shutil.copy2(path, dest / path.name)
+        _tag_fed_rows(p, b, req.name)
         b.save(req.name, display=b.display.serialize())
     return dict(ok=True, name=req.name)

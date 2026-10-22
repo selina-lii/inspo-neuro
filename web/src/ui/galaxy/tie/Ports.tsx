@@ -4,6 +4,7 @@ import { useFrame, useThree, type ThreeEvent } from "@react-three/fiber";
 import { useMemo, useRef, useState } from "react";
 import { BufferGeometry, Float32BufferAttribute, type Mesh, Plane, Quaternion, Vector3 } from "three";
 import { patchGrid } from "../../../gridActions";
+import { feedTest } from "../../../feedActions";
 import { pick3, tie } from "../../../stackActions";
 import { useStore } from "../../useStore";
 import { pointer } from "../pointer";
@@ -61,6 +62,8 @@ export function TiePorts() {
       // a style node styles a grid's curves
       const style = ends.find((id) => id.startsWith("style:"));
       if (style) return void (grid && patchGrid(grid.slice(5), { style: style.slice(6) }));
+      // dragged from a grid to a board, the grid feeds the test; the other way, the board feeds the grid
+      if (grid && drag.from === grid && other(grid).startsWith("board:")) return feedTest(grid.slice(5), other(grid).slice(6));
       if (grid) return patchGrid(grid.slice(5), { source: other(grid) });
       if (ends.some((id) => id.startsWith("node:"))) return;
       const [board, net] = kind === "board" ? [drag.from, target.id] : [target.id, drag.from];
@@ -91,6 +94,9 @@ export function TiePorts() {
       {s.grids.filter((g) => g.config && ids.includes(`panel:${g.config}`)).map((g) => (
         <Cable key={`cfg${g.id}`} a={`grid:${g.id}`} b={`panel:${g.config}`} picked={false} onPick={() => undefined} onMenu={() => claimMenu({ kind: "grid", id: g.id })} />
       ))}
+      {s.stats.tests.flatMap((t) => [...new Set(t.config.rows.flatMap((r) => (r.fed ? [r.fed] : [])))].filter((g) => ids.includes(`grid:${g}`) && ids.includes(`board:${t.id}`)).map((g) => (
+        <Cable key={`feed${g}${t.id}`} a={`grid:${g}`} b={`board:${t.id}`} picked={false} onPick={() => undefined} onMenu={() => claimMenu({ kind: "grid", id: g })} />
+      )))}
       {s.grids.filter((g) => g.style && ids.includes(`style:${g.style}`)).map((g) => (
         <Cable key={`sty${g.id}`} a={`grid:${g.id}`} b={`style:${g.style}`} picked={false} onPick={() => undefined} onMenu={() => claimMenu({ kind: "grid", id: g.id })} />
       ))}

@@ -8,6 +8,7 @@ export type RowConfig = {
   sessions: string[]; conn_types: string[]; segments: string[]; resolution: string[];
   rules: Rule[]; data_type: string;
   follow: number | null; follow_pickers: string[]; follow_exclude: boolean;
+  fed?: string; pairs?: string[];   // a row a CCG grid feeds: its pairs ("session|ref|tgt") alone, kept in step with the grid
 };
 
 export type TestConfig = {
@@ -66,6 +67,7 @@ export type StatsTest = {
   text: string;
   results: StatsResult[];
   warnings: string[];
+  stale?: boolean;   // a grid feeding it changed since this result
 };
 
 export type Vec3 = [number, number, number];
