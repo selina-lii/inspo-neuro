@@ -172,7 +172,11 @@ const AXIS_QUATS: Record<string, Quat> = {
 export const axisQuat = (axis: string): Quat => AXIS_QUATS[axis]!;
 
 /** New boards line up right of the network, each beside the last; `half`: the new board's half width in the world. */
+/** A new board faces +x, right of the network, in the first free place along z: boards already far away do not push it out. */
 export function defaultPose(boards: Board[], center: Vec3, extent: number, half: number): Pose {
-  const x = boards.reduce((right, b) => Math.max(right, b.pose.p[0] + 2 * half + 2), center[0] + extent / 2 + 4 + half);
-  return { p: [x, center[1], center[2]], q: axisQuat("+z") };
+  const x = center[0] + extent / 2 + 4 + half;
+  const step = 2 * half + 2;
+  let k = 0;
+  while (boards.some((b) => Math.hypot(b.pose.p[0] - x, b.pose.p[2] - (center[2] - k * step)) < half)) k++;
+  return { p: [x, center[1], center[2] - k * step], q: axisQuat("+x") };
 }

@@ -565,12 +565,14 @@ export function stepFocus(step: number): void {
   if (next) focusPair(next.ref, next.tgt);
 }
 
-/** Another copy of the network, showing *segment*, set down just past the right edge of everything in the scene. */
+/** Another copy of the network, showing *segment*, in the first free place right of the open one: strays far away do not push it out. */
 export function addNetwork(segment: string, center: [number, number, number], extent: number): string {
   const s = store.get();
-  const right = Math.max(center[0] + extent, ...s.networks.map((n) => n.p[0] + extent * 1.2), ...s.stats.boards.map((b) => b.pose.p[0] + 6));
+  const at = (k: number): [number, number, number] => [center[0] + s.mainAt[0] + k * extent * 3, center[1] + s.mainAt[1], center[2] + s.mainAt[2]];
+  let k = 1;
+  while (s.networks.some((n) => Math.hypot(n.p[0] - at(k)[0], n.p[1] - at(k)[1], n.p[2] - at(k)[2]) < extent)) k++;
   const id = `n${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`;
-  setNetworks([...s.networks, { id, segment, p: [right + extent * 0.6, center[1], center[2]] }]);
+  setNetworks([...s.networks, { id, segment, p: at(k) }]);
   if (s.session) ensureSegLinks(s.session, segment);
   return id;
 }
