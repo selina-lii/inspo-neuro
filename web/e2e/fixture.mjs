@@ -90,6 +90,8 @@ const trace = (session, ref, tgt, segment, res = "lowres") => [LAGS.map((lag) =>
 /** The API as the server answers it, kept in memory: workspaces persist across reloads of one browser context. */
 export function makeApi() {
   const fitting = { polls: 0 };
+  // `slow.ms` > 0: every answer takes that long, as a big session's would
+  const slow = { ms: 0 };
   const workspaces = { main: { tests: [], boards: [], session: SESSIONS[0] } };
   const jobs = [];
   const images = {};
@@ -167,5 +169,5 @@ export function makeApi() {
     });
     return out;
   };
-  return { json, stack, bin, workspaces, images, fitting };
+  return { json, stack, bin, workspaces, images, fitting, slow };
 }
