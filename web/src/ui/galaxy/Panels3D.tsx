@@ -246,7 +246,8 @@ export function Panels3D() {
   const { panels } = useStore();
   const s = useStore();
   useEffect(() => {
-    const away = (e: PointerEvent) => !e.shiftKey && !(e.target as HTMLElement).closest?.(".panel3d") && store.get().picked3?.kind === "panel" && store.set({ picked3: null });
+    // a press on the panel's own gizmo (it has just set pointer.busy) keeps the panel selected
+    const away = (e: PointerEvent) => !e.shiftKey && !pointer.busy && !(e.target as HTMLElement).closest?.(".panel3d") && store.get().picked3?.kind === "panel" && store.set({ picked3: null });
     window.addEventListener("pointerdown", away);
     return () => window.removeEventListener("pointerdown", away);
   }, []);
