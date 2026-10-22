@@ -41,7 +41,8 @@ test("stats 1 → tray → stats 2 keeps every pair's own values", async () => {
 
   await app.call("gridActions.ts", "addGrid");
   const g1 = await app.state((s) => s.grids.at(-1).id);
-  await app.call("gridActions.ts", "patchGrid", g1, { source: `board:${t1}`, view: "stats" });
+  await app.call("wireActions.ts", "connect", `board:${t1}`, `grid:${g1}`);
+  await app.call("gridActions.ts", "patchGrid", g1, { view: "stats" });
   await app.settle(1500);
   const all = await gridKeys(g1);
   assert.equal(all.length, 80, "the grid holds stats 1's pairs, both sessions");
@@ -56,7 +57,7 @@ test("stats 1 → tray → stats 2 keeps every pair's own values", async () => {
   // stats 2 measures under its own CS settings: its values differ from stats 1's for the same pair
   const t2 = await newRunTest();
   await app.call("statsActions.ts", "updateConfig", t2, { display: { offset: 10 } });
-  await app.call("feedActions.ts", "feedTest", g2, t2);
+  await app.call("wireActions.ts", "connect", `grid:${g2}`, `board:${t2}`);
   await app.settle(800);
   const fed = await app.page.evaluate((id) => window.neuromapStore.get().stats.tests.find((t) => t.id === id).config.rows, t2);
   assert.equal(fed.length, 4, "one fed row per grid curve");

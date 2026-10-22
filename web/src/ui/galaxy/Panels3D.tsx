@@ -26,6 +26,7 @@ import { selected3 } from "../../core/select";
 import { pick3 } from "../../stackActions";
 import { onStopMoves, pointer } from "./pointer";
 import { dockedOn } from "../../core/grid";
+import { gridConfig } from "../../core/wires";
 import { commit, commitGroup, groupOf, placeOf, preview, previewGroup, startOf, transformed, type Group3, type Placement } from "./select3";
 
 /** 3D units per panel pixel, at object size 1. */
@@ -151,7 +152,7 @@ export function PanelLayer({ host, box }: { host: RefObject<HTMLDivElement | nul
         const lift = (bar ? bar.element.offsetHeight * bar.scale.x : 0) + 0.1 + (o.element.offsetHeight * o.scale.x) / 2;
         o.quaternion.copy(a.q);
         // a legend sits right of the grid's CCG panel when that is docked too
-        const cfg = p.kind === "legend" ? store.get().grids.find((g) => g.id === host)?.config : undefined;
+        const cfg = p.kind === "legend" && host ? gridConfig(store.get(), host) : undefined;
         const beside = cfg && dockedOn(store.get(), cfg) === host ? objects.get(cfg) : undefined;
         const x = beside ? beside.element.offsetWidth * beside.scale.x + 0.2 : 0;
         o.position.copy(a.at).add(new Vector3(x + (o.element.offsetWidth * o.scale.x) / 2, lift, 0).applyQuaternion(a.q));

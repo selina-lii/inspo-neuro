@@ -3,6 +3,7 @@ import type { Playback, StackLayer, Tie } from "./stack";
 import { EMPTY_STATS, type Pose, type StatsState } from "./stats";
 import type { Area, ExtendUnit, GroupMeta, LayoutKind, Link, Neuron, NeuronValues, Point, Point3, SegLinks, Segment, Selection, Shank } from "./types";
 import type { CcgGrid, PairNode, StyleNode } from "./grid";
+import type { Wire } from "./wires";
 
 export type Filters = {
   types: Set<string>;
@@ -25,7 +26,7 @@ export type Toast = { text: string; undo?: () => void } | null;
 /** One map in the space: the same neurons, shown for one segment, offset from the first map. */
 export type MapInstance = { id: string; segment: string; dx: number; dy: number };
 /** A network copy in 3D: *p* is where its centre sits in the scene, *s* its own size. */
-export type NetworkCopy = { id: string; segment: string; p: [number, number, number]; s?: number; input?: string | null };   // input: the CCG grid whose pairs it shows
+export type NetworkCopy = { id: string; segment: string; p: [number, number, number]; s?: number };
 
 /** A panel: a React Flow node at x/y in 2D, an object at its pose in 3D; w and h, in pixels, serve both. */
 export type SpacePanel = { id: string; kind: "details" | "ccg" | "timeline" | "pairs" | "stats" | "legend" | "metadata"; x: number; y: number; w: number; h: number; auto: boolean; collapsed?: boolean; closed?: boolean; pose?: Pose; summon?: boolean; ccg?: CcgOptions; pair?: string | null };   // summon: bring it in front of the 3D camera; ccg: an added CCG panel's own options; pair: "session|ref|tgt" last clicked in a grid it configures
@@ -71,6 +72,7 @@ export type State = {
   objectScale: number;   // size of the objects placed in 3D (boards, panels, CCG cards), together
   cardScale: number;   // the CCG cards' own size, on top of objectScale
   ties: Tie[];   // stats boards cabled to a network: the network grows into the test's session stack
+  wires: Wire[];   // the stored cables: grids' sources, configs, legends and styles, networks' inputs
   stack: Record<string, StackLayer>;   // per session, a stack layer's data, fetched once
   stackCards: "picked" | "all";   // on a stack, overlay cards for the picked pair or every pair in the test
   playback: Playback | null;
@@ -166,6 +168,7 @@ const initial: State = {
   objectScale: 0.6,
   cardScale: 1,
   ties: [],
+  wires: [],
   stack: {},
   stackCards: "picked",
   playback: null,

@@ -2,20 +2,19 @@
 import type { Quat, Rule, Vec3 } from "./stats";
 import { DEFAULT_CCG, panelCcg, type CcgOptions, type State } from "./store";
 import type { Trace } from "./types";
+import { gridConfig, gridLegend, gridSource, gridStyle, idOf, targetsOf } from "./wires";
 
 export type GridSort = "session" | "strength" | "on" | "ref";
 
-/** `source`: the port it is cabled to ("net:main", "net:<copy>", "board:<test>"); pages past the first stack behind it. */
+/** Pages past the first stack behind it; what it is cabled to lives in the wires. */
 export type CcgGrid = {
-  id: string; p: Vec3; q: Quat; s?: number; source: string | null; label?: string;
+  id: string; p: Vec3; q: Quat; s?: number; label?: string;
   cols: number; rows: number; sort: GridSort; segMode: "overlay" | "series"; axis: "x" | "y";
-  segments: string[]; pairs: "shown" | "selected"; page: number; summon?: boolean; compact?: boolean; config?: string | null;
-  legend?: string | null;   // a legend panel cabled to it: one key for the grid, so its cells drop their own
+  segments: string[]; pairs: "shown" | "selected"; page: number; summon?: boolean; compact?: boolean;
   picking?: boolean;   // select mode: a click picks a card, a drag sweeps a run of them
   tray?: string;   // the set of trays it shares its source's pairs with; each pair lives in one tray
   keys?: string[];   // the pairs this tray holds; without keys, every pair no other tray in its set holds
   list?: boolean;   // one column, an info line beside each pair
-  style?: string | null;   // the style node cabled to it
   view?: "ccg" | "stats";   // stats: each card plots the pair's value per curve, as its linked test measures it
   metric?: string;   // the stats metric that view plots
   sameScale?: boolean;   // every card on one y range, the grid's whole
@@ -24,9 +23,10 @@ export type CcgGrid = {
 
 /** The test a grid's stats view reads: one it feeds, which measures its pairs as the grid has them, else the board feeding it. */
 export const linkedTest = (s: State, grid: CcgGrid) => {
-  const fed = s.stats.tests.find((t) => t.config.rows.some((r) => r.fed === grid.id));
-  const [kind, id] = (grid.source ?? ":").split(":");
-  return fed ?? (kind === "board" ? s.stats.tests.find((t) => t.id === id) : undefined);
+  const fed = targetsOf(s, `grid:${grid.id}`, "feed")[0];
+  const source = gridSource(s, grid.id);
+  const id = fed ?? (source?.startsWith("board:") ? source : null);
+  return id ? s.stats.tests.find((t) => t.id === idOf(id)) : undefined;
 };
 
 /** How one segment's curves draw on the grids cabled to a style node. */
@@ -39,7 +39,7 @@ export const CURVE_DEFAULT = { width: 1.4, alpha: 1 };
 
 /** A curve as the grid's style node draws it, and its layer: unstyled curves lie under the styled ones. */
 export function styledCurve<C extends { label: string; color: string }>(s: State, grid: CcgGrid, c: C): C & { width?: number; alpha?: number; layer: number } {
-  const curves = s.styleNodes.find((n) => n.id === grid.style)?.curves ?? [];
+  const curves = s.styleNodes.find((n) => n.id === gridStyle(s, grid.id))?.curves ?? [];
   const i = curves.findIndex((x) => x.label === c.label);
   return i < 0 ? { ...c, layer: -1 } : { ...c, color: curves[i]!.color, width: curves[i]!.width, alpha: curves[i]!.alpha, layer: i };
 }
@@ -63,14 +63,17 @@ export const nodePairs = (s: State, n: PairNode): string[] => [...new Set([...(s
 
 /** The one grid a CCG or legend panel is cabled to, which it then sits on; trays of one set share theirs on the first tray. */
 export const dockedOn = (s: State, panel: string): string | undefined => {
-  const on = s.grids.filter((g) => g.config === panel || g.legend === panel);
+  const on = s.grids.filter((g) => gridConfig(s, g.id) === panel || gridLegend(s, g.id) === panel);
   if (on.length === 1) return on[0]!.id;
   const set = on[0]?.tray;
   return set && on.every((g) => g.tray === set) ? traysOf(s, on[0]!)[0]!.id : undefined;
 };
 
 /** A grid draws with the options of the CCG panel cabled to it, the defaults without one. */
-export const optionsOf = (s: State, grid: CcgGrid): CcgOptions => (grid.config ? panelCcg(s, grid.config) : DEFAULT_CCG);
+export const optionsOf = (s: State, grid: CcgGrid): CcgOptions => {
+  const panel = gridConfig(s, grid.id);
+  return panel ? panelCcg(s, panel) : DEFAULT_CCG;
+};
 
 export type GridCurve = { label: string; color: string; trace: Trace };
 

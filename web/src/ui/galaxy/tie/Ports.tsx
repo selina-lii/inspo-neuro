@@ -1,17 +1,15 @@
-// Cable ports on every board, network, CCG grid and pair node: drag from one to a port of another kind to cable them (board–network
-// ties them; a grid takes its pairs from what it is cabled to); click a cable to select it (Delete cuts it) or right-click it.
+// Cable ports on every object, and a cable per wire: a drag from one port to another wires them as their ends allow
+// (core/wires); a click selects a cable (Delete cuts it), a right-click opens its object's menu.
 import { useFrame, useThree, type ThreeEvent } from "@react-three/fiber";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { BufferGeometry, Float32BufferAttribute, type Group, type Mesh, Plane, Quaternion, Vector3 } from "three";
-import { patchGrid, setNetworkInput } from "../../../gridActions";
-import { feedTest } from "../../../feedActions";
-import { setActiveTest } from "../../../statsActions";
-import { tie } from "../../../stackActions";
+import { connect } from "../../../wireActions";
+import { idOf, wiresOf } from "../../../core/wires";
 import { selected3 } from "../../../core/select";
 import type { Picked3 } from "../../../core/store";
 import { useStore } from "../../useStore";
 import { onStopMoves, pointer } from "../pointer";
-import { claimMenu } from "../SpaceMenu";
+import { claimMenu, type Target } from "../SpaceMenu";
 import { ports } from "./portAt";
 
 const HIT_PX = 30;
@@ -56,28 +54,7 @@ export function TiePorts() {
         .map((id) => ({ id, d: Math.hypot(screen(ports.get(id)!).x - at.x, screen(ports.get(id)!).y - at.y) }))
         .sort((a, b) => a.d - b.d)[0];
       setDrag(null);
-      if (!target || target.d > HIT_PX) return;
-      const ends = [drag.from, target.id];
-      const other = (end: string) => ends.find((x) => x !== end)!;
-      const grid = ends.find((id) => id.startsWith("grid:"));
-      // a CCG panel configures a grid, a legend keys it; anything else feeds it pairs
-      const panel = ends.find((id) => id.startsWith("panel:"));
-      const legend = panel && s.panels.find((p) => p.id === panel.slice(6))?.kind === "legend";
-      // the stats editor edits the test it is cabled to
-      const edited = ends.find((id) => id.startsWith("board:"));
-      if (panel === "panel:stats") return void (edited && setActiveTest(edited.slice(6)));
-      if (panel) return void (grid && patchGrid(grid.slice(5), legend ? { legend: panel.slice(6) } : { config: panel.slice(6) }));
-      // a style node styles a grid's curves
-      const style = ends.find((id) => id.startsWith("style:"));
-      if (style) return void (grid && patchGrid(grid.slice(5), { style: style.slice(6) }));
-      // dragged from a grid to a board, the grid feeds the test; the other way, the board feeds the grid
-      if (grid && drag.from === grid && other(grid).startsWith("board:")) return feedTest(grid.slice(5), other(grid).slice(6));
-      // dragged from a grid to a network copy, the network shows the grid's pairs
-      if (grid && drag.from === grid && other(grid).startsWith("net:") && other(grid) !== "net:main") return setNetworkInput(other(grid).slice(4), grid.slice(5));
-      if (grid) return patchGrid(grid.slice(5), { source: other(grid) });
-      if (ends.some((id) => id.startsWith("node:"))) return;
-      const [board, net] = kind === "board" ? [drag.from, target.id] : [target.id, drag.from];
-      tie(board.slice(6), net.slice(4));
+      if (target && target.d <= HIT_PX) connect(drag.from, target.id);
     },
   };
   useFrame(() => {
@@ -87,39 +64,19 @@ export function TiePorts() {
     a.setXYZ(1, ...(end.current.toArray() as [number, number, number]));
     a.needsUpdate = true;
   });
-  // a grid's cable, selected by a click and cut by Delete
-  const pickable = (id: string) => ({ picked: selected3(s, "cable", id), pick: { kind: "cable" as const, id } });
 
   return (
     <>
       {ids.map((id) => <Port key={id} id={id} lit={drag?.from === id} {...handlers} onPointerDown={start(id)} />)}
       {drag && <lineSegments geometry={line}><lineBasicMaterial color="#ff1dce" /></lineSegments>}
       {/* a cable shows while both its ends do */}
-      {s.ties.filter((t) => ids.includes(`net:${t.network}`) && ids.includes(`board:${t.board}`)).map((t) => (
-        <Cable key={t.board} a={`board:${t.board}`} b={`net:${t.network}`} flow="ab" picked={selected3(s, "tie", t.board)}
-          pick={{ kind: "tie", id: t.board }} onMenu={() => claimMenu({ kind: "tie", id: t.board })} />
-      ))}
-      {s.grids.filter((g) => g.source && ids.includes(g.source)).map((g) => (
-        <Cable key={g.id} a={`grid:${g.id}`} b={g.source!} flow="ba" {...pickable(`src|${g.id}`)} onMenu={() => claimMenu({ kind: "grid", id: g.id })} />
-      ))}
-      {s.grids.filter((g) => g.config && ids.includes(`panel:${g.config}`)).map((g) => (
-        <Cable key={`cfg${g.id}`} a={`grid:${g.id}`} b={`panel:${g.config}`} flow="ba" {...pickable(`cfg|${g.id}`)} onMenu={() => claimMenu({ kind: "grid", id: g.id })} />
-      ))}
-      {s.stats.tests.flatMap((t) => [...new Set(t.config.rows.flatMap((r) => (r.fed ? [r.fed] : [])))].filter((g) => ids.includes(`grid:${g}`) && ids.includes(`board:${t.id}`)).map((g) => (
-        <Cable key={`feed${g}${t.id}`} a={`grid:${g}`} b={`board:${t.id}`} flow="ab" {...pickable(`feed|${g}|${t.id}`)} onMenu={() => claimMenu({ kind: "grid", id: g })} />
-      )))}
-      {s.stats.active && ids.includes("panel:stats") && ids.includes(`board:${s.stats.active}`) && (
-        <Cable key="edit" a="panel:stats" b={`board:${s.stats.active}`} flow="ab" picked={false} onMenu={() => claimMenu({ kind: "panel", id: "stats" })} />
-      )}
-      {s.networks.filter((n) => n.input && ids.includes(`grid:${n.input}`)).map((n) => (
-        <Cable key={`in${n.id}`} a={`grid:${n.input}`} b={`net:${n.id}`} flow="ab" {...pickable(`in|${n.id}`)} onMenu={() => claimMenu({ kind: "network", id: n.id })} />
-      ))}
-      {s.grids.filter((g) => g.style && ids.includes(`style:${g.style}`)).map((g) => (
-        <Cable key={`sty${g.id}`} a={`grid:${g.id}`} b={`style:${g.style}`} flow="ba" {...pickable(`sty|${g.id}`)} onMenu={() => claimMenu({ kind: "grid", id: g.id })} />
-      ))}
-      {s.grids.filter((g) => g.legend && ids.includes(`panel:${g.legend}`)).map((g) => (
-        <Cable key={`key${g.id}`} a={`grid:${g.id}`} b={`panel:${g.legend}`} flow="ab" {...pickable(`key|${g.id}`)} onMenu={() => claimMenu({ kind: "grid", id: g.id })} />
-      ))}
+      {wiresOf(s).filter((w) => ids.includes(w.from) && ids.includes(w.to)).map((w) => {
+        const id = `${w.from}>${w.to}`;
+        const pick: Picked3 | undefined = w.role === "tie" ? { kind: "tie", id: idOf(w.from) } : w.role === "edit" ? undefined : { kind: "cable", id };
+        const grid = [w.from, w.to].find((p) => p.startsWith("grid:"));
+        const menu: Target = w.role === "tie" ? { kind: "tie", id: idOf(w.from) } : grid ? { kind: "grid", id: idOf(grid) } : { kind: "panel", id: idOf(w.from) };
+        return <Cable key={id} a={w.from} b={w.to} picked={pick ? selected3(s, pick.kind, pick.id) : false} pick={pick} onMenu={() => claimMenu(menu)} />;
+      })}
     </>
   );
 }
@@ -152,7 +109,7 @@ function Port({ id, lit, ...handlers }: { id: string; lit: boolean } & Record<st
 
 /** A cable: a thin tube between two ports, kept between them each frame. */
 /** A cable; *pick* makes it selectable like any object, by a click on it (with Shift or ⌘ joining the selection). */
-function Cable({ a: from, b: to, flow, picked, pick, onMenu }: { a: string; b: string; flow: "ab" | "ba"; picked: boolean; pick?: Picked3; onMenu(): void }) {
+function Cable({ a: from, b: to, picked, pick, onMenu }: { a: string; b: string; picked: boolean; pick?: Picked3; onMenu(): void }) {
   const group = useRef<Group>(null);
   const tube = useRef<Mesh>(null);
   const arrow = useRef<Mesh>(null);
@@ -178,7 +135,7 @@ function Cable({ a: from, b: to, flow, picked, pick, onMenu }: { a: string; b: s
         <cylinderGeometry args={[picked ? 0.12 : 0.07, picked ? 0.12 : 0.07, 1, 8]} />
         <meshBasicMaterial color="#ff1dce" transparent opacity={picked ? 1 : 0.75} />
       </mesh>
-      <mesh ref={arrow} rotation={[flow === "ab" ? 0 : Math.PI, 0, 0]}>
+      <mesh ref={arrow}>
         <coneGeometry args={[0.5, 1, 16]} />
         <meshBasicMaterial color="#ff1dce" />
       </mesh>

@@ -6,7 +6,7 @@ import { activeSegment, DEFAULT_PANELS, PANEL_PX, panelCcg, store, type CcgOptio
 import { linkKey, type Area, type LayoutKind, type Link, type Neuron, type Point } from "./core/types";
 import { api, toPoints, type FitProgress } from "./io/api";
 import { loadTraces, tracesKey } from "./io/traces";
-import { dropConfig, dropSource } from "./gridActions";
+import { dropPort } from "./wireActions";
 import { mainAtOf, mainHiddenOf, networksOf, newWorkspace, openWorkspace } from "./workspaceActions";
 import { record, undo } from "./history";
 
@@ -55,15 +55,17 @@ export async function boot(): Promise<void> {
   }
 }
 
-export async function openProject(name: string): Promise<void> {
+/** *back*: reopening the project already open, as a reload from disk does, comes back to where it was. */
+export async function openProject(name: string, back = false): Promise<void> {
   const { unsaved, project } = store.get();
   if (unsaved && !window.confirm(`${unsaved} unsaved edit(s) in ${project}. Discard them and open ${name}?`)) return;
   window.clearTimeout(fitTimer);
   store.set({ busy: `Opening ${name}…`, error: null, session: null, fitProgress: null });
   try {
+    const place = back ? savedPlace() : null;
     await api.open(name, unsaved > 0);
     store.set({ unsaved: 0 });
-    await afterOpen(null);
+    await afterOpen(place);
   } catch (error) {
     fail(error);
   }
@@ -193,9 +195,7 @@ export const panelsFrom = (saved: SpacePanel[] | undefined): SpacePanel[] =>
   saved?.length ? [...DEFAULT_PANELS.map((d) => saved.find((p) => p.id === d.id) ?? d), ...saved.filter((p) => p.ccg && !DEFAULT_PANELS.some((d) => d.id === p.id))] : DEFAULT_PANELS;
 
 /** Show a panel, expanded: where it last was in 2D, in front of the camera in 3D. */
-/** A panel opened fresh starts with no cables, whatever it held when it was closed. */
 export function openPanel(id: string): void {
-  if (store.get().panels.find((p) => p.id === id)?.closed) dropConfig(id);
   patchPanel(id, { collapsed: false, closed: false, summon: store.get().view === "3d" });
 }
 
@@ -226,7 +226,7 @@ export function addCcgPanel(from = "ccg"): void {
 
 /** Close a panel: an added CCG panel goes; either way its cables go, so the grids it configured fall back to the defaults. */
 export function closePanel(id: string): void {
-  dropConfig(id);
+  dropPort(`panel:${id}`);
   if (DEFAULT_PANELS.some((d) => d.id === id)) return patchPanel(id, { closed: true });
   store.set({ panels: store.get().panels.filter((p) => p.id !== id) });
 }
@@ -583,7 +583,7 @@ export const resizeNetwork = (id: string, size: number) => setNetworks(store.get
 
 export function removeNetwork(id: string): void {
   setNetworks(store.get().networks.filter((n) => n.id !== id));
-  dropSource(`net:${id}`);
+  dropPort(`net:${id}`);
 }
 
 export const setNetworks = (networks: NetworkCopy[]) => store.set({ networks });

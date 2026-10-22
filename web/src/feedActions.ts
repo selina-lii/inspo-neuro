@@ -2,6 +2,7 @@
 import { traysOf, type CcgGrid } from "./core/grid";
 import { newRow, type RowConfig } from "./core/stats";
 import { store } from "./core/store";
+import { gridSource, idOf } from "./core/wires";
 import { newTest, runTest, setRows } from "./statsActions";
 import { stackOf } from "./stackActions";
 
@@ -15,8 +16,8 @@ function gridLabel(grid: CcgGrid): string {
 
 /** The grid's curves and the segments each is measured in: a board's rows off a board, else one per grid segment. */
 export function gridCurves(grid: CcgGrid): { label: string; segments: string[] }[] {
-  const [kind, id] = (grid.source ?? ":").split(":");
-  const st = kind === "board" ? stackOf(id!) : null;
+  const source = gridSource(store.get(), grid.id);
+  const st = source?.startsWith("board:") ? stackOf(idOf(source)) : null;
   return st ? st.rows.map((r) => ({ label: r.name, segments: r.segments })) : grid.segments.map((seg) => ({ label: seg, segments: [seg] }));
 }
 

@@ -7,7 +7,7 @@ import {
 import { store } from "./core/store";
 import { statsApi, type RunStatus } from "./io/stats";
 import { loadPickCard, tie, untie } from "./stackActions";
-import { dropSource } from "./gridActions";
+import { dropPort } from "./wireActions";
 import { FRAME_H, MARGIN, ROW_W } from "./ui/galaxy/stats/boardGeometry";
 import type { WorkspaceDoc } from "./workspaceActions";
 
@@ -131,7 +131,7 @@ export function duplicateTest(id: string): void {
 
 export function closeTest(id: string): void {
   untie(id);
-  dropSource(`board:${id}`);
+  dropPort(`board:${id}`);
   const tests = stats().tests.filter((t) => t.id !== id);
   store.setStats({ tests, boards: stats().boards.filter((b) => b.id !== id), values: pruneValues(tests), active: tests[0]?.id ?? null });
 }

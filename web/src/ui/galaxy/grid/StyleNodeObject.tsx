@@ -4,6 +4,7 @@ import type { State } from "../../../core/store";
 import { patchStyle } from "../../../gridActions";
 import { gridKey } from "../../panel/Legend";
 import { useStore } from "../../useStore";
+import { gridStyle } from "../../../core/wires";
 import { Label3D } from "../stats/Label3D";
 import { NODE_BAR, NodeShell } from "./NodeShell";
 
@@ -11,7 +12,7 @@ const ROW = 0.36;
 
 /** The segments the node's grids draw, as [label, colour], bottom layer first. */
 export function styleLabels(s: State, node: StyleNode): [string, string][] {
-  const drawn = new Map(s.grids.filter((g) => g.style === node.id).flatMap((g) => gridKey(s, g)));
+  const drawn = new Map(s.grids.filter((g) => gridStyle(s, g.id) === node.id).flatMap((g) => gridKey(s, g)));
   const styled = node.curves.map((c): [string, string] => [c.label, c.color]);
   return [...[...drawn].filter(([l]) => !node.curves.some((c) => c.label === l)), ...styled];
 }

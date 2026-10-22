@@ -6,11 +6,13 @@ import type { Board, StatsConfig } from "./core/stats";
 import { store, type NetworkCopy, type SpacePanel } from "./core/store";
 import { api } from "./io/api";
 import { loadTies } from "./stackActions";
+import { legacyWires } from "./wireActions";
+import type { Wire } from "./core/wires";
 import { loadStats } from "./statsActions";
 
 export type WorkspaceDoc = {
   tests: { id: string; name: string; config: StatsConfig }[]; boards: Board[]; session?: string;
-  grids?: CcgGrid[]; pairNodes?: PairNode[]; styleNodes?: StyleNode[]; ties?: Tie[]; panels?: SpacePanel[];
+  grids?: CcgGrid[]; pairNodes?: PairNode[]; styleNodes?: StyleNode[]; ties?: Tie[]; wires?: Wire[]; panels?: SpacePanel[];
   networks?: Record<string, NetworkCopy[]>; mainHidden?: Record<string, boolean>;
   mainAt?: Record<string, [number, number, number]>;
 };
@@ -31,13 +33,14 @@ function legacy<T>(key: string, fallback: T): T {
   }
 }
 
-export const networksOf = (session: string): NetworkCopy[] => doc.networks?.[session] ?? legacy(`networks:${store.get().project}:${session}`, []);
+export const networksOf = (session: string): NetworkCopy[] =>
+  (doc.networks?.[session] ?? legacy<NetworkCopy[]>(`networks:${store.get().project}:${session}`, [])).map(({ input: _, ...n }: NetworkCopy & { input?: unknown }) => n);
 export const mainAtOf = (session: string): [number, number, number] => doc.mainAt?.[session] ?? [0, 0, 0];
 export const mainHiddenOf = (session: string): boolean => doc.mainHidden?.[session] ?? legacy(`mainHidden:${store.get().project}:${session}`, false);
 
 const watched = () => {
   const s = store.get();
-  return [s.workspace, s.session, s.stats.tests, s.stats.boards, s.grids, s.pairNodes, s.styleNodes, s.ties, s.panels, s.networks, s.mainHidden, s.mainAt];
+  return [s.workspace, s.session, s.stats.tests, s.stats.boards, s.grids, s.pairNodes, s.styleNodes, s.ties, s.wires, s.panels, s.networks, s.mainHidden, s.mainAt];
 };
 
 function flush(): void {
@@ -53,7 +56,7 @@ store.subscribe(() => {
   refs = now;
   doc = {
     session: s.session, tests: s.stats.tests.map((t) => ({ id: t.id, name: t.name, config: t.config })), boards: s.stats.boards,
-    grids: s.grids, pairNodes: s.pairNodes, styleNodes: s.styleNodes, ties: s.ties, panels: s.panels,
+    grids: s.grids, pairNodes: s.pairNodes, styleNodes: s.styleNodes, ties: s.ties, wires: s.wires, panels: s.panels,
     networks: { ...doc.networks, [s.session]: s.networks }, mainHidden: { ...doc.mainHidden, [s.session]: s.mainHidden },
     mainAt: { ...doc.mainAt, [s.session]: s.mainAt },
   };
@@ -69,9 +72,12 @@ export async function openWorkspace(name: string): Promise<void> {
   try {
     doc = await api.workspace(name);
     const { sessions, project } = store.get();
+    const grids: (CcgGrid & Record<string, unknown>)[] = doc.grids ?? legacy(`grids:${project}`, []);
+    // a workspace from before the wires kept them on the grids and network copies
+    const wires = doc.wires ?? legacyWires(grids, Object.values(doc.networks ?? {}).flat());
     store.set({
-      workspace: name, picked3: null, panels: panelsFrom(doc.panels ?? legacy("panels", undefined)),
-      grids: doc.grids ?? legacy(`grids:${project}`, []),
+      workspace: name, picked3: null, panels: panelsFrom(doc.panels ?? legacy("panels", undefined)), wires,
+      grids: grids.map(({ source: _s, config: _c, legend: _l, style: _y, ...g }) => g as CcgGrid),
       // nodes saved as filters of another source take a pick's fields
       pairNodes: (doc.pairNodes ?? legacy(`pairNodes:${project}`, [])).map((n) => ({ ...PICK_DEFAULTS, ...n })), picks: {}, styleNodes: doc.styleNodes ?? [],
     });

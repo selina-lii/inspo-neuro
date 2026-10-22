@@ -3,7 +3,9 @@ import { fail, targetPairs } from "./actions";
 import { CURVE_DEFAULT, PICK_DEFAULTS, pickQuery, type CcgGrid, type CurveStyle, type PairNode, type StyleNode } from "./core/grid";
 import { activeSegment, store } from "./core/store";
 import { api } from "./io/api";
-import { unfeedTest } from "./feedActions";
+import { copyWires, cut, dropPort } from "./wireActions";
+
+const newId = () => `g${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`;
 
 export const setGrids = (grids: CcgGrid[]) => store.set({ grids });
 
@@ -17,7 +19,7 @@ export const patchStyle = (id: string, patch: Partial<StyleNode>) => setStyles(s
 
 export function removeStyle(id: string): void {
   setStyles(store.get().styleNodes.filter((n) => n.id !== id));
-  setGrids(store.get().grids.map((g) => (g.style === id ? { ...g, style: null } : g)));
+  dropPort(`style:${id}`);
 }
 
 /** Restyle one segment's curves; a segment not styled yet joins on top, from its colour now. */
@@ -40,10 +42,12 @@ export function layerCurve(id: string, labels: [string, string][], label: string
 /** A new grid on the main network's pairs, brought in front of the camera. */
 export function addGrid(): void {
   const s = store.get();
+  const id = newId();
   setGrids([...s.grids, {
-    id: `g${Date.now().toString(36)}`, p: [0, 0, 0], q: [0, 0, 0, 1], source: "net:main", cols: 4, rows: 3, sort: "strength",
+    id, p: [0, 0, 0], q: [0, 0, 0, 1], cols: 4, rows: 3, sort: "strength",
     segMode: "overlay", axis: "x", segments: [activeSegment(s)], pairs: "shown", page: 0, summon: true,
   }]);
+  store.set({ wires: [...store.get().wires, { from: "net:main", to: `grid:${id}` }] });
 }
 
 export function addNode(): void {
@@ -79,10 +83,10 @@ export function dropFromNode(id: string): void {
 /** A copy of a grid, set beside it. */
 export function duplicateGrid(id: string): void {
   const g = store.get().grids.find((x) => x.id === id)!;
-  setGrids([...store.get().grids, { ...g, tray: undefined, id: newId(), p: [g.p[0] + 3, g.p[1] - 3, g.p[2]] }]);
+  const copy = newId();
+  setGrids([...store.get().grids, { ...g, tray: undefined, id: copy, p: [g.p[0] + 3, g.p[1] - 3, g.p[2]] }]);
+  copyWires(id, copy);
 }
-
-const newId = () => `g${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`;
 
 /** Moves pairs from a grid into a tray of its set, a new one beside it when `to` is null. */
 export function moveToTray(id: string, keys: string[], to: string | null): void {
@@ -98,6 +102,7 @@ export function moveToTray(id: string, keys: string[], to: string | null): void 
   });
   if (!to) grids.push({ ...g, tray, id: target, keys, page: 0, picking: false, p: [g.p[0] + 3, g.p[1] - 3, g.p[2]] });
   setGrids(grids);
+  if (!to) copyWires(id, target);
   store.set({ cells: new Set() });
 }
 
@@ -119,29 +124,13 @@ export function removeGrid(id: string): void {
   // the set's first tray hands the pairs no other tray holds to the next one
   const heir = gone.tray && !gone.keys ? rest.find((g) => g.tray === gone.tray) : undefined;
   setGrids(rest.map((g) => (g === heir ? { ...g, keys: undefined } : g)));
-  store.set({ networks: store.get().networks.map((n) => (n.input === id ? { ...n, input: null } : n)) });
+  dropPort(`grid:${id}`);
 }
-
-/** A network copy shows the pairs of *grid*; null: its tests' again. */
-export const setNetworkInput = (network: string, grid: string | null) =>
-  store.set({ networks: store.get().networks.map((n) => (n.id === network ? { ...n, input: grid } : n)) });
 
 export function removeNode(id: string): void {
   setNodes(store.get().pairNodes.filter((n) => n.id !== id));
-  dropSource(`node:${id}`);
+  dropPort(`node:${id}`);
 }
 
-/** Grids configured or keyed by a panel that is gone fall back to the default options and their own keys. */
-export const dropConfig = (panel: string) => setGrids(store.get().grids.map((g) => ({ ...g, config: g.config === panel ? null : g.config, legend: g.legend === panel ? null : g.legend })));
-
-/** Cut a grid's cable: to its source, CCG config, legend or style, or the test it feeds. */
-export function cutCable(id: string): void {
-  const [what, grid, test] = id.split("|") as [string, string, string];
-  if (what === "feed") return unfeedTest(grid, test);
-  if (what === "in") return setNetworkInput(grid, null);
-  const cut: Record<string, Partial<CcgGrid>> = { src: { source: null }, cfg: { config: null }, key: { legend: null }, sty: { style: null } };
-  patchGrid(grid, cut[what]!);
-}
-
-/** Grids cabled to a port that is gone lose their source. */
-export const dropSource = (port: string) => setGrids(store.get().grids.map((g) => (g.source === port ? { ...g, source: null } : g)));
+/** A selected cable, by its id "from>to". */
+export const cutCable = (id: string) => cut({ from: id.slice(0, id.indexOf(">")), to: id.slice(id.indexOf(">") + 1) });

@@ -8,6 +8,7 @@ import { useGridItems } from "./gridItems";
 import { readable } from "./gridSeries";
 import { ListPicker } from "../../stats/ListPicker";
 import { useStore } from "../../useStore";
+import { gridSource } from "../../../core/wires";
 import { FloatBar } from "../stats/BoardOverlay";
 
 const SORTS: [GridSort, string][] = [["strength", "by strength"], ["on", "by on segments"], ["session", "by session"], ["ref", "by ref id"]];
@@ -16,8 +17,9 @@ export function GridBar({ grid }: { grid: CcgGrid }) {
   const s = useStore();
   const { segments } = s;
   const set = (patch: Partial<CcgGrid>) => patchGrid(grid.id, patch);
-  const onNetwork = grid.source?.startsWith("net:");
-  const bySegment = onNetwork || grid.source?.startsWith("node:");
+  const source = gridSource(s, grid.id);
+  const onNetwork = source?.startsWith("net:");
+  const bySegment = onNetwork || source?.startsWith("node:");
   const options = s.stats.options;
   const items = options ? [...new Set(["all", ...options.pickers.seg.items])] : ["all", ...segments.map((x) => x.name)];
   // a family stands for its members, each its own curve

@@ -14,9 +14,13 @@ import { AddMenu } from "../menu/AddMenu";
 import { TrayMenu } from "./grid/TrayMenu";
 import { store } from "../../core/store";
 import { useStore } from "../useStore";
+import { cut } from "../../wireActions";
+import { wiresOf, type Role } from "../../core/wires";
 import { onStopMoves } from "./pointer";
 import { rename } from "./titleTip";
 import { actsOn, align3, duplicate3, snapTo3 } from "./select3";
+
+const WIRE_NAME: Record<Role, string> = { pairs: "pair source", config: "CCG config", legend: "legend", style: "curve style", input: "network input", tie: "network", feed: "fed test", edit: "editor" };
 
 export type Target = { kind: "board" | "network" | "panel" | "tie" | "grid" | "node" | "style"; id: string };
 let pending: Target | null = null;
@@ -169,9 +173,9 @@ export function SpaceMenu({ at, onClose, onCenter }: { at: { x: number; y: numbe
               <button onClick={act(() => carry(target))}>move</button>
               <Many target={target!} act={act} />
               <TrayMenu grid={grid} act={act} />
-              {grid.source && <button onClick={act(() => patchGrid(grid.id, { source: null }))}>disconnect its cable</button>}
-              {grid.config && <button onClick={act(() => patchGrid(grid.id, { config: null }))}>disconnect its CCG config</button>}
-              {grid.legend && <button onClick={act(() => patchGrid(grid.id, { legend: null }))}>disconnect its legend</button>}
+              {wiresOf(store.get()).filter((w) => w.to === `grid:${grid.id}` || w.from === `grid:${grid.id}`).map((w) => (
+                <button key={`${w.from}>${w.to}`} onClick={act(() => cut(w))}>disconnect its {WIRE_NAME[w.role]}</button>
+              ))}
               <button onClick={act(() => removeGrid(grid.id))}>close</button>
             </>
           ) : node ? (

@@ -12,10 +12,12 @@ import { linkKey } from "../../../core/types";
 import { loadTraces, traceOf } from "../../../io/traces";
 import { ensureLayer, ensureStack, stackOf, tiedPairs } from "../../../stackActions";
 import { useStore } from "../../useStore";
+import { gridSource } from "../../../core/wires";
 
 export function useGridItems(grid: CcgGrid): GridItem[] {
   const s = useStore();
-  const [kind, id] = (grid.source ?? ":").split(":") as [string, string];
+  const source = gridSource(s, grid.id);
+  const [kind, id] = (source ?? ":").split(":") as [string, string];
   const node = kind === "node" ? s.pairNodes.find((n) => n.id === id) : undefined;
   const picked = node ? nodePairs(s, node) : [];
   const bySession = new Map<string, string[]>();
@@ -41,7 +43,7 @@ export function useGridItems(grid: CcgGrid): GridItem[] {
     const items = all.filter((x) => tray.keys.has(x.key) === tray.own);
     const sessions = kind === "board" ? stackOf(id)?.sessions ?? [] : [s.session ?? "", ...bySession.keys()];
     return sortItems(items, grid.sort, sessions);
-  }, [s.links, s.filters, s.selection, s.segLinks, s.stack, s.stats.values, o, s.ties, grid.sort, grid.pairs, s.stats.pick, grid.segments.join(), grid.source, loaded, tray.own, [...tray.keys].join(), picked.join()]);
+  }, [s.links, s.filters, s.selection, s.segLinks, s.stack, s.stats.values, o, s.ties, grid.sort, grid.pairs, s.stats.pick, grid.segments.join(), source, loaded, tray.own, [...tray.keys].join(), picked.join()]);
 }
 
 function netLinks(s: State, grid: CcgGrid, network: string): Link[] {

@@ -6,10 +6,11 @@ import type { State } from "../../core/store";
 import { stackOf } from "../../stackActions";
 import { useStore } from "../useStore";
 import { PanelId } from "./panelCcg";
+import { gridLegend, gridSource } from "../../core/wires";
 
 /** What a grid's curves stand for, in their style node's colours: its segments, or the test's rows off a board. */
 export function gridKey(s: State, grid: State["grids"][number]): [string, string][] {
-  const [kind, id] = (grid.source ?? ":").split(":");
+  const [kind, id] = (gridSource(s, grid.id) ?? ":").split(":");
   const st = kind === "board" ? stackOf(id!) : undefined;
   const raw: [string, string][] = st ? st.rows.map((r) => [r.name, r.color]) : grid.segments.map((seg) => [seg, paletteColor(seg)]);
   return raw.map(([label, color]) => [label, styledCurve(s, grid, { label, color }).color]);
@@ -43,7 +44,7 @@ function LegendBlock({ spec }: { spec: LegendSpec }) {
 export function LegendBody() {
   const s = useStore();
   const id = useContext(PanelId);
-  const grid = s.grids.find((g) => g.legend === id);
+  const grid = s.grids.find((g) => gridLegend(s, g.id) === id);
   if (grid) return <div className="legend"><LegendBlock spec={{ kind: "categories", title: "curves", entries: gridKey(s, grid) }} /></div>;
   const dash = { uncertain: "uncertain fit", off: "off in segment", unselected: "unselected", none: "" }[s.encoding.dash];
   return (

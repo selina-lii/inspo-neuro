@@ -10,6 +10,7 @@ import { acgOf, fitOf, forgetFits, setFit, tracesKey, traceOf, waveformOf } from
 import { useStore } from "../useStore";
 import { CcgPlot, type Waveform } from "./CcgPlot";
 import { PanelId, usePanelCcg } from "./panelCcg";
+import { gridConfig } from "../../core/wires";
 import type { CcgGrid } from "../../core/grid";
 import { useGridItems } from "../galaxy/grid/gridItems";
 
@@ -22,7 +23,7 @@ export function CcgBody() {
   const s = useStore();
   const id = useContext(PanelId);
   const pair = s.panels.find((p) => p.id === id)?.pair;
-  const grid = s.grids.find((g) => g.config === id);
+  const grid = s.grids.find((g) => gridConfig(s, g.id) === id);
   // a card clicked in its grid opens as the grid draws it: its segments or rows, any session
   if (pair && grid) return <GridPairCcg grid={grid} pair={pair} />;
   if (s.focus?.kind !== "pair") return <div className="empty">{grid ? "Click a card in its grid, or a link, to see its CCG here." : "Click a link to see its CCG here."}</div>;

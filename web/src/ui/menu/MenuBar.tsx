@@ -1,5 +1,5 @@
 // The menu bar: what is open on the left, every other control folded into a menu, the save state on the right.
-import { resetPanels, saveEdits, setView } from "../../actions";
+import { openProject, resetPanels, saveEdits, setView } from "../../actions";
 import { store } from "../../core/store";
 import { useEffect } from "react";
 import { deleteWorkspace, newWorkspace, openWorkspace, refreshWorkspaces, renameWorkspace } from "../../workspaceActions";
@@ -30,6 +30,8 @@ export function MenuBar() {
               <button disabled={!s.workspace} onClick={() => (window.confirm(`delete workspace ${s.workspace}?`) && deleteWorkspace(s.workspace!), close())}>delete workspace</button>
               <button onClick={() => (store.set({ picker: true }), close())}>switch project…</button>
               <button disabled={!s.unsaved} onClick={() => (saveEdits(), close())}>save edits <kbd>⌘S</kbd></button>
+              <button title="read tags, pair states and peak calls from disk again, as another program (the Qt GUI) left them" disabled={!s.project}
+                onClick={() => (openProject(s.project!, true), close())}>reload from disk</button>
               <button onClick={() => (resetPanels(), close())}>reset panels</button>
             </div>
           </>

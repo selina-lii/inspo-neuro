@@ -7,6 +7,7 @@ import { patchGrid, patchNode, patchStyle, removeNode, removeStyle } from "../..
 import { pick3, remove3 } from "../../stackActions";
 import { PANEL_TITLES } from "../map/SpacePanelNode";
 import { useStore } from "../useStore";
+import { gridSource } from "../../core/wires";
 
 export function MetadataBody() {
   const s = useStore();
@@ -47,7 +48,7 @@ function Objects() {
         {row("net:main", `network · ${s.session ?? "–"}`, s.mainHidden ? "hidden" : "shown", s.mainHidden ? [["show", () => setMainHidden(false)]] : [["select", () => pick3("network", "main")], ["hide", () => setMainHidden(true)]])}
         {s.networks.map((n) => row(`net:${n.id}`, `network · ${n.segment}`, "copy", objects({ kind: "network", id: n.id })))}
         {s.stats.boards.map((b) => row(`board:${b.id}`, `stats · ${testName(b.id)}`, s.ties.some((t) => t.board === b.id) ? "tied" : "", objects({ kind: "board", id: b.id })))}
-        {s.grids.map((g) => row(`grid:${g.id}`, `CCG grid · ${g.source ?? "not cabled"}`, "", [here(() => patchGrid(g.id, { summon: true })), ...objects({ kind: "grid", id: g.id })]))}
+        {s.grids.map((g) => row(`grid:${g.id}`, `${g.label || "CCG grid"} · ${gridSource(s, g.id) ?? "not cabled"}`, "", [here(() => patchGrid(g.id, { summon: true })), ...objects({ kind: "grid", id: g.id })]))}
         {s.pairNodes.map((n) => row(`node:${n.id}`, "pair filter", `${nodePairs(s, n).length} pairs`, [here(() => patchNode(n.id, { summon: true })), ["remove", () => removeNode(n.id)]]))}
         {s.styleNodes.map((n) => row(`style:${n.id}`, "curve style", `${n.curves.length} styled`, [here(() => patchStyle(n.id, { summon: true })), ["remove", () => removeStyle(n.id)]]))}
         {s.panels.map((p) => row(`panel:${p.id}`, PANEL_TITLES[p.kind], p.closed ? "closed" : p.collapsed ? "collapsed" : "open",

@@ -27,6 +27,7 @@ import { syncFeeds, testsFedBy } from "../../../feedActions";
 import { newScale, pickPair } from "../../../statsActions";
 import { useNear } from "../useNear";
 import { selected3 } from "../../../core/select";
+import { gridConfig, gridLegend, gridSource, gridStyle } from "../../../core/wires";
 import { rename, titleTip } from "../titleTip";
 
 const BAR = 0.44;
@@ -79,7 +80,8 @@ export function GridObject({ grid, dark }: { grid: CcgGrid; dark: boolean }) {
     return grid.view === "stats" ? [lo, hi || 1] : [lo * 1.08, hi * 1.08 || 1];
   }, [grid.sameScale, grid.view, series, items, order, o.baseline]);
   const feeds = testsFedBy(grid.id).map((t) => t.id).join();
-  useEffect(() => syncFeeds(grid, order), [order.join(), grid.segments.join(), grid.source, items, feeds]);
+  const source = gridSource(s, grid.id);
+  useEffect(() => syncFeeds(grid, order), [order.join(), grid.segments.join(), source, items, feeds]);
 
   // a pair focused elsewhere brings up the page that holds it
   const focusKey = s.stats.pick.pair ?? (s.focus?.kind === "pair" ? `${s.session}|${s.focus.ref}|${s.focus.tgt}` : null);
@@ -104,7 +106,7 @@ export function GridObject({ grid, dark }: { grid: CcgGrid; dark: boolean }) {
   }, [w, h, page, pages]);
   const frame = useMemo(() => new BufferGeometry().setAttribute("position", new Float32BufferAttribute(rect(-0.1, -h - 0.1, w + 0.1, BAR, 0), 3)), [w, h]);
   const trays = traysOf(s, grid);
-  const title = `${grid.label || "CCG grid"} · ${sourceLabel(grid.source)}${trays.length > 1 ? ` · tray ${trays.indexOf(grid) + 1}/${trays.length}` : ""} · ${items.length} pairs${pages > 1 ? ` · page ${page + 1}/${pages}` : ""}`;
+  const title = `${grid.label || "CCG grid"} · ${sourceLabel(source)}${trays.length > 1 ? ` · tray ${trays.indexOf(grid) + 1}/${trays.length}` : ""} · ${items.length} pairs${pages > 1 ? ` · page ${page + 1}/${pages}` : ""}`;
 
   return (
     <group ref={group} position={grid.p} quaternion={grid.q} scale={scale} {...body} onContextMenu={() => claimMenu({ kind: "grid", id: grid.id })}>
@@ -166,14 +168,14 @@ function Cell({ item, grid, n, at, dark, group, order, series, metric, ylim }: {
   const s = useStore();
   const o = optionsOf(s, grid);
   // an open legend cabled to the grid keys every cell at once
-  const keyed = s.panels.some((p) => p.id === grid.legend && !p.closed);
+  const keyed = s.panels.some((p) => p.id === gridLegend(s, grid.id) && !p.closed);
   const cells = useRef<Group>(null);
   const near = useNear(cells, CELL.w);
   // a stats pick names its pair outright; the network's focus only a pair of the open session
   const focused = s.cells.has(item.key) || (s.stats.pick.pair ? s.stats.pick.pair === item.key : s.session === item.session && s.focus?.kind === "pair" && s.focus.ref === item.ref && s.focus.tgt === item.tgt);
   // a list's info line names the pair once, so its cards carry only their segment
   const title = grid.list ? "" : item.title;
-  const style = s.styleNodes.find((n) => n.id === grid.style);
+  const style = s.styleNodes.find((n) => n.id === gridStyle(s, grid.id));
   const textures = useMemo(() => {
     if (grid.view === "stats") {
       if (!series) return [];
@@ -204,12 +206,13 @@ function Cell({ item, grid, n, at, dark, group, order, series, metric, ylim }: {
       return store.set({ cells });
     }
     if (s.cells.size) store.set({ cells: new Set() });
-    const [kind, id] = (grid.source ?? ":").split(":");
+    const [kind, id] = (gridSource(s, grid.id) ?? ":").split(":");
     const board = kind === "board" ? id : s.ties.find((t) => t.network === id)?.board;
     if (board) pickPair(board, it.session, it.ref, it.tgt);
     else if (it.session === s.session) focusPair(it.ref, it.tgt);
     // the CCG config cabled to this grid shows the clicked pair, whatever its session
-    if (grid.config) patchPanel(grid.config, { pair: it.key });
+    const config = gridConfig(s, grid.id);
+    if (config) patchPanel(config, { pair: it.key });
   };
   const open = (e: ThreeEvent<MouseEvent>) => {
     e.stopPropagation();

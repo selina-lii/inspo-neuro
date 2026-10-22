@@ -7,6 +7,7 @@ import { gridCurves } from "../../../feedActions";
 import { statsApi } from "../../../io/stats";
 import { stackOf } from "../../../stackActions";
 import { useStore } from "../../useStore";
+import { gridSource } from "../../../core/wires";
 
 export type Series = Record<string, Record<string, number | null>>;
 
@@ -39,7 +40,7 @@ function cachedFrom(grid: CcgGrid, test: StatsTest, result: StatsResult, values:
 /** The tests a grid's stats view can read, in order: one it feeds that is not stale, then the board feeding it. */
 export function readable(s: ReturnType<typeof useStore>, grid: CcgGrid): { test: StatsTest; result: StatsResult }[] {
   const fed = s.stats.tests.find((t) => !t.stale && t.config.rows.some((r) => r.fed === grid.id));
-  const [kind, id] = (grid.source ?? ":").split(":");
+  const [kind, id] = (gridSource(s, grid.id) ?? ":").split(":");
   const source = kind === "board" ? s.stats.tests.find((t) => t.id === id) : undefined;
   return [fed, source].flatMap((test) => {
     const result = test && (stackOf(test.id)?.result ?? test.results[0]);
