@@ -3,6 +3,7 @@ import { axesLayout, inArea, lerpPoints, linksAmong, normalize, physicalLayout, 
 import { orderedPairs, stepPair } from "./core/pairs";
 import type { Pose, Vec3 } from "./core/stats";
 import { activeSegment, DEFAULT_PANELS, PANEL_PX, panelCcg, store, type CcgOptions, type MapInstance, type NetworkCopy, type SpacePanel } from "./core/store";
+import { dockedOn } from "./core/grid";
 import { linkKey, type Area, type LayoutKind, type Link, type Neuron, type Point } from "./core/types";
 import { api, toPoints, type FitProgress } from "./io/api";
 import { loadTraces, tracesKey } from "./io/traces";
@@ -210,7 +211,7 @@ export function setPanelCcg(id: string, patch: Partial<CcgOptions>): void {
   patchPanel(id, { ccg: { ...panelCcg(store.get(), id), ...patch } });
 }
 
-/** Another CCG panel, starting as a copy of *from*'s options: beside it when it is out, else in front of the camera. */
+/** Another CCG panel, starting as a copy of *from*'s options: beside it when it is out on its own, else in front of the camera. */
 export function addCcgPanel(from = "ccg"): void {
   const s = store.get();
   const src = s.panels.find((p) => p.id === from)!;
@@ -219,7 +220,7 @@ export function addCcgPanel(from = "ccg"): void {
   const step = (src.w * PANEL_PX * s.objectScale * (src.pose?.s ?? 1)) * 1.1;
   const [x, y, z, w] = src.pose?.q ?? [0, 0, 0, 1];
   const right: Vec3 = [1 - 2 * (y * y + z * z), 2 * (x * y + w * z), 2 * (x * z - w * y)];
-  const pose = src.pose && !src.closed ? { ...src.pose, p: src.pose.p.map((v, i) => v + right[i]! * step) as Vec3 } : undefined;
+  const pose = src.pose && !src.closed && !dockedOn(s, from) ? { ...src.pose, p: src.pose.p.map((v, i) => v + right[i]! * step) as Vec3 } : undefined;
   const panel: SpacePanel = { ...src, id, closed: false, collapsed: false, ccg: panelCcg(s, from), pose, summon: !pose && s.view === "3d" };
   store.set({ panels: [...s.panels, panel] });
 }
