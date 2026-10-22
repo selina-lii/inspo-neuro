@@ -37,4 +37,15 @@ test("tagging picked cards tags them in every session and unlights them, as Esc 
   assert.equal(await app.state((s) => s.cells.size), 0, "the picked cards are unlit");
 });
 
+test("a grid's tag picker makes a new tag on the spot", async () => {
+  await app.call("gridActions.ts", "addGrid");
+  await app.settle(800);
+  const l = DATA.day1.links[2];
+  await app.page.evaluate((k) => window.neuromapStore.set({ cells: new Set([k]) }), `day1|${l.ref}|${l.tgt}`);
+  app.page.once("dialog", (d) => d.accept("fresh"));
+  await app.page.locator('select[title="tag the picked pairs, or untag them when all are in"]').selectOption({ label: "new tag…" });
+  await app.settle(500);
+  assert.ok(l.groups.includes("fresh"));
+});
+
 test("no page errors", () => assert.deepEqual(app.errors, []));

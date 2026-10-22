@@ -1,6 +1,5 @@
 // A CCG grid's float bar: sort, rows × cols, segments overlaid or in series (along x or y), which pairs, pages.
 import { movePairs, targetPairs, toggleGroup } from "../../../actions";
-import { realGroups } from "../../../core/colors";
 import { colsOf, type CcgGrid, type GridSort } from "../../../core/grid";
 import { store } from "../../../core/store";
 import { patchGrid } from "../../../gridActions";
@@ -10,6 +9,7 @@ import { ListPicker } from "../../stats/ListPicker";
 import { useStore } from "../../useStore";
 import { gridSource } from "../../../core/wires";
 import { FloatBar } from "../stats/BoardOverlay";
+import { TagSelect } from "./TagSelect";
 
 const SORTS: [GridSort, string][] = [["strength", "by strength"], ["on", "by on segments"], ["session", "by session"], ["ref", "by ref id"]];
 
@@ -101,10 +101,7 @@ function Picked({ grid }: { grid: CcgGrid }) {
       <button title="pick every card in the grid" onClick={() => add(keys)}>all</button>
       <button title="pick none" disabled={!s.cells.size} onClick={() => store.set({ cells: new Set() })}>none</button>
       <span className="sep" />
-      <select value="" disabled={!s.cells.size} title="tag the picked pairs, or untag them when all are in" onChange={(e) => e.target.value && toggleGroup(e.target.value)}>
-        <option value="">tag…</option>
-        {realGroups(s.pairGroups).map((g) => <option key={g} value={g}>{g}{s.groupMeta[g]?.hotkey ? ` (${s.groupMeta[g]!.hotkey})` : ""}</option>)}
-      </select>
+      <TagSelect label="tag…" title="tag the picked pairs, or untag them when all are in" disabled={!s.cells.size} onTag={(g) => void toggleGroup(g)} />
       {states.map(([k, st, label]) => (
         <button key={k} disabled={!s.cells.size} title={`move the picked pairs to ${label} (Shift ${k})`} onClick={() => movePairs(targetPairs(), st)}>{k}</button>
       ))}
