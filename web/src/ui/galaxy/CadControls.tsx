@@ -98,10 +98,10 @@ export function CadControls({ ref }: { ref?: Ref<CadHandle> }) {
       camera.quaternion.premultiply(q);
       camera.up.applyQuaternion(q);
     };
-    /** Slide the view at the orbit target's depth: the same speed on screen wherever the press lands. */
-    const pan = (dx: number, dy: number) => {
+    /** Slide the view at the grabbed point's depth: what was under the cursor stays under it, however far or zoomed. */
+    const pan = (dx: number, dy: number, grab: Vector3) => {
       const h = el.clientHeight || 1;
-      const depth = Math.max(target.clone().sub(camera.position).dot(camera.getWorldDirection(new Vector3())), MIN_VIEW);
+      const depth = Math.max(grab.clone().sub(camera.position).dot(camera.getWorldDirection(new Vector3())), 0.01);
       const scale = (2 * depth * Math.tan(((camera as PerspectiveCamera).fov * Math.PI) / 360)) / h;
       const move = new Vector3(-dx * scale, dy * scale, 0).applyQuaternion(camera.quaternion);
       camera.position.add(move);
@@ -148,7 +148,7 @@ export function CadControls({ ref }: { ref?: Ref<CadHandle> }) {
         const [dx, dy] = [e.clientX - x, e.clientY - y];
         [x, y] = [e.clientX, e.clientY];
         if (mode === "rotate") rotate(dx, dy, pivot);
-        else if (mode === "pan") pan(dx, dy);
+        else if (mode === "pan") pan(dx, dy, pivot);
         else zoomAt(target, Math.exp(dy * 0.006));
       },
       end() {},

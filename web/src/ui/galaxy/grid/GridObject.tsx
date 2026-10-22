@@ -111,7 +111,7 @@ export function GridObject({ grid, dark }: { grid: CcgGrid; dark: boolean }) {
 
   return (
     <group ref={group} position={grid.p} quaternion={grid.q} scale={scale} {...body} onContextMenu={() => claimMenu({ kind: "grid", id: grid.id })}>
-      <mesh position={[w / 2, BAR / 2, -0.01]} onPointerDown={barPress({ kind: "grid", id: grid.id })} {...titleTip(title)} onDoubleClick={(e) => (e.stopPropagation(), rename({ kind: "grid", id: grid.id }))}>
+      <mesh position={[w / 2, BAR / 2, -0.01]} onPointerDown={barPress({ kind: "grid", id: grid.id })} {...titleTip(`${grid.label || "CCG grid"} · ${items.length} pairs`)} onDoubleClick={(e) => (e.stopPropagation(), rename({ kind: "grid", id: grid.id }))}>
         <planeGeometry args={[w + 0.2, BAR]} />
         <meshBasicMaterial color={picked ? PICK_COLOR : "#3a6df0"} transparent opacity={0.85} side={2} />
       </mesh>
