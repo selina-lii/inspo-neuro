@@ -163,10 +163,6 @@ export function shownResult(result: StatsResult, hidden: string[] = []): StatsRe
   return byKey.get(key)!;
 }
 
-export function lineageIds(result: StatsResult, values: Record<string, StatsValue>, pair: string): string[] {
-  return result.rows.flatMap((r) => r.ids.filter((id) => values[id]?.pair === pair));
-}
-
 /** A pair measured in more than one row is a repeated measure: its values are joined across rows. */
 export function repeatedPairs(result: StatsResult, values: Record<string, StatsValue>): Set<string> {
   const rowsOf = new Map<string, number>();

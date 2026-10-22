@@ -39,8 +39,6 @@ export function loadTraces(session: string, segment: string): Promise<void> {
   return pending.get(key)!;
 }
 
-export const tracesReady = (session: string, segment: string): boolean => held.has(tracesKey(session, segment));
-
 export function traceOf(session: string, segment: string, ref: number, tgt: number, res: "lowres" | "highres"): Trace | null {
   const t = held.get(tracesKey(session, segment));
   const row = t?.index.get(`${ref}-${tgt}`);

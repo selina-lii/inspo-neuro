@@ -130,16 +130,6 @@ export function lerpPoints(a: Point[], b: Point[], t: number): Point[] {
   return b.map((p, i) => ({ x: a[i]!.x + (p.x - a[i]!.x) * e, y: a[i]!.y + (p.y - a[i]!.y) * e }));
 }
 
-export function pointInPolygon(p: Point, poly: Point[]): boolean {
-  let inside = false;
-  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
-    const a = poly[i]!;
-    const b = poly[j]!;
-    if (a.y > p.y !== b.y > p.y && p.x < ((b.x - a.x) * (p.y - a.y)) / (b.y - a.y) + a.x) inside = !inside;
-  }
-  return inside;
-}
-
 export function inArea(p: Point, area: Area): boolean {
   return Math.abs(p.x - area.x) <= area.w / 2 && Math.abs(p.y - area.y) <= area.h / 2;
 }

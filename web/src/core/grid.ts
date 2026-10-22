@@ -2,7 +2,7 @@
 import type { Quat, Rule, Vec3 } from "./stats";
 import { DEFAULT_CCG, panelCcg, type CcgOptions, type State } from "./store";
 import type { Trace } from "./types";
-import { gridConfig, gridLegend, gridSource, gridStyle, idOf, targetsOf } from "./wires";
+import { gridConfig, gridLegend, gridStyle } from "./wires";
 
 export type GridSort = "session" | "strength" | "on" | "ref";
 
@@ -19,14 +19,6 @@ export type CcgGrid = {
   metric?: string;   // the stats metric that view plots
   sameScale?: boolean;   // every card on one y range, the grid's whole
   layoutOpen?: boolean;   // its bar shows the layout settings
-};
-
-/** The test a grid's stats view reads: one it feeds, which measures its pairs as the grid has them, else the board feeding it. */
-export const linkedTest = (s: State, grid: CcgGrid) => {
-  const fed = targetsOf(s, `grid:${grid.id}`, "feed")[0];
-  const source = gridSource(s, grid.id);
-  const id = fed ?? (source?.startsWith("board:") ? source : null);
-  return id ? s.stats.tests.find((t) => t.id === idOf(id)) : undefined;
 };
 
 /** How one segment's curves draw on the grids cabled to a style node. */

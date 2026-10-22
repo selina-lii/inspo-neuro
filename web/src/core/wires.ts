@@ -41,21 +41,19 @@ export function wiresOf(s: State): (Wire & { role: Role })[] {
   ];
 }
 
-/** The port feeding *to* in *role*, if any: every role but feed takes one source. */
-export const sourceOf = (s: State, to: Port, role: Role): Port | null => s.wires.find((w) => w.to === to && roleOf(s, w.from, w.to) === role)?.from ?? null;
-
-/** The ports *from* feeds in *role*. */
-export const targetsOf = (s: State, from: Port, role: Role): Port[] => wiresOf(s).filter((w) => w.from === from && w.role === role).map((w) => w.to);
+/** The other end of the stored wire at *port* in *role*: a grid's source, config, style or legend, a network's input. */
+function endOf(s: State, port: Port, role: Role): Port | null {
+  const w = s.wires.find((x) => (x.to === port || x.from === port) && roleOf(s, x.from, x.to) === role);
+  return w ? (w.to === port ? w.from : w.to) : null;
+}
+const endId = (s: State, port: Port, role: Role) => {
+  const end = endOf(s, port, role);
+  return end && idOf(end);
+};
 
 /** A grid's pair source port ("board:…", "node:…" or "net:…"), or null. */
-export const gridSource = (s: State, grid: string) => sourceOf(s, `grid:${grid}`, "pairs");
-/** The CCG panel configuring a grid, by panel id. */
-export const gridConfig = (s: State, grid: string) => idOrNull(sourceOf(s, `grid:${grid}`, "config"));
-/** The style node styling a grid, by id. */
-export const gridStyle = (s: State, grid: string) => idOrNull(sourceOf(s, `grid:${grid}`, "style"));
-/** The legend panel a grid keys, by panel id. */
-export const gridLegend = (s: State, grid: string) => idOrNull(s.wires.find((w) => w.from === `grid:${grid}` && roleOf(s, w.from, w.to) === "legend")?.to ?? null);
-/** The grid a network copy shows the pairs of, by id. */
-export const netInput = (s: State, net: string) => idOrNull(sourceOf(s, `net:${net}`, "input"));
-
-const idOrNull = (p: Port | null) => (p ? idOf(p) : null);
+export const gridSource = (s: State, grid: string) => endOf(s, `grid:${grid}`, "pairs");
+export const gridConfig = (s: State, grid: string) => endId(s, `grid:${grid}`, "config");
+export const gridStyle = (s: State, grid: string) => endId(s, `grid:${grid}`, "style");
+export const gridLegend = (s: State, grid: string) => endId(s, `grid:${grid}`, "legend");
+export const netInput = (s: State, net: string) => endId(s, `net:${net}`, "input");
