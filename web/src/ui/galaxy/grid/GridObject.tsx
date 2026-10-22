@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef } from "react";
 import { BufferGeometry, Float32BufferAttribute, Plane, Vector3, type Group, Quaternion } from "three";
 import { focusPair, openPanelAt, patchPanel } from "../../../actions";
 import { PICK_COLOR } from "../../../core/colors";
-import { CELL, cellSize, gapOf, optionsOf, sourceOf, pageSize, slotAt, type CcgGrid, type GridItem } from "../../../core/grid";
+import { CELL, cellSize, colsOf, gapOf, optionsOf, sourceOf, pageSize, slotAt, traysOf, type CcgGrid, type GridItem } from "../../../core/grid";
 import type { Quat, Vec3 } from "../../../core/stats";
 import { store } from "../../../core/store";
 import { patchGrid } from "../../../gridActions";
@@ -36,7 +36,7 @@ export function GridObject({ grid, dark }: { grid: CcgGrid; dark: boolean }) {
   const group = useRef<Group>(null);
   const camera = useThree((t) => t.camera);
   const n = grid.segMode === "series" ? Math.max(1, ...items.map((x) => x.curves.length)) : 1;
-  const per = grid.cols * grid.rows;
+  const per = colsOf(grid) * grid.rows;
   const order = useMemo(() => items.map((x) => x.key), [items]);
   const pages = Math.max(1, Math.ceil(items.length / per));
   const page = Math.min(grid.page, pages - 1);
@@ -76,7 +76,8 @@ export function GridObject({ grid, dark }: { grid: CcgGrid; dark: boolean }) {
     return new BufferGeometry().setAttribute("position", new Float32BufferAttribute(out, 3));
   }, [w, h, page, pages]);
   const frame = useMemo(() => new BufferGeometry().setAttribute("position", new Float32BufferAttribute(rect(-0.1, -h - 0.1, w + 0.1, BAR, 0), 3)), [w, h]);
-  const title = `CCG grid · ${sourceLabel(grid.source)} · ${items.length} pairs${pages > 1 ? ` · page ${page + 1}/${pages}` : ""}`;
+  const trays = traysOf(s, grid);
+  const title = `CCG grid · ${sourceLabel(grid.source)}${trays.length > 1 ? ` · tray ${trays.indexOf(grid) + 1}/${trays.length}` : ""} · ${items.length} pairs${pages > 1 ? ` · page ${page + 1}/${pages}` : ""}`;
 
   return (
     <group ref={group} position={grid.p} quaternion={grid.q} scale={scale} {...body} onContextMenu={() => claimMenu({ kind: "grid", id: grid.id })}>
@@ -142,14 +143,16 @@ function Cell({ item, grid, n, at, dark, group, order }: { item: GridItem; grid:
   const cells = useRef<Group>(null);
   const near = useNear(cells, CELL.w);
   const focused = s.cells.has(item.key) || (s.session === item.session && s.focus?.kind === "pair" && s.focus.ref === item.ref && s.focus.tgt === item.tgt);
+  // a list's info line names the pair once, so its cards carry only their segment
+  const title = grid.list ? "" : item.title;
   const textures = useMemo(() => {
     if (!item.curves.length) return [];
     if (grid.segMode === "overlay") {
       const curves = item.curves.map((c) => ({ row: { name: keyed ? "" : c.label, color: c.color, segments: [] }, trace: c.trace }));
-      return [drawOverlay(curves, item.title, null, focused, o, near)];
+      return [drawOverlay(curves, title, null, focused, o, near)];
     }
-    return item.curves.map((c) => drawCcg(c.trace, `${item.title} · ${c.label}`, c.color, focused, { options: o, base: c.color }, near));
-  }, [item, grid.segMode, focused, dark, o, near, keyed]);
+    return item.curves.map((c) => drawCcg(c.trace, title ? `${title} · ${c.label}` : c.label, c.color, focused, { options: o, base: c.color }, near));
+  }, [item, grid.segMode, focused, dark, o, near, keyed, title]);
   useEffect(() => () => textures.forEach((t) => t.dispose()), [textures]);
   const c = cellSize(grid, n);
   const step = grid.axis === "x" ? [CELL.w, 0] : [0, -CELL.h];
@@ -187,8 +190,11 @@ function Cell({ item, grid, n, at, dark, group, order }: { item: GridItem; grid:
     const outline = new BufferGeometry().setAttribute("position", new Float32BufferAttribute(rect(at[0] - c.w / 2, at[1] - c.h / 2, at[0] + c.w / 2, at[1] + c.h / 2, 0), 3));
     return <lineSegments geometry={outline}><lineBasicMaterial color="#9aa0a6" transparent opacity={0.6} /></lineSegments>;
   }
+  const groups = item.groups.filter((g) => !g.startsWith("__"));
+  const info = `${item.title} · ${item.strength.toFixed(2)}${grid.segments.length > 1 ? ` · on ${item.on}/${grid.segments.length}` : ""}${groups.length ? ` · ${groups.join(", ")}` : ""}`;
   return (
     <group ref={cells}>
+      {grid.list && <Label3D text={info} position={[at[0] - c.w / 2 - CELL.info + 0.1, at[1], 0]} height={0.22} color={focused ? PICK_COLOR : dark ? "#e3e6ea" : "#2a2d33"} anchor="left" />}
       {textures.map((t, k) => (
         <mesh key={k} userData={{ card: true }} position={[first[0]! + step[0]! * k, first[1]! + step[1]! * k, 0]}
           onClick={(e) => e.delta <= 4 && (e.stopPropagation(), !grid.picking && pick(item, e))} onDoubleClick={open}
@@ -233,7 +239,7 @@ function SlotHandle({ grid, n, at, group }: { grid: CcgGrid; n: number; at: [num
           if (!hit) return;
           const local = group.current!.worldToLocal(hit);
           const gap = gapOf(grid);
-          const cols = Math.max(1, Math.round((local.x + gap) / (c.w + gap)));
+          const cols = grid.list ? grid.cols : Math.max(1, Math.round((local.x + gap) / (c.w + gap)));
           const rows = Math.max(1, Math.round((-local.y + gap) / (c.h + gap)));
           if (cols !== grid.cols || rows !== grid.rows) patchGrid(grid.id, { cols, rows, page: 0 });
         }}

@@ -20,14 +20,39 @@ export const addNode = () => setNodes([...store.get().pairNodes, { id: `n${Date.
 /** A copy of a grid, set beside it. */
 export function duplicateGrid(id: string): void {
   const g = store.get().grids.find((x) => x.id === id)!;
-  setGrids([...store.get().grids, { ...g, id: `g${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`, p: [g.p[0] + 3, g.p[1] - 3, g.p[2]] }]);
+  setGrids([...store.get().grids, { ...g, tray: undefined, id: newId(), p: [g.p[0] + 3, g.p[1] - 3, g.p[2]] }]);
+}
+
+const newId = () => `g${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`;
+
+/** Moves pairs from a grid into a tray of its set, a new one beside it when `to` is null. */
+export function moveToTray(id: string, keys: string[], to: string | null): void {
+  const s = store.get();
+  const g = s.grids.find((x) => x.id === id)!;
+  const tray = g.tray ?? g.id;
+  const target = to ?? newId();
+  const moved = new Set(keys);
+  const grids = s.grids.map((x) => {
+    const y = x.id === id ? { ...x, tray } : x;
+    if (y.tray !== tray || !y.keys) return y;
+    return { ...y, keys: y.id === target ? [...new Set([...y.keys, ...keys])] : y.keys.filter((k) => !moved.has(k)) };
+  });
+  if (!to) grids.push({ ...g, tray, id: target, keys, page: 0, picking: false, p: [g.p[0] + 3, g.p[1] - 3, g.p[2]] });
+  setGrids(grids);
+  store.set({ cells: new Set() });
 }
 
 export const patchGrid = (id: string, patch: Partial<CcgGrid>) => setGrids(store.get().grids.map((g) => (g.id === id ? { ...g, ...patch } : g)));
 
 export const patchNode = (id: string, patch: Partial<PairNode>) => setNodes(store.get().pairNodes.map((n) => (n.id === id ? { ...n, ...patch } : n)));
 
-export const removeGrid = (id: string) => setGrids(store.get().grids.filter((g) => g.id !== id));
+export function removeGrid(id: string): void {
+  const gone = store.get().grids.find((g) => g.id === id)!;
+  const rest = store.get().grids.filter((g) => g.id !== id);
+  // the set's first tray hands the pairs no other tray holds to the next one
+  const heir = gone.tray && !gone.keys ? rest.find((g) => g.tray === gone.tray) : undefined;
+  setGrids(rest.map((g) => (g === heir ? { ...g, keys: undefined } : g)));
+}
 
 export function removeNode(id: string): void {
   setNodes(store.get().pairNodes.filter((n) => n.id !== id));

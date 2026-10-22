@@ -1,9 +1,9 @@
 // A CCG grid's float bar: sort, rows × cols, segments overlaid or in series (along x or y), which pairs, pages.
 import { movePairs, targetPairs, toggleGroup } from "../../../actions";
 import { realGroups } from "../../../core/colors";
-import { sourceOf, type CcgGrid, type GridSort } from "../../../core/grid";
+import { colsOf, sourceOf, traysOf, type CcgGrid, type GridSort } from "../../../core/grid";
 import { store } from "../../../core/store";
-import { patchGrid } from "../../../gridActions";
+import { moveToTray, patchGrid } from "../../../gridActions";
 import { useGridItems } from "./gridItems";
 import { MAIN_SEGMENT } from "../../menu/AddMenu";
 import { useStore } from "../../useStore";
@@ -30,7 +30,8 @@ export function GridBar({ grid }: { grid: CcgGrid }) {
         {SORTS.map(([k, label]) => <option key={k} value={k}>{label}</option>)}
       </select>
       <span className="sep" />
-      {count("rows")}×{count("cols")}
+      {count("rows")}{!grid.list && <>×{count("cols")}</>}
+      <button className={grid.list ? "on" : ""} title="one column, an info line beside each pair" onClick={() => set({ list: !grid.list, page: 0 })}>list</button>
       <span className="sep" />
       <button className={grid.segMode === "overlay" ? "on" : ""} title="one image per pair, a curve per segment or row" onClick={() => set({ segMode: "overlay" })}>overlay</button>
       <button className={grid.segMode === "series" ? "on" : ""} title="one image per segment or row, side by side" onClick={() => set({ segMode: "series" })}>series</button>
@@ -64,9 +65,10 @@ export function GridBar({ grid }: { grid: CcgGrid }) {
 function Picked({ grid }: { grid: CcgGrid }) {
   const s = useStore();
   const keys = useGridItems(grid).map((x) => x.key);
-  const n = keys.filter((k) => s.cells.has(k)).length;
-  if (!n && !grid.picking) return null;
-  const per = grid.cols * grid.rows;
+  const mine = keys.filter((k) => s.cells.has(k));
+  if (!mine.length && !grid.picking) return null;
+  const per = colsOf(grid) * grid.rows;
+  const trays = traysOf(s, grid);
   const add = (more: string[]) => store.set({ cells: new Set([...s.cells, ...more]) });
   const states = [["S", "sel", "selected"], ["U", "unsel", "unselected"], ["D", "del", "deleted"]] as const;
   return (
@@ -76,6 +78,11 @@ function Picked({ grid }: { grid: CcgGrid }) {
       <button title="pick every card in the grid" onClick={() => add(keys)}>all</button>
       <button title="pick none" disabled={!s.cells.size} onClick={() => store.set({ cells: new Set() })}>none</button>
       <span className="sep" />
+      <select value="" disabled={!mine.length} title="move this grid's picked pairs to another tray of its set" onChange={(e) => moveToTray(grid.id, mine, e.target.value === "new" ? null : e.target.value)}>
+        <option value="">tray…</option>
+        <option value="new">new tray</option>
+        {trays.map((t, i) => t.id !== grid.id && <option key={t.id} value={t.id}>tray {i + 1}</option>)}
+      </select>
       <select value="" disabled={!s.cells.size} title="tag the picked pairs, or untag them when all are in" onChange={(e) => e.target.value && toggleGroup(e.target.value)}>
         <option value="">tag…</option>
         {realGroups(s.pairGroups).map((g) => <option key={g} value={g}>{g}{s.groupMeta[g]?.hotkey ? ` (${s.groupMeta[g]!.hotkey})` : ""}</option>)}

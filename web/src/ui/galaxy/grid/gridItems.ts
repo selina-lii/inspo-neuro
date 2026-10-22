@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ensureSegLinks } from "../../../actions";
 import { paletteColor, TYPE_COLORS } from "../../../core/colors";
 import { visibleLinks } from "../../../core/derive";
-import { optionsOf, sortItems, sourceOf, type CcgGrid, type GridItem, type PairMode } from "../../../core/grid";
+import { optionsOf, sortItems, sourceOf, trayKeys, type CcgGrid, type GridItem, type PairMode } from "../../../core/grid";
 import { normalize } from "../../../core/norms";
 import { rowsWithPair, rowTrace } from "../../../core/stack";
 import type { CcgOptions, State } from "../../../core/store";
@@ -18,6 +18,7 @@ export function useGridItems(grid: CcgGrid): GridItem[] {
   const node = grid.source?.startsWith("node:") ? s.pairNodes.find((n) => `node:${n.id}` === grid.source) : undefined;
   const [kind, id] = (sourceOf(s, grid) ?? ":").split(":") as [string, string];
   const o = optionsOf(s, grid);
+  const tray = trayKeys(s, grid);
   const [loaded, setLoaded] = useState(0);
   useEffect(() => {
     if (kind === "board") return ensureStack(id);
@@ -29,10 +30,11 @@ export function useGridItems(grid: CcgGrid): GridItem[] {
   }, [kind, id, s.session, grid.segments.join(), o.norms.join()]);
   return useMemo(() => {
     const all = kind === "board" ? boardItems(s, id, o) : kind === "net" ? networkItems(s, grid, id, o) : [];
-    const items = node ? all.filter(keeps(s, node.mode)) : all;
+    const kept = node ? all.filter(keeps(s, node.mode)) : all;
+    const items = kept.filter((x) => tray.keys.has(x.key) === tray.own);
     const sessions = kind === "board" ? stackOf(id)?.sessions ?? [] : [s.session ?? ""];
     return sortItems(items, grid.sort, sessions);
-  }, [s.links, s.filters, s.selection, s.segLinks, s.stack, s.stats.values, o, s.ties, grid.sort, grid.pairs, node, s.stats.pick, grid.segments.join(), grid.source, loaded]);
+  }, [s.links, s.filters, s.selection, s.segLinks, s.stack, s.stats.values, o, s.ties, grid.sort, grid.pairs, node, s.stats.pick, grid.segments.join(), grid.source, loaded, tray.own, [...tray.keys].join()]);
 }
 
 function keeps(s: State, mode: PairMode): (item: GridItem) => boolean {
@@ -56,7 +58,7 @@ function networkItems(s: State, grid: CcgGrid, network: string, o: CcgOptions): 
     });
     return {
       key: `${session}|${l.ref}|${l.tgt}`, session, ref: l.ref, tgt: l.tgt, title: `#${a?.id} → #${b?.id}`, color: TYPE_COLORS[l.type] ?? "#888",
-      strength: l.strength, on: grid.segments.filter((seg) => s.segLinks[seg]?.on[l.i]).length, curves,
+      strength: l.strength, on: grid.segments.filter((seg) => s.segLinks[seg]?.on[l.i]).length, groups: l.groups, curves,
     };
   });
 }
@@ -78,6 +80,6 @@ function boardItems(s: State, board: string, o: CcgOptions): GridItem[] {
     });
     const on = link ? rows.filter((i) => st.rows[i]!.segments.some((seg) => layer.segLinks[seg]?.on[link.i])).length : 0;
     const [a, b] = [layer.neurons[ref], layer.neurons[tgt]];
-    return [{ key: pair, session, ref, tgt, title: `${session} #${a?.id} → #${b?.id}`, color: TYPE_COLORS[link?.type ?? ""] ?? "#888", strength: link?.strength ?? 0, on, curves }];
+    return [{ key: pair, session, ref, tgt, title: `${session} #${a?.id} → #${b?.id}`, color: TYPE_COLORS[link?.type ?? ""] ?? "#888", strength: link?.strength ?? 0, on, groups: link?.groups ?? [], curves }];
   });
 }
