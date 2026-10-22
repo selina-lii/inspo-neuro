@@ -81,6 +81,8 @@ export function TiePorts() {
     a.setXYZ(1, ...(end.current.toArray() as [number, number, number]));
     a.needsUpdate = true;
   });
+  // a grid's cable, selected by a click and cut by Delete
+  const pickable = (id: string) => ({ picked: s.picked3?.kind === "cable" && s.picked3.id === id, onPick: () => pick3("cable", id) });
 
   return (
     <>
@@ -92,23 +94,22 @@ export function TiePorts() {
           onPick={() => pick3("tie", t.board)} onMenu={() => claimMenu({ kind: "tie", id: t.board })} />
       ))}
       {s.grids.filter((g) => g.source && ids.includes(g.source)).map((g) => (
-        <Cable key={g.id} a={`grid:${g.id}`} b={g.source!} picked={s.picked3?.kind === "grid" && s.picked3.id === g.id}
-          onPick={() => pick3("grid", g.id)} onMenu={() => claimMenu({ kind: "grid", id: g.id })} />
+        <Cable key={g.id} a={`grid:${g.id}`} b={g.source!} {...pickable(`src|${g.id}`)} onMenu={() => claimMenu({ kind: "grid", id: g.id })} />
       ))}
       {s.grids.filter((g) => g.config && ids.includes(`panel:${g.config}`)).map((g) => (
-        <Cable key={`cfg${g.id}`} a={`grid:${g.id}`} b={`panel:${g.config}`} picked={false} onPick={() => undefined} onMenu={() => claimMenu({ kind: "grid", id: g.id })} />
+        <Cable key={`cfg${g.id}`} a={`grid:${g.id}`} b={`panel:${g.config}`} {...pickable(`cfg|${g.id}`)} onMenu={() => claimMenu({ kind: "grid", id: g.id })} />
       ))}
       {s.stats.tests.flatMap((t) => [...new Set(t.config.rows.flatMap((r) => (r.fed ? [r.fed] : [])))].filter((g) => ids.includes(`grid:${g}`) && ids.includes(`board:${t.id}`)).map((g) => (
-        <Cable key={`feed${g}${t.id}`} a={`grid:${g}`} b={`board:${t.id}`} picked={false} onPick={() => undefined} onMenu={() => claimMenu({ kind: "grid", id: g })} />
+        <Cable key={`feed${g}${t.id}`} a={`grid:${g}`} b={`board:${t.id}`} {...pickable(`feed|${g}|${t.id}`)} onMenu={() => claimMenu({ kind: "grid", id: g })} />
       )))}
       {s.stats.active && ids.includes("panel:stats") && ids.includes(`board:${s.stats.active}`) && (
         <Cable key="edit" a="panel:stats" b={`board:${s.stats.active}`} picked={false} onPick={() => undefined} onMenu={() => claimMenu({ kind: "panel", id: "stats" })} />
       )}
       {s.grids.filter((g) => g.style && ids.includes(`style:${g.style}`)).map((g) => (
-        <Cable key={`sty${g.id}`} a={`grid:${g.id}`} b={`style:${g.style}`} picked={false} onPick={() => undefined} onMenu={() => claimMenu({ kind: "grid", id: g.id })} />
+        <Cable key={`sty${g.id}`} a={`grid:${g.id}`} b={`style:${g.style}`} {...pickable(`sty|${g.id}`)} onMenu={() => claimMenu({ kind: "grid", id: g.id })} />
       ))}
       {s.grids.filter((g) => g.legend && ids.includes(`panel:${g.legend}`)).map((g) => (
-        <Cable key={`key${g.id}`} a={`grid:${g.id}`} b={`panel:${g.legend}`} picked={false} onPick={() => undefined} onMenu={() => claimMenu({ kind: "grid", id: g.id })} />
+        <Cable key={`key${g.id}`} a={`grid:${g.id}`} b={`panel:${g.legend}`} {...pickable(`key|${g.id}`)} onMenu={() => claimMenu({ kind: "grid", id: g.id })} />
       ))}
     </>
   );

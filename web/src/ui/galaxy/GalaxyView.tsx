@@ -21,7 +21,7 @@ import { PickCard } from "./tie/OverlayCards";
 import { TiedStacks } from "./tie/TiedStacks";
 import { probes, positions3 } from "./layout3";
 import { buildBatches, Heads, LinkBatch, Neurons, ProbeShank } from "./networkParts";
-import { CarrySync, claimMenu, resetClaim, SpaceMenu, type Target } from "./SpaceMenu";
+import { CarrySync, claimMenu, resetClaim, SpaceMenu } from "./SpaceMenu";
 import { actsOn, useBody } from "./select3";
 import { useBoardDrag } from "./stats/boardDrag";
 import { NetworkFrame } from "./NetworkFrame";
@@ -210,7 +210,7 @@ export function GalaxyView({ dark }: { dark: boolean }) {
       </div>
       <SpaceMenu at={menuAt} onClose={() => setMenuAt(null)} onCenter={(t, face) => {
         const c = controls.current;
-        const spotOf = (u: Target) => {
+        const spotOf = (u: { kind: string; id: string }) => {
           const net = s.networks.find((n) => n.id === u.id);
           const p = s.panels.find((q) => q.id === u.id);
           return u.kind === "board" || u.kind === "tie" ? centers.get(`board:${u.id}`) : u.kind === "grid" || u.kind === "node" || u.kind === "style" ? centers.get(`${u.kind}:${u.id}`)

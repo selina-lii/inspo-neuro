@@ -55,7 +55,7 @@ export function pickAt(raycaster: Raycaster, scene: Object3D): void {
 }
 
 /** What moves this way: everything but the cables. */
-export const movable = (p: Picked3) => p.kind !== "tie";
+export const movable = (p: Picked3) => p.kind !== "tie" && p.kind !== "cable";
 
 /** What a press anywhere on it carries: the open session's network fills the view, so a drag on it pans and only its bar moves it. */
 export const carried = (p: Picked3) => movable(p) && !(p.kind === "network" && p.id === "main");
