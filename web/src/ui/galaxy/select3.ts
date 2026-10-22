@@ -8,7 +8,7 @@ import { same3, selection3 } from "../../core/select";
 import { PANEL_PX, store, type Picked3 } from "../../core/store";
 import { dockedOn } from "../../core/grid";
 import { duplicateGrid, patchGrid, patchNode, patchStyle } from "../../gridActions";
-import { pick3, slideBoard } from "../../stackActions";
+import { pick3, settleTies, slideBoard } from "../../stackActions";
 import { duplicateTest, sceneFrame } from "../../statsActions";
 import { anchors, centers } from "./tie/portAt";
 
@@ -141,10 +141,13 @@ export type Group3 = { p: Picked3; from: Placement; start: ReturnType<typeof sta
 const partners = (p: Picked3): Picked3[] => store.get().ties.flatMap((t): Picked3[] =>
   p.kind === "board" && t.board === p.id ? [{ kind: "network" as const, id: t.network }] : p.kind === "network" && t.network === p.id ? [{ kind: "board" as const, id: t.board }] : []);
 
+/** What a hand move carries along with *lead*; every board in it stops being placed by its stack, since the hand wins. */
 export function groupOf(lead: Picked3, pivot: Vector3, withSelection = true): Group3 {
   const seen = [hostOf(lead)];
   const members = withSelection ? selection3(store.get()) : [];
-  return [...members, ...[lead, ...members].flatMap(partners)].filter((o) => movable(o) && !seen.some((x) => same3(x, hostOf(o))) && seen.push(hostOf(o))).flatMap((o) => {
+  const all = [...members, ...[lead, ...members].flatMap(partners)];
+  for (const o of [lead, ...all]) if (o.kind === "board") settleTies(o.id);
+  return all.filter((o) => movable(o) && !seen.some((x) => same3(x, hostOf(o))) && seen.push(hostOf(o))).flatMap((o) => {
     const from = placeOf(o);
     return from ? [{ p: o, from: { ...from, pivot }, start: startOf(o) }] : [];
   });

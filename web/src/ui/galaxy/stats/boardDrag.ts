@@ -8,7 +8,6 @@ import { selected3 } from "../../../core/select";
 import { store, type Picked3 } from "../../../core/store";
 import { pointer } from "../pointer";
 import { commitGroup, groupOf, previewGroup, type Group3 } from "../select3";
-import { settleTies } from "../../../stackActions";
 
 type Drag = { mode: "move" | "depth" | "turn"; x: number; y: number; p: Vector3; q: Quaternion; plane: Plane; hit: Vector3; rest: Group3 };
 
@@ -27,8 +26,6 @@ export function useBoardDrag(id: string, group: RefObject<Group | null>, onDone:
       const plane = new Plane().setFromNormalAndCoplanarPoint(camera.getWorldDirection(new Vector3()), g.position);
       const hit = e.ray.intersectPlane(plane, new Vector3()) ?? g.position.clone();
       const rest = kind ? groupOf({ kind, id }, g.position.clone(), selected3(store.get(), kind, id)) : [];
-      // grabbed while its stack still places it: the hand wins
-      if (kind === "board") settleTies(id);
       drag.current = { mode: e.shiftKey ? "turn" : e.altKey ? "depth" : "move", x: e.clientX, y: e.clientY, p: g.position.clone(), q: g.quaternion.clone(), plane, hit, rest };
       pointer.busy = true;
     },

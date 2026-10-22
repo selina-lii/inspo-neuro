@@ -7,7 +7,7 @@ import type { Vec3 } from "../../core/stats";
 import { closePanel, moveNetwork, openSession, patchPanel, removeNetwork, setMainHidden } from "../../actions";
 import { PANEL_TITLES } from "../map/SpacePanelNode";
 import { facePanel } from "./Panels3D";
-import { untie } from "../../stackActions";
+import { settleTies, untie } from "../../stackActions";
 import { addToNode, dropFromNode, patchGrid, patchNode, patchStyle, removeGrid, removeNode, removeStyle } from "../../gridActions";
 import { closeTest, moveBoard } from "../../statsActions";
 import { AddMenu } from "../menu/AddMenu";
@@ -25,10 +25,11 @@ export const claimMenu = (target: Target) => void (pending ??= target);
 /** A right press starts a fresh claim. */
 export const resetClaim = () => void (pending = null);
 
-// the construct being carried; Esc or a click sets it down where it is
+// the construct being carried; Esc or a press's release sets it down where it is
 let carrying: Target | null = null;
 const carryListeners = new Set<(t: Target | null) => void>();
 function carry(t: Target | null) {
+  if (t?.kind === "board") settleTies(t.id);
   carrying = t;
   for (const f of carryListeners) f(t);
 }
@@ -97,10 +98,10 @@ export function SpaceMenu({ at, onClose, onCenter }: { at: { x: number; y: numbe
     if (!moving) return;
     const stop = (e: Event) => (e instanceof KeyboardEvent ? e.key === "Escape" : true) && carry(null);
     window.addEventListener("keydown", stop);
-    window.addEventListener("pointerdown", stop);
+    window.addEventListener("pointerup", stop);
     return () => {
       window.removeEventListener("keydown", stop);
-      window.removeEventListener("pointerdown", stop);
+      window.removeEventListener("pointerup", stop);
     };
   }, [moving]);
 

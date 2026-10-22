@@ -72,7 +72,8 @@ export function arrangeTie(tie: Tie, box: SceneBox, center: Vec3, layers: DrawnL
   const s = store.get();
   const st = stackOf(tie.board);
   const board = s.stats.boards.find((b) => b.id === tie.board);
-  if (!st || !board) return;
+  // a timer set before the hand took the board must not move it
+  if (!st || !board || !s.ties.find((t) => t.board === tie.board)?.fresh) return;
   const n = st.sessions.filter((x) => x !== s.session).length;
   const anchor = anchorOf(s, tie.network, center);
   const gap = layerGap(s.spacing);
