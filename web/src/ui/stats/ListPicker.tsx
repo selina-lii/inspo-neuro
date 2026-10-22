@@ -1,18 +1,21 @@
 // A stats-row picker: a button showing the choice, a popover list to change it. As in the Qt picker, nothing picked snaps to every item
 // unless `empty` names what nothing means.
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 
 /** Open state that closes when the pointer goes down outside `ref`. */
 export function usePopover() {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const pop = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!open) return;
-    const close = (e: PointerEvent) => ref.current && !ref.current.contains(e.target as Node) && setOpen(false);
+    const inside = (n: Node) => ref.current?.contains(n) || pop.current?.contains(n);
+    const close = (e: PointerEvent) => ref.current && !inside(e.target as Node) && setOpen(false);
     window.addEventListener("pointerdown", close);
     return () => window.removeEventListener("pointerdown", close);
   }, [open]);
-  return { open, setOpen, ref };
+  return { open, setOpen, ref, pop };
 }
 
 type Props = {
@@ -29,7 +32,7 @@ type Props = {
 };
 
 export function ListPicker({ plural, items, selected, onChange: set, single = false, disabled = [], display = (x) => x, locked = false, empty, extra }: Props) {
-  const { open, setOpen, ref } = usePopover();
+  const { open, setOpen, ref, pop } = usePopover();
   const [query, setQuery] = useState("");
   const onChange = (next: string[]) => set(next.length || single || empty ? next : items.filter((i) => !disabled.includes(i)));
   const all = !single && items.length > 0 && items.every((i) => selected.includes(i));
@@ -45,8 +48,8 @@ export function ListPicker({ plural, items, selected, onChange: set, single = fa
       <button className={selected.length ? "on" : ""} disabled={locked} title={selected.map(display).join("\n")} onClick={() => setOpen(!open)}>
         {locked ? "↑ " : ""}{label} ▾
       </button>
-      {open && (
-        <div className="picker-pop">
+      {open && float(ref.current, (
+        <div className="picker-pop" ref={pop}>
           <div className="row">
             <input autoFocus placeholder={`filter ${plural}`} value={query} onChange={(e) => setQuery(e.target.value)} />
             {!single && !all && <button className="linkish" onClick={() => onChange([])}>{empty ?? "all"}</button>}
@@ -61,7 +64,14 @@ export function ListPicker({ plural, items, selected, onChange: set, single = fa
             ))}
           </div>
         </div>
-      )}
+      ))}
     </div>
   );
+}
+
+/** On a 3D object's bar the list leaves the bar's plane for the screen, opening upward over the object instead of behind the canvas. */
+function float(anchor: HTMLElement | null, pop: ReactNode): ReactNode {
+  if (!anchor?.closest(".board-tools")) return pop;
+  const box = anchor.getBoundingClientRect();
+  return createPortal(<div className="picker-float" style={{ left: box.left, bottom: window.innerHeight - box.top + 4, maxHeight: box.top - 8 }}>{pop}</div>, document.body);
 }
