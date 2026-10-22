@@ -4,7 +4,7 @@ import { useFrame } from "@react-three/fiber";
 import { useMemo, useRef } from "react";
 import { Vector3, type Group } from "three";
 import { moveNetwork, resizeNetwork } from "../../actions";
-import { pick3, tiedPairs } from "../../stackActions";
+import { tiedPairs } from "../../stackActions";
 import { useBody } from "./select3";
 import { NetworkFrame } from "./NetworkFrame";
 import { useBoardDrag } from "./stats/boardDrag";
@@ -54,7 +54,7 @@ function Copy({ net, links: all, pts, center, extent, dark }: CopyProps & { net:
     <group ref={group} position={[net.p[0] - center[0] * scale, net.p[1] - center[1] * scale, net.p[2] - center[2] * scale]} scale={scale}
       {...body} onContextMenu={() => claimMenu({ kind: "network", id: net.id })}>
       <NetworkFrame box={box} z={center[2]} label={`network · ${net.segment}`} picked={picked} drag={drag}
-        onPick={() => pick3("network", net.id)} onMenu={() => claimMenu({ kind: "network", id: net.id })} />
+        onMenu={() => claimMenu({ kind: "network", id: net.id })} />
       {batches.map((b) => <LinkBatch key={b.key} batch={b} pts={pts} dark={dark} onHover={() => undefined} />)}
       <Heads links={shown} styles={styles} pts={pts} touch={null} />
       <Neurons pts={pts} touch={null} hidden={shownAll} faded={faded} onHover={() => undefined} />

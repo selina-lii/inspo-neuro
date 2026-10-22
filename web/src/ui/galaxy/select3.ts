@@ -7,7 +7,7 @@ import { axisQuat, type Quat, type Vec3 } from "../../core/stats";
 import { same3, selection3 } from "../../core/select";
 import { PANEL_PX, store, type Picked3 } from "../../core/store";
 import { dockedOn } from "../../core/grid";
-import { duplicateGrid, patchGrid } from "../../gridActions";
+import { duplicateGrid, patchGrid, patchNode, patchStyle } from "../../gridActions";
 import { pick3, slideBoard } from "../../stackActions";
 import { duplicateTest, sceneFrame } from "../../statsActions";
 import { anchors, centers } from "./tie/portAt";
@@ -84,6 +84,12 @@ export function placeOf(p: Picked3): Placement | null {
     const a = anchors.get(`grid:${p.id}`);
     return g && c && a ? { p: g.p, q: new Quaternion(...g.q), at: a.at.clone(), pivot: c.at.clone(), turns: true, size: c.size } : null;
   }
+  if (p.kind === "node" || p.kind === "style") {
+    const n = p.kind === "node" ? s.pairNodes.find((x) => x.id === p.id) : s.styleNodes.find((x) => x.id === p.id);
+    const c = centers.get(`${p.kind}:${p.id}`);
+    const a = anchors.get(`${p.kind}:${p.id}`);
+    return n && c && a ? { p: n.p, q: new Quaternion(...n.q), at: a.at.clone(), pivot: c.at.clone(), turns: true, size: c.size } : null;
+  }
   if (p.kind === "network") {
     // the open session's network is placed by its offset, centred where its layout puts it
     const pos = p.id === "main" ? s.mainAt : s.networks.find((x) => x.id === p.id)?.p;
@@ -122,6 +128,8 @@ export function commit(p: Picked3, pose: { p: Vec3; q: Quat }): void {
   const s = store.get();
   if (p.kind === "board") slideBoard(p.id, pose.p, pose.q);
   else if (p.kind === "grid") patchGrid(p.id, pose);
+  else if (p.kind === "node") patchNode(p.id, pose);
+  else if (p.kind === "style") patchStyle(p.id, pose);
   else if (p.kind === "network") moveNetwork(p.id, pose.p);
   else if (p.kind === "panel") patchPanel(p.id, { pose: { ...s.panels.find((x) => x.id === p.id)!.pose!, ...pose } });
 }

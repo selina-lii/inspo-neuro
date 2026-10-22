@@ -66,7 +66,7 @@ export function CarrySync() {
 /** Duplicate and align: on the whole selection when the menu's object is in it. */
 function Many({ target, act }: { target: Target; act: (f: () => void) => () => void }) {
   const kind = target.kind;
-  if (kind === "node" || kind === "style" || kind === "tie") return null;
+  if (kind === "tie") return null;
   const lead = { kind, id: target.id };
   const all = actsOn(lead);
   const n = all.length > 1 ? ` (${all.length})` : "";

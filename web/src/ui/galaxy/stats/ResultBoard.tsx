@@ -3,7 +3,7 @@ import { useFrame } from "@react-three/fiber";
 import { useMemo, useRef } from "react";
 import { BufferGeometry, Float32BufferAttribute, Vector3, type Group, Quaternion } from "three";
 import type { Board, StatsPick, StatsTest, StatsValue } from "../../../core/stats";
-import { pick3, slideBoard } from "../../../stackActions";
+import { slideBoard } from "../../../stackActions";
 import { useBody } from "../select3";
 import { resizeBoard, setActiveTest } from "../../../statsActions";
 import { claimMenu } from "../SpaceMenu";
@@ -51,7 +51,7 @@ export function ResultBoard({ board, test, values, grayed, pick, dark, active, o
         <planeGeometry args={[x1 - x0, yTop - y0]} />
         <meshBasicMaterial color={panel} transparent opacity={0.88} depthWrite={false} side={2} />
       </mesh>
-      <mesh position={[(x0 + x1) / 2, yTop + 0.22, -0.01]} {...drag} onClick={(e) => e.delta <= 4 && (e.stopPropagation(), setActiveTest(test.id), pick3("board", board.id))}>
+      <mesh position={[(x0 + x1) / 2, yTop + 0.22, -0.01]} {...drag} onClick={(e) => e.delta <= 4 && setActiveTest(test.id)}>
         <planeGeometry args={[x1 - x0, 0.44]} />
         <meshBasicMaterial color="#3a6df0" transparent opacity={0.85} side={2} />
       </mesh>

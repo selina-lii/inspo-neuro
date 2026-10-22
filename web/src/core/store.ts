@@ -18,7 +18,7 @@ export type Filters = {
 };
 
 /** An object in the 3D space that can be selected and deleted: a network is "main" or a copy's id; a tie is its board's id. */
-export type Picked3 = { kind: "board" | "panel" | "network" | "tie" | "grid" | "cable"; id: string };   // a cable's id: "<what>|<grid>[|<test>]", see cutCable
+export type Picked3 = { kind: "board" | "panel" | "network" | "tie" | "grid" | "cable" | "node" | "style"; id: string };   // a cable's id: "<what>|<grid>[|<test>]", see cutCable
 
 export type Toast = { text: string; undo?: () => void } | null;
 
