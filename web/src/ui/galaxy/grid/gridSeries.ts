@@ -48,7 +48,7 @@ export function readable(s: ReturnType<typeof useStore>, grid: CcgGrid): { test:
 }
 
 /** The first readable test's result that measured any of the grid's pairs. */
-function seriesResult(s: ReturnType<typeof useStore>, grid: CcgGrid, keys: string[]): { test: StatsTest; result: StatsResult; series: Series } | null {
+export function seriesResult(s: ReturnType<typeof useStore>, grid: CcgGrid, keys: string[]): { test: StatsTest; result: StatsResult; series: Series } | null {
   for (const r of readable(s, grid)) {
     const series = cachedFrom(grid, r.test, r.result, s.stats.values);
     if (keys.some((k) => Object.values(series).some((byPair) => byPair[k] != null))) return { ...r, series };

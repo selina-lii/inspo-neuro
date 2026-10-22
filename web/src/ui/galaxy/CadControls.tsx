@@ -54,6 +54,7 @@ export function CadControls({ ref }: { ref?: Ref<CadHandle> }) {
   useImperativeHandle(ref, () => handle, [handle]);
   // the gizmo and anything else that asks for the default controls find this one
   useEffect(() => set({ controls: handle as never }), [handle, set]);
+  useEffect(() => void (import.meta.env.DEV && Object.assign(window, { neuromapCamera: camera, neuromapView: handle })), [camera, handle]);
 
   useFrame(() => {
     const tw = tween.current;
