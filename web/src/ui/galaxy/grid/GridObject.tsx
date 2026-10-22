@@ -20,7 +20,7 @@ import { Label3D } from "../stats/Label3D";
 import { anchors, centers, ports } from "../tie/portAt";
 import { drawOverlay } from "../tie/OverlayCards";
 import { useGridItems } from "./gridItems";
-import { seriesResult, useSeries, type Series } from "./gridSeries";
+import { useSeries, type Series } from "./gridSeries";
 import { drawSeries } from "./seriesTexture";
 import { gridKey } from "../../panel/Legend";
 import { syncFeeds, testsFedBy } from "../../../feedActions";
@@ -65,7 +65,8 @@ export function GridObject({ grid, dark }: { grid: CcgGrid; dark: boolean }) {
 
   useEffect(() => void (grid.page > pages - 1 && patchGrid(grid.id, { page: pages - 1 })), [grid.page, pages]);
 
-  const series = useSeries(grid, order);
+  const fetched = useSeries(grid, order);
+  const series = fetched?.values ?? null;
   const o = optionsOf(s, grid);
   // one y range for every card in the grid, across its pages
   const ylim = useMemo((): [number, number] | undefined => {
@@ -114,7 +115,7 @@ export function GridObject({ grid, dark }: { grid: CcgGrid; dark: boolean }) {
       <Label3D text={title} position={[0.05, BAR / 2, 0]} height={0.24} color="#ffffff" anchor="left" bold />
       <lineSegments geometry={frame}><lineBasicMaterial color={picked ? PICK_COLOR : "#3a6df0"} transparent opacity={0.6} /></lineSegments>
       {items.slice(page * per, (page + 1) * per).map((item, i) => (
-        <Cell key={item.key} item={item} grid={grid} n={n} at={slotAt(grid, n, i)} dark={dark} group={group} order={order} series={series} ylim={ylim} />
+        <Cell key={item.key} item={item} grid={grid} n={n} at={slotAt(grid, n, i)} dark={dark} group={group} order={order} series={series} metric={fetched?.metric ?? ""} ylim={ylim} />
       ))}
       {/* later pages: outlines only; a click on one brings its page to the front */}
       <lineSegments geometry={hints}><lineBasicMaterial color={dark ? "#8b919c" : "#7a7f88"} transparent opacity={0.35} /></lineSegments>
@@ -161,7 +162,7 @@ function endSweep(): void {
   pointer.busy = false;
 }
 
-function Cell({ item, grid, n, at, dark, group, order, series, ylim }: { item: GridItem; grid: CcgGrid; n: number; at: [number, number]; dark: boolean; group: React.RefObject<Group | null>; order: string[]; series: Series | null; ylim?: [number, number] }) {
+function Cell({ item, grid, n, at, dark, group, order, series, metric, ylim }: { item: GridItem; grid: CcgGrid; n: number; at: [number, number]; dark: boolean; group: React.RefObject<Group | null>; order: string[]; series: Series | null; metric: string; ylim?: [number, number] }) {
   const s = useStore();
   const o = optionsOf(s, grid);
   // an open legend cabled to the grid keys every cell at once
@@ -177,7 +178,7 @@ function Cell({ item, grid, n, at, dark, group, order, series, ylim }: { item: G
     if (grid.view === "stats") {
       if (!series) return [];
       const points = gridKey(s, grid).map(([label, color]) => ({ label, color, value: series[label]?.[item.key] ?? null }));
-      return [drawSeries(item.title, points, seriesResult(s, grid)?.result.metric ?? grid.metric ?? "Conn Strength", focused, ylim)];
+      return [drawSeries(item.title, points, metric, focused, ylim)];
     }
     if (!item.curves.length) return [];
     const styled = item.curves.map((c) => styledCurve(s, grid, c));
@@ -186,7 +187,7 @@ function Cell({ item, grid, n, at, dark, group, order, series, ylim }: { item: G
       return [drawOverlay(curves, title, null, focused, o, near, ylim)];
     }
     return styled.map((c) => drawCcg(c.trace, title ? `${title} · ${c.label}` : c.label, c.color, focused, { options: o, base: c.color, width: c.width, alpha: c.alpha, ylim }, near));
-  }, [item, grid.segMode, focused, dark, o, near, keyed, title, style, series, grid.view, ylim?.join()]);
+  }, [item, grid.segMode, focused, dark, o, near, keyed, title, style, series, metric, grid.view, ylim?.join()]);
   useEffect(() => () => textures.forEach((t) => t.dispose()), [textures]);
   const c = cellSize(grid, n);
   const step = grid.axis === "x" ? [CELL.w, 0] : [0, -CELL.h];
