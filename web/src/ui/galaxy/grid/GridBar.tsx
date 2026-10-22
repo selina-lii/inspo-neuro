@@ -32,6 +32,15 @@ export function GridBar({ grid }: { grid: CcgGrid }) {
     <input type="number" min={1} value={grid[k]} title={k === "cols" ? "columns" : "rows"} style={{ width: 38 }}
       onChange={(e) => e.target.value && set({ [k]: Math.max(1, Math.round(Number(e.target.value))), page: 0 })} />
   );
+  // an empty end goes back to the whole lag range
+  const lag = (i: 0 | 1) => (
+    <input type="number" step={1} value={grid.xlim?.[i] ?? ""} placeholder={i ? "max" : "min"} title="lag window (ms): cards show only these lags and scale to them" style={{ width: 46 }}
+      onChange={(e) => {
+        const next = [...(grid.xlim ?? [null, null])] as NonNullable<CcgGrid["xlim"]>;
+        next[i] = e.target.value === "" ? null : Number(e.target.value);
+        set({ xlim: next.every((x) => x === null) ? undefined : next });
+      }} />
+  );
   return (
     <FloatBar id={`grid:${grid.id}`}>
       <select value={grid.sort} onChange={(e) => set({ sort: e.target.value as GridSort, page: 0 })}>
@@ -46,6 +55,7 @@ export function GridBar({ grid }: { grid: CcgGrid }) {
           {options.pickers.data.items.map((m) => <option key={m} disabled={options.disabled_metrics.includes(m)}>{m}</option>)}
         </select>
       )}
+      {grid.view !== "stats" && <><span className="sep" /><span className="muted">lag</span>{lag(0)}–{lag(1)}</>}
       {bySegment && (
         <>
           <span className="sep" />

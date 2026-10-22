@@ -48,4 +48,20 @@ test("a grid's tag picker makes a new tag on the spot", async () => {
   assert.ok(l.groups.includes("fresh"));
 });
 
+test("a grid's lag window keeps only the lags inside it; clearing both ends shows them all", async () => {
+  const lag = (i) => app.page.locator('input[title^="lag window"]').nth(i);
+  await lag(0).fill("-5");
+  await lag(1).fill("5");
+  assert.deepEqual(await app.state((s) => s.grids.at(-1).xlim), [-5, 5]);
+  const lags = await app.page.evaluate(async () => {
+    const { windowed } = await import("/src/core/grid.ts");
+    const t = { lags: [-10, -5, 0, 5, 10], ccg: [1, 2, 3, 4, 5], baseline: [0, 0, 0, 0, 0] };
+    return windowed(t, [-5, null]).ccg;
+  });
+  assert.deepEqual(lags, [2, 3, 4, 5]);
+  await lag(0).fill("");
+  await lag(1).fill("");
+  assert.equal(await app.state((s) => s.grids.at(-1).xlim), undefined);
+});
+
 test("no page errors", () => assert.deepEqual(app.errors, []));

@@ -18,6 +18,7 @@ export type CcgGrid = {
   view?: "ccg" | "stats";   // stats: each card plots the pair's value per curve, as its linked test measures it
   metric?: string;   // the stats metric that view plots
   sameScale?: boolean;   // every card on one y range, the grid's whole
+  xlim?: [number | null, number | null];   // the lag window (ms) its CCG cards show, null an open end; their y range fits it
   layoutOpen?: boolean;   // its bar shows the layout settings
 };
 
@@ -70,6 +71,13 @@ export const optionsOf = (s: State, grid: CcgGrid): CcgOptions => {
 export type GridCurve = { label: string; color: string; trace: Trace };
 
 export type GridItem = { key: string; session: string; ref: number; tgt: number; title: string; color: string; strength: number; on: number; groups: string[]; curves: GridCurve[] };
+
+/** *trace* cut to the lags inside *xlim*. */
+export function windowed(trace: Trace, [lo, hi]: [number | null, number | null]): Trace {
+  const keep = trace.lags.flatMap((x, i) => (x >= (lo ?? -Infinity) && x <= (hi ?? Infinity) ? [i] : []));
+  const cut = (ys?: number[]) => ys && keep.map((i) => ys[i]!);
+  return { lags: cut(trace.lags)!, ccg: cut(trace.ccg)!, baseline: cut(trace.baseline)!, p: cut(trace.p), pc: cut(trace.pc) };
+}
 
 export const CELL = { w: 2.4, h: 1.4, gap: 0.15, depth: 1.2, info: 4 };
 

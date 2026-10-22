@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ensureSegLinks } from "../../../actions";
 import { paletteColor, TYPE_COLORS } from "../../../core/colors";
 import { visibleLinks } from "../../../core/derive";
-import { nodePairs, optionsOf, sortItems, trayKeys, type CcgGrid, type GridItem } from "../../../core/grid";
+import { nodePairs, optionsOf, sortItems, trayKeys, windowed, type CcgGrid, type GridItem } from "../../../core/grid";
 import { normalize } from "../../../core/norms";
 import { rowsWithPair, rowTrace, type StackLayer } from "../../../core/stack";
 import type { CcgOptions, State } from "../../../core/store";
@@ -42,8 +42,10 @@ export function useGridItems(grid: CcgGrid): GridItem[] {
     const all = kind === "board" ? boardItems(s, id, o) : kind === "net" ? networkItems(s, grid, netLinks(s, grid, id), o) : kind === "node" ? nodeItems(s, grid, bySession, o) : [];
     const items = all.filter((x) => tray.keys.has(x.key) === tray.own);
     const sessions = kind === "board" ? stackOf(id)?.sessions ?? [] : [s.session ?? "", ...bySession.keys()];
-    return sortItems(items, grid.sort, sessions);
-  }, [s.links, s.filters, s.selection, s.segLinks, s.stack, s.stats.values, o, s.ties, grid.sort, grid.pairs, s.stats.pick, grid.segments.join(), source, loaded, tray.own, [...tray.keys].join(), picked.join()]);
+    const xlim = grid.xlim;
+    const cut = xlim ? items.map((x) => ({ ...x, curves: x.curves.map((c) => ({ ...c, trace: windowed(c.trace, xlim) })) })) : items;
+    return sortItems(cut, grid.sort, sessions);
+  }, [grid.xlim?.join(), s.links, s.filters, s.selection, s.segLinks, s.stack, s.stats.values, o, s.ties, grid.sort, grid.pairs, s.stats.pick, grid.segments.join(), source, loaded, tray.own, [...tray.keys].join(), picked.join()]);
 }
 
 function netLinks(s: State, grid: CcgGrid, network: string): Link[] {
