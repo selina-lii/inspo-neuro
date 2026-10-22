@@ -2,7 +2,7 @@
 // ties them; a grid takes its pairs from what it is cabled to); click a cable to select it (Delete cuts it) or right-click it.
 import { useFrame, useThree, type ThreeEvent } from "@react-three/fiber";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { BufferGeometry, Float32BufferAttribute, type Mesh, Plane, Quaternion, Vector3 } from "three";
+import { BufferGeometry, Float32BufferAttribute, type Group, type Mesh, Plane, Quaternion, Vector3 } from "three";
 import { patchGrid } from "../../../gridActions";
 import { feedTest } from "../../../feedActions";
 import { setActiveTest } from "../../../statsActions";
@@ -16,6 +16,7 @@ import { ports } from "./portAt";
 
 const HIT_PX = 30;
 const UP = new Vector3(0, 1, 0);
+const GRAB = 0.012;   // the cable's grab radius per unit of camera distance
 
 /** Ports, the cable being dragged, and the ties' cables. */
 export function TiePorts() {
@@ -136,20 +137,32 @@ function Port({ id, lit, ...handlers }: { id: string; lit: boolean } & Record<st
 /** A cable: a thin tube between two ports, kept between them each frame. */
 /** A cable; *pick* makes it selectable like any object, by a click on it (with Shift or ⌘ joining the selection). */
 function Cable({ a: from, b: to, picked, pick, onMenu }: { a: string; b: string; picked: boolean; pick?: Picked3; onMenu(): void }) {
-  const mesh = useRef<Mesh>(null);
+  const group = useRef<Group>(null);
+  const tube = useRef<Mesh>(null);
+  const sleeve = useRef<Mesh>(null);
+  const camera = useThree((t) => t.camera);
   useFrame(() => {
     const [a, b] = [ports.get(from), ports.get(to)];
-    const m = mesh.current;
-    if (!m || !a || !b) return;
+    const g = group.current;
+    if (!g || !a || !b) return;
     const d = b.clone().sub(a);
-    m.position.copy(a).addScaledVector(d, 0.5);
-    m.quaternion.copy(new Quaternion().setFromUnitVectors(UP, d.clone().normalize()));
-    m.scale.set(1, d.length(), 1);
+    g.position.copy(a).addScaledVector(d, 0.5);
+    g.quaternion.copy(new Quaternion().setFromUnitVectors(UP, d.clone().normalize()));
+    tube.current!.scale.set(1, d.length(), 1);
+    // an unseen sleeve as wide on screen at any distance, so a thin cable is still easy to grab
+    const r = Math.max(0.15, camera.position.distanceTo(g.position) * GRAB);
+    sleeve.current!.scale.set(r, d.length(), r);
   });
   return (
-    <mesh ref={mesh} onContextMenu={onMenu} userData={pick ? { pick } : {}}>
-      <cylinderGeometry args={[picked ? 0.12 : 0.07, picked ? 0.12 : 0.07, 1, 8]} />
-      <meshBasicMaterial color="#ff1dce" transparent opacity={picked ? 1 : 0.75} />
-    </mesh>
+    <group ref={group} onContextMenu={onMenu} userData={pick ? { pick } : {}}>
+      <mesh ref={tube}>
+        <cylinderGeometry args={[picked ? 0.12 : 0.07, picked ? 0.12 : 0.07, 1, 8]} />
+        <meshBasicMaterial color="#ff1dce" transparent opacity={picked ? 1 : 0.75} />
+      </mesh>
+      <mesh ref={sleeve}>
+        <cylinderGeometry args={[1, 1, 1, 6]} />
+        <meshBasicMaterial visible={false} />
+      </mesh>
+    </group>
   );
 }
