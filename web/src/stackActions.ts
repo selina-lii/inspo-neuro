@@ -19,18 +19,20 @@ export function loadTies(saved: Tie[]): void {
   // a tied board turned off the side wall goes back to it
   const ties = saved.filter((t) => boards.has(t.board));
   store.set({ ties: ties.map((t) => (boards.get(t.board)!.pose.q.every((v, i) => Math.abs(v - side[i]!) < 1e-3) ? t : { ...t, fresh: true })) });
-  // boards saved sharing one network each get a copy of their own
+  // boards saved on the main network or sharing one each get a network of their own
   const seen = new Set<string>();
-  for (const t of store.get().ties) seen.has(t.network) ? tie(t.board, t.network) : seen.add(t.network);
+  for (const t of store.get().ties) t.network === "main" || seen.has(t.network) ? tie(t.board, t.network) : seen.add(t.network);
 }
 
-/** One board, one network: cabling a board again moves its cable; a network tied to another board gets a copy for this one, so their stacks move apart. */
+/** A test shows its result on a network of its own: tied to the main network or one another test holds, it gets a copy of it. */
 export function tie(board: string, network: string): void {
   const s = store.get();
-  const taken = s.ties.some((t) => t.network === network && t.board !== board);
+  const was = s.ties.find((t) => t.board === board);
+  const shared = network === "main" || s.ties.some((t) => t.network === network && t.board !== board);
   const { center, extent } = sceneFrame();
-  const own = taken ? addNetwork(network === "main" ? activeSegment(s) : s.networks.find((n) => n.id === network)!.segment, center, extent) : network;
-  setTies([...store.get().ties.filter((t) => t.board !== board), { board, network: own, fresh: true }]);
+  const own = shared ? addNetwork(network === "main" ? activeSegment(s) : s.networks.find((n) => n.id === network)!.segment, center, extent) : network;
+  if (was?.owned && was.network !== own) removeNetwork(was.network);
+  setTies([...store.get().ties.filter((t) => t.board !== board), { board, network: own, fresh: true, owned: shared || (was?.owned && was.network === own) }]);
 }
 
 /** Boards still being placed on their stacks stay where they are now. */
@@ -38,7 +40,7 @@ export const settleTies = (board?: string) => store.get().ties.filter((t) => t.f
 
 export function arranged(board: string): void {
   const at = store.get().stats.boards.find((b) => b.id === board)!.pose.p;
-  setTies(store.get().ties.map((t) => (t.board === board ? { board: t.board, network: t.network, at } : t)));
+  setTies(store.get().ties.map((t) => (t.board === board ? { ...t, fresh: undefined, at } : t)));
 }
 
 /** The board alone moves by its title bar: its tie's reference point moves too, so the layers it brought in stay. */
@@ -49,7 +51,9 @@ export function slideBoard(board: string, p: Vec3, q: Quat): void {
 }
 
 export function untie(board: string): void {
-  setTies(store.get().ties.filter((t) => t.board !== board));
+  const t = store.get().ties.find((x) => x.board === board);
+  setTies(store.get().ties.filter((x) => x.board !== board));
+  if (t?.owned) removeNetwork(t.network);
   if (store.get().playback?.board === board) stopPlayback();
 }
 
