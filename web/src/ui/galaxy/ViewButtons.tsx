@@ -1,8 +1,10 @@
-// Standard views for the 3D space, as CAD tools have them: front, top, right, iso, fit all, and straight onto a board.
+// Standard views for the 3D space, as CAD tools have them: front, top, right, iso, home, and straight onto a board.
 import { useState, type RefObject } from "react";
 import { Quaternion, Vector3 } from "three";
 import type { Board } from "../../core/stats";
 import type { CadHandle } from "./CadControls";
+import { store } from "../../core/store";
+import { sceneFrame } from "../../statsActions";
 
 const VIEWS: [string, Vector3, Vector3, string][] = [
   ["front", new Vector3(0, 0, 1), new Vector3(0, 1, 0), "look at the x–y plane from the front"],
@@ -51,7 +53,10 @@ export function ViewButtons({ controls }: { controls: RefObject<CadHandle | null
       {VIEWS.map(([name, dir, up, tip]) => (
         <button key={name} title={tip} onClick={() => controls.current?.view(dir, up)}>{name}</button>
       ))}
-      <button title="zoom out until everything is in view" onClick={() => controls.current?.fit()}>fit all</button>
+      <button title="the standard view: straight onto the open session's network, from the front, at its size" onClick={() => {
+        const { center, extent } = sceneFrame();
+        controls.current?.look(new Vector3(...center).add(new Vector3(...store.get().mainAt)), new Vector3(0, 0, 1), new Vector3(0, 1, 0), extent * 2);
+      }}>home</button>
     </div>
   );
 }
