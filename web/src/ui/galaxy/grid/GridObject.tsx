@@ -168,7 +168,8 @@ function Cell({ item, grid, n, at, dark, group, order, series, ylim }: { item: G
   const keyed = s.panels.some((p) => p.id === grid.legend && !p.closed);
   const cells = useRef<Group>(null);
   const near = useNear(cells, CELL.w);
-  const focused = s.cells.has(item.key) || (s.session === item.session && s.focus?.kind === "pair" && s.focus.ref === item.ref && s.focus.tgt === item.tgt);
+  // a stats pick names its pair outright; the network's focus only a pair of the open session
+  const focused = s.cells.has(item.key) || (s.stats.pick.pair ? s.stats.pick.pair === item.key : s.session === item.session && s.focus?.kind === "pair" && s.focus.ref === item.ref && s.focus.tgt === item.tgt);
   // a list's info line names the pair once, so its cards carry only their segment
   const title = grid.list ? "" : item.title;
   const style = s.styleNodes.find((n) => n.id === grid.style);

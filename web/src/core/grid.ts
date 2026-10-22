@@ -22,10 +22,11 @@ export type CcgGrid = {
   layoutOpen?: boolean;   // its bar shows the layout settings
 };
 
-/** The test a grid's stats view measures under: the board feeding it, else a test it feeds. */
+/** The test a grid's stats view reads: one it feeds, which measures its pairs as the grid has them, else the board feeding it. */
 export const linkedTest = (s: State, grid: CcgGrid) => {
+  const fed = s.stats.tests.find((t) => t.config.rows.some((r) => r.fed === grid.id));
   const [kind, id] = (grid.source ?? ":").split(":");
-  return kind === "board" ? s.stats.tests.find((t) => t.id === id) : s.stats.tests.find((t) => t.config.rows.some((r) => r.fed === grid.id));
+  return fed ?? (kind === "board" ? s.stats.tests.find((t) => t.id === id) : undefined);
 };
 
 /** How one segment's curves draw on the grids cabled to a style node. */
