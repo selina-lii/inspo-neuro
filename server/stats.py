@@ -90,7 +90,9 @@ def _tag_fed_rows(p, b: PairsBackend, name: str) -> None:
             groups.add_to_group(tag, sess, (ref, tgt))
             p.drop(sess)
         row.rules = [r for r in row.rules if tag not in r.values] + [DerivedRule(kind=DerivedRule.PAIR_TAG, values=[tag])]
-    groups.save()
+    # the session files are what Qt reads tags from, not the groups file: a full save, which takes pending edits too
+    p.sd.save()
+    p.unsaved = 0
 
 
 def _config(b: StatsTestBackend) -> dict:
