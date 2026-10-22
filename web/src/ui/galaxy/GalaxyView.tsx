@@ -99,18 +99,17 @@ export function GalaxyView({ dark }: { dark: boolean }) {
   const playSeg = playRow && openLayer ? rowSegment(openLayer, playRow) : null;
   useEffect(() => void (playSeg && s.session && ensureSegLinks(s.session, playSeg)), [playSeg, s.session]);
   const baseMap: MapInstance = s.maps.find((m) => m.id === s.activeMap) ?? s.maps[0]!;
-  const mainOff = s.mainHidden;
   const map = useMemo(() => (playSeg ? { ...baseMap, segment: playSeg } : baseMap), [baseMap, playSeg]);
-  // a pick in another session dims this network whole
-  const pickAway = Boolean(s.stats.pick.pair) && pickSession !== s.session;
+  // a pick shows its own session's network alone
+  const mainOff = s.mainHidden || (Boolean(s.stats.pick.pair) && pickSession !== s.session);
   // a clicked pair stands out: the rest of the network drops back
   const focusKey = focus?.kind === "pair" ? linkKey(focus.ref, focus.tgt) : null;
   const drawn = useMemo(() => (solo && !shown.includes(solo) ? [...shown, solo] : shown), [shown, solo]);
   const styles = useMemo(() => new Map(drawn.map((l) => [l.i, linkStyle(s, map, l)])), [drawn, s.linkColor, s.encoding, s.segLinks, map.segment]);
   const batches = useMemo(
-    () => buildBatches(drawn, styles, { solo, touch, picked, alpha: s.linkAlpha * (pickAway ? 0.15 : 1), focus: focusKey, off: (l) => (filters.onOnly || Boolean(playSeg)) && s.segLinks[map.segment]?.on[l.i] === false }),
+    () => buildBatches(drawn, styles, { solo, touch, picked, alpha: s.linkAlpha, focus: focusKey, off: (l) => (filters.onOnly || Boolean(playSeg)) && s.segLinks[map.segment]?.on[l.i] === false }),
     // picked is rebuilt each render; its contents are what matter
-    [drawn, styles, solo, touch, s.linkAlpha, pickAway, [...picked].sort().join(), playSeg, s.segLinks, focusKey]);
+    [drawn, styles, solo, touch, s.linkAlpha, [...picked].sort().join(), playSeg, s.segLinks, focusKey]);
 
   const hideNeuron = useMemo(() => (idx: number) => Boolean(hood && !hood.neurons.has(idx)), [hood]);
   const fadeNeuron = useMemo(() => {

@@ -12,6 +12,15 @@ before(async () => {
   await app.settle(1500);
 });
 after(() => app.close());
+/** WebGL draw calls in one frame. */
+const draws = () => app.page.evaluate(() => new Promise((done) => {
+  const gl = document.querySelector("canvas").getContext("webgl2");
+  const [de, da] = [gl.drawElements, gl.drawArrays];
+  let n = 0;
+  gl.drawElements = (...a) => (n++, de.apply(gl, a));
+  gl.drawArrays = (...a) => (n++, da.apply(gl, a));
+  requestAnimationFrame(() => (n = 0, requestAnimationFrame(() => ((gl.drawElements = de), (gl.drawArrays = da), done(n)))));
+}));
 
 test("a select in a 3D panel opens a flat list that sets the value", async () => {
   const select = app.page.locator(".panel3d select", { has: app.page.locator("option", { hasText: "Repeated-measures ANOVA" }) }).first();
@@ -150,14 +159,6 @@ test("flipping one grid's page redraws its own cards alone; the View menu hides 
   const drawn = await app.page.evaluate(() => window.__canvases);
   await app.call("wireActions.ts", "connect", `grid:${ids[0]}`, "panel:legend");
   await app.settle(800);
-  const draws = () => app.page.evaluate(() => new Promise((done) => {
-    const gl = document.querySelector("canvas").getContext("webgl2");
-    const [de, da] = [gl.drawElements, gl.drawArrays];
-    let n = 0;
-    gl.drawElements = (...a) => (n++, de.apply(gl, a));
-    gl.drawArrays = (...a) => (n++, da.apply(gl, a));
-    requestAnimationFrame(() => (n = 0, requestAnimationFrame(() => ((gl.drawElements = de), (gl.drawArrays = da), done(n)))));
-  }));
   const shown = await draws();
   await app.page.evaluate(() => window.neuromapStore.set({ cables: false }));
   await app.settle(300);
@@ -166,6 +167,16 @@ test("flipping one grid's page redraws its own cards alone; the View menu hides 
   for (const id of ids) await app.call("gridActions.ts", "removeGrid", id);
   assert.equal(drawn, 12, "the flipped grid's page of 12 cards, and nothing in the other grid");
   assert.ok(hidden < shown, `hiding cables draws less: ${shown} → ${hidden}`);
+});
+
+test("a pair picked in another session hides this session's network whole", async () => {
+  const shown = await draws();
+  const l = await app.state((s) => s.links[0]);
+  await app.page.evaluate((pair) => window.neuromapStore.setStats({ pick: { ids: new Set(), pair, lineage: false } }), `day2|${l.ref}|${l.tgt}`);
+  await app.settle(300);
+  const away = await draws();
+  await app.call("statsActions.ts", "clearPick");
+  assert.ok(away < shown, `the network drops out: ${shown} → ${away}`);
 });
 
 test("cards sit still while peak fits land in the background", async () => {
@@ -185,6 +196,15 @@ test("cards sit still while peak fits land in the background", async () => {
   const drawn = await app.page.evaluate(() => window.__canvases);
   await app.call("gridActions.ts", "removeGrid", g);
   assert.equal(drawn, 0, "no card redraws");
+});
+
+test("a 3D panel's title bar collapses and expands it", async () => {
+  const collapsed = () => app.state((s) => s.panels.find((p) => p.kind === "stats").collapsed);
+  const toggle = app.page.locator(".panel3d .space-panel-head button[title=collapse], .panel3d .space-panel-head button[title=expand]").first();
+  await toggle.dispatchEvent("click");
+  assert.equal(await collapsed(), true);
+  await toggle.dispatchEvent("click");
+  assert.equal(await collapsed(), false);
 });
 
 test("no page errors", () => assert.deepEqual(app.errors, []));

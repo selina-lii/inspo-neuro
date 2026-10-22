@@ -98,7 +98,7 @@ export function StackLayers({ tie, layers, center, dark }: { tie: Tie; layers: D
   const shift = layerShift(s, tie, anchor.s);
   return (
     <group position={anchor.p} scale={anchor.s}>
-      {layers.map((layer, i) => (i === 0 && s.mainHidden) ? null : (() => {
+      {layers.map((layer, i) => (i === 0 && s.mainHidden) || (s.stats.pick.pair && pickSession !== layer.session) ? null : (() => {
         const top = Math.max(...layer.probes.map((p) => p.y1), ...layer.pts.map((p) => p.y), 0) + 2.2;
         const x0 = Math.min(...layer.probes.map((p) => p.x), ...layer.pts.map((p) => p.x), 0);
         const seg = row && layer.data ? rowSegment(layer.data, row) : null;
@@ -123,13 +123,12 @@ function Layer({ board, network, layer, segment, picked, dark }: { board: string
   // a stack is no regular view: only the test's own pairs, the other neurons see-through
   const inTest = tiedPairs(network, layer.session) ?? new Set<string>();
   const inTestKey = [...inTest].join();
-  // a picked pair stays lit, drawn even when the filters hide it; the rest dims, and a pick in another session dims it all
+  // a picked pair stays lit, drawn even when the filters hide it; the rest dims
   const solo = useMemo(() => (picked ? layer.links.find((l) => linkKey(l.ref, l.tgt) === picked) ?? null : null), [layer.links, picked]);
   const shown = useMemo(() => {
     const keep = layer.links.filter((l) => inTest.has(linkKey(l.ref, l.tgt)) && !pairHidden(s.filters, layer.neurons, l.ref, l.tgt));
     return solo && !keep.includes(solo) ? [...keep, solo] : keep;
   }, [layer.links, s.filters, layer.neurons, solo, inTestKey]);
-  const away = Boolean(s.stats.pick.pair) && !solo;
   const faded = useMemo(() => {
     const ends = new Set((solo ? [solo] : shown).flatMap((l) => [l.ref, l.tgt]));
     return (idx: number) => !ends.has(idx);
@@ -139,10 +138,10 @@ function Layer({ board, network, layer, segment, picked, dark }: { board: string
   const styles = useMemo(() => new Map(shown.map((l) => [l.i, linkStyle(view, map, l)])), [shown, view, map]);
   const pickedSet = useMemo(() => new Set(picked ? [picked] : []), [picked]);
   const batches = useMemo(() => buildBatches(shown, styles, {
-    solo, touch: null, picked: pickedSet, alpha: s.linkAlpha * (away ? 0.15 : 1),
+    solo, touch: null, picked: pickedSet, alpha: s.linkAlpha,
     // during playback a link off in the row's segment fades
     off: (l) => Boolean(segment) && layer.data!.segLinks[segment!]?.on[l.i] === false,
-  }), [shown, styles, solo, away, pickedSet, s.linkAlpha, segment, layer.data]);
+  }), [shown, styles, solo, pickedSet, s.linkAlpha, segment, layer.data]);
   return (
     <>
       {layer.probes.map((p) => (
