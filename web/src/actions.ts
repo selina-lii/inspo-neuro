@@ -49,7 +49,7 @@ export async function boot(): Promise<void> {
   try {
     const { projects, open } = await api.projects();
     store.set({ projects });
-    if (open) await afterOpen(savedPlace(), false);
+    if (open) await afterOpen(savedPlace());
   } catch (error) {
     fail(error);
   }
@@ -63,20 +63,20 @@ export async function openProject(name: string): Promise<void> {
   try {
     await api.open(name, unsaved > 0);
     store.set({ unsaved: 0 });
-    await afterOpen(null, true);
+    await afterOpen(null);
   } catch (error) {
     fail(error);
   }
 }
 
-// a picked project starts on an empty workspace; a reload reopens the one it was on
-async function afterOpen(place: Place | null, fresh: boolean): Promise<void> {
+// a project reopens the workspace it was on, else its latest; a new one only when it has none
+async function afterOpen(place: Place | null): Promise<void> {
   const [info, { names }] = await Promise.all([api.sessions(), api.workspaces()]);
   countUnsaved();
   store.set({ workspaces: names, project: info.name, sessions: info.sessions, pairGroups: info.pair_groups, neuronGroups: info.neuron_groups, groupMeta: info.group_meta, busy: null });
   if (!info.sessions[0]) return store.set({ neurons: [], links: [], positions: [], areas: [], error: `${info.name} has no sessions with stored CCGs.` });
   const back = place?.project === info.name && names.includes(place.workspace) ? place : null;
-  if (fresh || !names.length) await newWorkspace();
+  if (!names.length) await newWorkspace();
   else await openWorkspace(back?.workspace ?? names[0]!);
   if (back && back.session === store.get().session) {
     store.set({ view: back.view, focus: back.focus });
