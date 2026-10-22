@@ -562,11 +562,13 @@ export function stepFocus(step: number): void {
 }
 
 /** Another copy of the network, showing *segment*, set down just past the right edge of everything in the scene. */
-export function addNetwork(segment: string, center: [number, number, number], extent: number): void {
+export function addNetwork(segment: string, center: [number, number, number], extent: number): string {
   const s = store.get();
   const right = Math.max(center[0] + extent, ...s.networks.map((n) => n.p[0] + extent * 1.2), ...s.stats.boards.map((b) => b.pose.p[0] + 6));
-  setNetworks([...s.networks, { id: `n${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`, segment, p: [right + extent * 0.6, center[1], center[2]] }]);
+  const id = `n${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`;
+  setNetworks([...s.networks, { id, segment, p: [right + extent * 0.6, center[1], center[2]] }]);
   if (s.session) ensureSegLinks(s.session, segment);
+  return id;
 }
 
 export const moveNetwork = (id: string, p: [number, number, number]) => (id === "main" ? store.set({ mainAt: p }) : setNetworks(store.get().networks.map((n) => (n.id === id ? { ...n, p } : n))));

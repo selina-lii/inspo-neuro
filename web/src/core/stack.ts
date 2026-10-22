@@ -5,7 +5,7 @@ import type { Link, Neuron, SegLinks, Shank, Trace } from "./types";
 
 /** A board cabled to a network: "main" or a network copy's id; `fresh` until the scene has arranged it. `at`: where the
  * board stood once arranged; the layers it brought in move by the board's offset from there. */
-export type Tie = { board: string; network: string; fresh?: boolean; at?: [number, number, number] };
+export type Tie = { board: string; network: string; fresh?: boolean; at?: [number, number, number]; owned?: boolean };   // owned: the network was made for this test and goes with it
 
 export type Playback = { board: string; row: number; playing: boolean; ms: number };
 
