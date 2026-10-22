@@ -9,6 +9,7 @@ import { loadTraces, tracesKey } from "./io/traces";
 import { dropPort } from "./wireActions";
 import { mainAtOf, mainHiddenOf, networksOf, newWorkspace, openWorkspace } from "./workspaceActions";
 import { record, undo } from "./history";
+import { clearPick } from "./statsActions";
 
 let animation = 0;
 let fitTimer = 0;
@@ -456,7 +457,8 @@ export function tagPairs(pairs: SessionPairs, group: string, op: "add" | "remove
   const name = group.trim();
   const needs = new Map([...pairs].map(([session, ps]) => {
     const has = new Map(linksOf(session).map((l) => [linkKey(l.ref, l.tgt), l.groups.includes(name)]));
-    return [session, ps.filter(([r, t]) => has.get(linkKey(r, t)) === (op === "remove"))];
+    // a pair of a session not loaded here goes as asked: the server's edit is a no-op where it already holds
+    return [session, ps.filter(([r, t]) => (has.get(linkKey(r, t)) ?? op === "remove") === (op === "remove"))];
   }));
   return editTags("pair", name, op, needs);
 }
@@ -474,6 +476,7 @@ async function editTags(kind: "pair" | "neuron", name: string, op: "add" | "remo
       countUnsaved();
       const info = await api.sessions();
       store.set({ busy: null, pairGroups: info.pair_groups, neuronGroups: info.neuron_groups, groupMeta: info.group_meta });
+      clearHighlight();   // the pairs are tagged: nothing stays lit for the next edit to pick up by mistake
       return true;
     } catch (error) {
       fail(error);
@@ -587,3 +590,9 @@ export const setNetworks = (networks: NetworkCopy[]) => store.set({ networks });
 
 export const setMainHidden = (mainHidden: boolean) => store.set({ mainHidden });
 
+
+/** What Esc unlights: the focused pair, picked cards, open sweep rows and the stats pick. */
+export function clearHighlight(): void {
+  store.set({ focus: null, cells: new Set(), sweep: { ...store.get().sweep, open: new Set() } });
+  clearPick();
+}

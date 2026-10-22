@@ -122,6 +122,13 @@ export function makeApi() {
         return [k, rowValue(s, Number(r), Number(t), c.segments) + (body.display?.offset ?? 0)];
       }))]));
     }
+    if (path === "/tags") {
+      for (const [s, members] of Object.entries(body.members)) for (const [r, t] of members) {
+        const l = DATA[s].links.find((x) => x.ref === r && x.tgt === t);
+        l.groups = body.op === "add" ? [...new Set([...l.groups, body.group])] : l.groups.filter((g) => g !== body.group);
+      }
+      return Object.fromEntries(Object.keys(body.members).map((s) => [s, DATA[s]]));
+    }
     if (path === "/pick") return { pairs: (body.sessions.length ? body.sessions : SESSIONS).flatMap((s) => DATA[s].links.map((l) => `${s}|${l.ref}|${l.tgt}`)) };
     return undefined;
   };
