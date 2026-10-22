@@ -8,7 +8,6 @@ import { CELL, cellSize, colsOf, gapOf, optionsOf, pageSize, slotAt, styledCurve
 import type { Quat, Vec3 } from "../../../core/stats";
 import { store } from "../../../core/store";
 import { patchGrid } from "../../../gridActions";
-import { pick3 } from "../../../stackActions";
 import { useBody } from "../select3";
 import { useStore } from "../../useStore";
 import { drawCcg } from "../CcgCards";
@@ -92,7 +91,7 @@ export function GridObject({ grid, dark }: { grid: CcgGrid; dark: boolean }) {
 
   return (
     <group ref={group} position={grid.p} quaternion={grid.q} scale={scale} {...body} onContextMenu={() => claimMenu({ kind: "grid", id: grid.id })}>
-      <mesh position={[w / 2, BAR / 2, -0.01]} {...drag} onClick={(e) => e.delta <= 4 && (e.stopPropagation(), pick3("grid", grid.id))}>
+      <mesh position={[w / 2, BAR / 2, -0.01]} {...drag}>
         <planeGeometry args={[w + 0.2, BAR]} />
         <meshBasicMaterial color={picked ? PICK_COLOR : "#3a6df0"} transparent opacity={0.85} side={2} />
       </mesh>

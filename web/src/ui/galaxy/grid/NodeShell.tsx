@@ -4,6 +4,9 @@ import { useEffect, useRef, type ReactNode } from "react";
 import { Vector3, type Group, Quaternion } from "three";
 import type { Quat, Vec3 } from "../../../core/stats";
 import { useStore } from "../../useStore";
+import { PICK_COLOR } from "../../../core/colors";
+import { selected3 } from "../../../core/select";
+import { useBody } from "../select3";
 import { claimMenu, type Target } from "../SpaceMenu";
 import { useBoardDrag } from "../stats/boardDrag";
 import { Label3D } from "../stats/Label3D";
@@ -18,7 +21,11 @@ export function NodeShell({ target, title, height, pose, place, output, dark, ch
   const { objectScale } = useStore();
   const group = useRef<Group>(null);
   const camera = useThree((t) => t.camera);
-  const drag = useBoardDrag(target.id, group, (p, q) => place({ p, q }), null);
+  const kind = target.kind as "node" | "style";
+  const drag = useBoardDrag(target.id, group, (p, q) => place({ p, q }), kind);
+  const body = useBody(kind, target.id, group);
+  const s = useStore();
+  const picked = selected3(s, kind, target.id);
   const key = `${target.kind}:${target.id}`;
 
   useEffect(() => {
@@ -36,10 +43,10 @@ export function NodeShell({ target, title, height, pose, place, output, dark, ch
   });
 
   return (
-    <group ref={group} position={pose.p} quaternion={pose.q} scale={objectScale} onContextMenu={() => claimMenu(target)}>
+    <group ref={group} position={pose.p} quaternion={pose.q} scale={objectScale} {...body} onContextMenu={() => claimMenu(target)}>
       <mesh position={[NODE_W / 2, NODE_BAR / 2, -0.01]} {...drag}>
         <planeGeometry args={[NODE_W, NODE_BAR]} />
-        <meshBasicMaterial color="#3a6df0" side={2} />
+        <meshBasicMaterial color={picked ? PICK_COLOR : "#3a6df0"} side={2} />
       </mesh>
       <Label3D text={title} position={[0.12, NODE_BAR / 2, 0]} height={0.24} color="#ffffff" anchor="left" bold />
       <mesh position={[NODE_W / 2, -height / 2 + NODE_BAR / 2, -0.02]}>

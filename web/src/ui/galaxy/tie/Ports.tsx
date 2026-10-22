@@ -6,7 +6,9 @@ import { BufferGeometry, Float32BufferAttribute, type Mesh, Plane, Quaternion, V
 import { patchGrid } from "../../../gridActions";
 import { feedTest } from "../../../feedActions";
 import { setActiveTest } from "../../../statsActions";
-import { pick3, tie } from "../../../stackActions";
+import { tie } from "../../../stackActions";
+import { selected3 } from "../../../core/select";
+import type { Picked3 } from "../../../core/store";
 import { useStore } from "../../useStore";
 import { pointer } from "../pointer";
 import { claimMenu } from "../SpaceMenu";
@@ -82,7 +84,7 @@ export function TiePorts() {
     a.needsUpdate = true;
   });
   // a grid's cable, selected by a click and cut by Delete
-  const pickable = (id: string) => ({ picked: s.picked3?.kind === "cable" && s.picked3.id === id, onPick: () => pick3("cable", id) });
+  const pickable = (id: string) => ({ picked: selected3(s, "cable", id), pick: { kind: "cable" as const, id } });
 
   return (
     <>
@@ -90,8 +92,8 @@ export function TiePorts() {
       {drag && <lineSegments geometry={line}><lineBasicMaterial color="#ff1dce" /></lineSegments>}
       {/* a cable shows while both its ends do */}
       {s.ties.filter((t) => ids.includes(`net:${t.network}`) && ids.includes(`board:${t.board}`)).map((t) => (
-        <Cable key={t.board} a={`board:${t.board}`} b={`net:${t.network}`} picked={s.picked3?.kind === "tie" && s.picked3.id === t.board}
-          onPick={() => pick3("tie", t.board)} onMenu={() => claimMenu({ kind: "tie", id: t.board })} />
+        <Cable key={t.board} a={`board:${t.board}`} b={`net:${t.network}`} picked={selected3(s, "tie", t.board)}
+          pick={{ kind: "tie", id: t.board }} onMenu={() => claimMenu({ kind: "tie", id: t.board })} />
       ))}
       {s.grids.filter((g) => g.source && ids.includes(g.source)).map((g) => (
         <Cable key={g.id} a={`grid:${g.id}`} b={g.source!} {...pickable(`src|${g.id}`)} onMenu={() => claimMenu({ kind: "grid", id: g.id })} />
@@ -103,7 +105,7 @@ export function TiePorts() {
         <Cable key={`feed${g}${t.id}`} a={`grid:${g}`} b={`board:${t.id}`} {...pickable(`feed|${g}|${t.id}`)} onMenu={() => claimMenu({ kind: "grid", id: g })} />
       )))}
       {s.stats.active && ids.includes("panel:stats") && ids.includes(`board:${s.stats.active}`) && (
-        <Cable key="edit" a="panel:stats" b={`board:${s.stats.active}`} picked={false} onPick={() => undefined} onMenu={() => claimMenu({ kind: "panel", id: "stats" })} />
+        <Cable key="edit" a="panel:stats" b={`board:${s.stats.active}`} picked={false} onMenu={() => claimMenu({ kind: "panel", id: "stats" })} />
       )}
       {s.grids.filter((g) => g.style && ids.includes(`style:${g.style}`)).map((g) => (
         <Cable key={`sty${g.id}`} a={`grid:${g.id}`} b={`style:${g.style}`} {...pickable(`sty|${g.id}`)} onMenu={() => claimMenu({ kind: "grid", id: g.id })} />
@@ -131,7 +133,8 @@ function Port({ id, lit, ...handlers }: { id: string; lit: boolean } & Record<st
 }
 
 /** A cable: a thin tube between two ports, kept between them each frame. */
-function Cable({ a: from, b: to, picked, onPick, onMenu }: { a: string; b: string; picked: boolean; onPick(): void; onMenu(): void }) {
+/** A cable; *pick* makes it selectable like any object, by a click on it (with Shift or ⌘ joining the selection). */
+function Cable({ a: from, b: to, picked, pick, onMenu }: { a: string; b: string; picked: boolean; pick?: Picked3; onMenu(): void }) {
   const mesh = useRef<Mesh>(null);
   useFrame(() => {
     const [a, b] = [ports.get(from), ports.get(to)];
@@ -143,7 +146,7 @@ function Cable({ a: from, b: to, picked, onPick, onMenu }: { a: string; b: strin
     m.scale.set(1, d.length(), 1);
   });
   return (
-    <mesh ref={mesh} onContextMenu={onMenu} onClick={(e) => e.delta <= 4 && (e.stopPropagation(), onPick())}>
+    <mesh ref={mesh} onContextMenu={onMenu} userData={pick ? { pick } : {}}>
       <cylinderGeometry args={[picked ? 0.12 : 0.07, picked ? 0.12 : 0.07, 1, 8]} />
       <meshBasicMaterial color="#ff1dce" transparent opacity={picked ? 1 : 0.75} />
     </mesh>

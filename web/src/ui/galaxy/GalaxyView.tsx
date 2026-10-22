@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Quaternion, Vector3, type Group } from "three";
 import { ensureSegLinks, moveNetwork } from "../../actions";
 import { rowSegment } from "../../core/stack";
-import { pick3, stackOf, tiedPairs } from "../../stackActions";
+import { stackOf, tiedPairs } from "../../stackActions";
 import { neighbourhood, pairHidden, visibleLinks } from "../../core/derive";
 import type { MapInstance } from "../../core/store";
 import { linkKey, type Point3 } from "../../core/types";
@@ -259,7 +259,7 @@ function MainNetwork({ box, label, children }: { box: SceneBox; label: string; c
   return (
     <group ref={group} position={s.mainAt} {...body} onContextMenu={() => claimMenu({ kind: "network", id: "main" })}>
       <NetworkFrame box={[box.x0 - 0.5, box.y0, box.x1 + 0.5, box.y1]} z={box.z} label={label} picked={selected3(s, "network", "main")}
-        onPick={() => pick3("network", "main")} onMenu={() => claimMenu({ kind: "network", id: "main" })} drag={drag} />
+        onMenu={() => claimMenu({ kind: "network", id: "main" })} drag={drag} />
       {children}
     </group>
   );
