@@ -34,8 +34,8 @@ export function removeNode(id: string): void {
   dropSource(`node:${id}`);
 }
 
-/** Grids configured by a CCG panel that is gone fall back to the default options. */
-export const dropConfig = (panel: string) => setGrids(store.get().grids.map((g) => (g.config === panel ? { ...g, config: null } : g)));
+/** Grids configured or keyed by a panel that is gone fall back to the default options and their own keys. */
+export const dropConfig = (panel: string) => setGrids(store.get().grids.map((g) => ({ ...g, config: g.config === panel ? null : g.config, legend: g.legend === panel ? null : g.legend })));
 
 /** Grids and nodes cabled to a port that is gone lose their source. */
 export function dropSource(port: string): void {

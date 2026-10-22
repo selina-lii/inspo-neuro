@@ -2,7 +2,7 @@
 import { useFrame, useThree, type ThreeEvent } from "@react-three/fiber";
 import { useEffect, useMemo, useRef } from "react";
 import { BufferGeometry, Float32BufferAttribute, Plane, Vector3, type Group, Quaternion } from "three";
-import { focusPair, openPanelAt } from "../../../actions";
+import { focusPair, openPanelAt, patchPanel } from "../../../actions";
 import { PICK_COLOR } from "../../../core/colors";
 import { CELL, cellSize, gapOf, optionsOf, sourceOf, pageSize, slotAt, type CcgGrid, type GridItem } from "../../../core/grid";
 import type { Quat, Vec3 } from "../../../core/stats";
@@ -21,7 +21,7 @@ import { Label3D } from "../stats/Label3D";
 import { anchors, centers, ports } from "../tie/portAt";
 import { drawOverlay } from "../tie/OverlayCards";
 import { useGridItems } from "./gridItems";
-import { pickPair } from "../../../statsActions";
+import { newScale, pickPair } from "../../../statsActions";
 import { useNear } from "../useNear";
 import { selected3 } from "../../../core/select";
 
@@ -52,8 +52,10 @@ export function GridObject({ grid, dark }: { grid: CcgGrid; dark: boolean }) {
     const right = new Vector3(1, 0, 0).applyQuaternion(camera.quaternion);
     const up = new Vector3(0, 1, 0).applyQuaternion(camera.quaternion);
     // near enough to fill most of the view, so it sits in front of everything else
-    const at = camera.position.clone().addScaledVector(ahead, Math.max(w, h * 1.6) * scale * 1.1).addScaledVector(right, (-w / 2) * scale).addScaledVector(up, (h / 2) * scale);
-    patchGrid(grid.id, { summon: false, p: at.toArray() as Vec3, q: camera.quaternion.toArray() as Quat });
+    const k = grid.s ?? newScale();
+    const size = s.objectScale * k;
+    const at = camera.position.clone().addScaledVector(ahead, Math.max(w, h * 1.6) * size * 1.1).addScaledVector(right, (-w / 2) * size).addScaledVector(up, (h / 2) * size);
+    patchGrid(grid.id, { summon: false, s: k, p: at.toArray() as Vec3, q: camera.quaternion.toArray() as Quat });
   }, [grid.summon]);
 
   useEffect(() => void (grid.page > pages - 1 && patchGrid(grid.id, { page: pages - 1 })), [grid.page, pages]);
@@ -116,17 +118,19 @@ const sourceLabel = (source: string | null) => {
 function Cell({ item, grid, n, at, dark, group }: { item: GridItem; grid: CcgGrid; n: number; at: [number, number]; dark: boolean; group: React.RefObject<Group | null> }) {
   const s = useStore();
   const o = optionsOf(s, grid);
+  // an open legend cabled to the grid keys every cell at once
+  const keyed = s.panels.some((p) => p.id === grid.legend && !p.closed);
   const cells = useRef<Group>(null);
   const near = useNear(cells, CELL.w);
   const focused = s.cells.has(item.key) || (s.session === item.session && s.focus?.kind === "pair" && s.focus.ref === item.ref && s.focus.tgt === item.tgt);
   const textures = useMemo(() => {
     if (!item.curves.length) return [];
     if (grid.segMode === "overlay") {
-      const curves = item.curves.map((c) => ({ row: { name: c.label, color: c.color, segments: [] }, trace: c.trace }));
+      const curves = item.curves.map((c) => ({ row: { name: keyed ? "" : c.label, color: c.color, segments: [] }, trace: c.trace }));
       return [drawOverlay(curves, item.title, null, focused, o, near)];
     }
     return item.curves.map((c) => drawCcg(c.trace, `${item.title} · ${c.label}`, c.color, focused, { options: o, base: c.color }, near));
-  }, [item, grid.segMode, focused, dark, o, near]);
+  }, [item, grid.segMode, focused, dark, o, near, keyed]);
   useEffect(() => () => textures.forEach((t) => t.dispose()), [textures]);
   const c = cellSize(grid, n);
   const step = grid.axis === "x" ? [CELL.w, 0] : [0, -CELL.h];
@@ -144,6 +148,8 @@ function Cell({ item, grid, n, at, dark, group }: { item: GridItem; grid: CcgGri
     const board = kind === "board" ? id : s.ties.find((t) => t.network === id)?.board;
     if (board) pickPair(board, it.session, it.ref, it.tgt);
     else if (it.session === s.session) focusPair(it.ref, it.tgt);
+    // the CCG config cabled to this grid shows the clicked pair, whatever its session
+    if (grid.config) patchPanel(grid.config, { pair: it.key });
   };
   const open = (e: ThreeEvent<MouseEvent>) => {
     e.stopPropagation();

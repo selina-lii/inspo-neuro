@@ -1,40 +1,45 @@
-# neuromap
+# inspo-neuro
 
-Neurons as cards in physical (or embedded) space, pairs as links. A React front end over a thin Python API that reads and writes through NeuroPy's SD/CD; nothing in NeuroPy is changed.
+![3D view: a network of neurons on four probe shanks, a grid of cross-correlograms, and a stats test drawn as bars](docs/3d.png)
+
+<sub>Surrogate data (`docs/demo_screenshot.mjs`).</sub>
+
+A 3D workspace for exploring neuron pairs and their cross-correlograms (CCGs). Neurons sit where they were recorded,
+pairs are drawn as links, and stats tests, CCG grids and panels are objects you arrange around them.
+It uses NeuroPy as its backend for data structures, analysis and saved selections.
+Part of a series with inspoboard.
 
 ## Run
 
 ```sh
-./run_server.sh                  # Python API on :8765 (NEUROPY_ROOT defaults to ../NeuroPy)
+./run_server.sh                        # backend on :8765 (NEUROPY_ROOT points at your NeuroPy checkout)
 cd web && npm install && npm run dev   # http://localhost:5174
 ```
-
-## Layout
-
-- `server/views.py` — pure builders: neuron table, pair links, CCG traces, peak fits, embedding.
-- `server/app.py` — FastAPI routes; one open project; tag writes go through `sd.groups` / `sd.neuron_groups`.
-- `web/src/core` — store and derivations (no React); `web/src/io/api.ts` — the only module that knows URLs;
-  `web/src/ui/map` — React Flow for neurons (dots, cards where they fit) and areas; links on a canvas under it, redrawn
-  on React Flow's viewport without a React render; `web/src/ui/panel` — detail panel, CCG plot, tag bar.
-- `state/<project>/` — this app's own files: manual layouts, areas, and the backup taken before the first tag write of each server run.
 
 ## What it shows
 
 - Neurons as dots (cards where they fit) in physical, embedding, axes or manual layouts; pairs as curved arrows.
-- Several maps side by side in one space, each for its own segment; the active map drives the CCG plot.
-- Panels in the space: selection & details, and the time slider (segments on the session timeline, stepping a family).
-- Colour neurons by region, firing rate in a segment, rate ratio, tag label or value, or place cell; colour links by type,
-  strength in the map's segment, strength change between two segments, or on/off between two segments. What dashes and
-  widths stand for is chosen in the top bar.
-- CCG plot with the Qt panel's options: lo/hi res, baseline, ACG ref/tgt, ref waveform, peak fit (click a peak to call it),
-  test window, line, p / corrected p, normalisations, jitter.
-- 3D: the same colours, probes per shank (hover to fan a shank's neurons out, click to keep them out), xyz gizmo.
+- Several maps side by side, each for its own recording segment; the active map drives the CCG plot.
+- Colour neurons by region, firing rate, rate ratio, tag or place cell; colour links by connection type, strength,
+  strength change between two segments, or whether the connection is present in each.
+- A CCG plot with low and high resolution, baseline, autocorrelograms of both neurons, waveform, peak fit
+  (click a peak to call it), test window, p-values, normalisations and jitter.
+- 3D: probes per shank (hover to fan a shank's neurons out, click to keep them out), an axis gizmo, and camera views.
+- Stats tests as boards: one dot per value, bars with error bars or violins, significance brackets. Click a dot to open
+  its CCG, double-click for the same pair in every group. A board can bring in its other sessions as layers behind the network.
+- CCG grids fed by a network, a stats board or a pair filter. Shift- or ⌘-click cells to pick pairs from any session,
+  then tag them with a group hotkey or move them with Shift S / U / D.
+- Objects move, turn and snap as in a 3D modelling app: drag a title bar, use the gizmo, snap to an axis.
+  A board and the network it is tied to move together.
+- ⌘Z / ⇧⌘Z undo and redo both arrangement and edits.
+- Named workspaces per project (File menu); a reload reopens the last one.
 
-## Ports
+## Settings
 
-`NEUROMAP_API_PORT` (8765) and `NEUROMAP_WEB_PORT` (5174) move the two servers; `NEUROMAP_STATE` moves this app's own files.
+`NEUROMAP_API_PORT` (8765) and `NEUROMAP_WEB_PORT` (5174) move the two servers; `NEUROMAP_STATE` moves this app's own
+files (layouts, areas, workspaces, backups), which default to `state/` and are never committed.
 
 ## Writes
 
-Tag, pair-state and peak-call writes are refused while the Qt GUI (`run_ccg_gui.py`) is open: both would write the same
+Tags, pair moves and peak calls are refused while NeuroPy's desktop GUI is open, since both would write the same
 selection files. The first write of each server run backs those files up under `state/<project>/backups/`.

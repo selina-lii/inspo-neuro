@@ -8,12 +8,13 @@ import { store } from "./core/store";
 import { statsApi, type RunStatus } from "./io/stats";
 import { loadPickCard, tie, untie } from "./stackActions";
 import { dropSource } from "./gridActions";
-import { FRAME_H } from "./ui/galaxy/stats/boardGeometry";
+import { FRAME_H, MARGIN, ROW_W } from "./ui/galaxy/stats/boardGeometry";
 import type { WorkspaceDoc } from "./workspaceActions";
 
 const POLL_MS = 800;
 let seq = 0;
 let scene: { center: Vec3; extent: number; height: number } = { center: [0, 0, 0], extent: 16, height: 16 };
+let measured = false;
 let restoring = false;
 export const restoringStats = () => restoring;
 
@@ -28,7 +29,23 @@ function patchTest(id: string, patch: Partial<StatsTest>): void {
 /** The 3D scene tells new boards where the network is, so they open beside it. */
 export function noteScene(center: Vec3, extent: number, height: number): void {
   scene = { center, extent, height };
+  measured = true;
+  // panels never resized by hand join the shared scale, so their titles match the objects around them
+  const loose = store.get().panels.some((p) => p.pose && p.pose.s === undefined);
+  if (loose) store.set({ panels: store.get().panels.map((p) => (p.pose && p.pose.s === undefined ? { ...p, pose: { ...p.pose, s: newScale() } } : p)) });
+  // boards opened before the 3D view first drew are placed once it has measured the network
+  if (!stats().boards.some((b) => b.unplaced)) return;
+  store.setStats({ boards: stats().boards.reduce<Board[]>((out, b) => [...out, b.unplaced ? { id: b.id, res: b.res, lines: b.lines, pose: newPose(out, rowsOf(b.id)) } : b], []) });
 }
+
+/** A new object's own size: a board as tall as the network, and grids at that scale so their titles match. */
+export const newScale = () => scene.height / (FRAME_H * store.get().objectScale);
+
+const newPose = (boards: Board[], rows: number) => {
+  const half = (Math.max(3, rows * ROW_W) / 2 + MARGIN.left) * newScale() * store.get().objectScale;
+  return { ...defaultPose(boards, scene.center.map((v, i) => v + store.get().mainAt[i]!) as Vec3, scene.extent, half), s: newScale() };
+};
+const rowsOf = (id: string) => testOf(id).results[0]?.rows.length ?? 2;
 
 /** Where the network sits in the scene, for anything else that opens beside it. */
 export const sceneFrame = () => scene;
@@ -42,7 +59,7 @@ function pruneValues(tests: StatsTest[], values = stats().values) {
 function ensureBoard(id: string, res: string): void {
   const { boards } = stats();
   if (boards.some((b) => b.id === id)) return;
-  store.setStats({ boards: [...boards, { id, res, pose: { ...defaultPose(boards, scene.center.map((v, i) => v + store.get().mainAt[i]!) as Vec3, scene.extent), s: scene.height / (FRAME_H * store.get().objectScale) } }] });
+  store.setStats({ boards: [...boards, { id, res, pose: newPose(boards, rowsOf(id)), ...(measured ? {} : { unplaced: true }) }] });
 }
 
 function withPayload(id: string, payload: StatsPayload, patch: Partial<StatsTest>): void {

@@ -1,6 +1,18 @@
 // What the colours, dashes and widths mean.
-import { linkLegend, neuronColors, type Legend as LegendSpec } from "../../core/colors";
+import { useContext } from "react";
+import { linkLegend, neuronColors, paletteColor, type Legend as LegendSpec } from "../../core/colors";
+import { sourceOf } from "../../core/grid";
+import type { State } from "../../core/store";
+import { stackOf } from "../../stackActions";
 import { useStore } from "../useStore";
+import { PanelId } from "./panelCcg";
+
+/** What a grid's curves stand for: its segments off a network, the test's rows off a board. */
+function gridKey(s: State, grid: State["grids"][number]): [string, string][] {
+  const [kind, id] = (sourceOf(s, grid) ?? ":").split(":");
+  const st = kind === "board" ? stackOf(id!) : undefined;
+  return st ? st.rows.map((r) => [r.name, r.color]) : grid.segments.map((seg) => [seg, paletteColor(seg)]);
+}
 
 function LegendBlock({ spec }: { spec: LegendSpec }) {
   if (spec.kind === "categories") {
@@ -29,6 +41,9 @@ function LegendBlock({ spec }: { spec: LegendSpec }) {
 
 export function LegendBody() {
   const s = useStore();
+  const id = useContext(PanelId);
+  const grid = s.grids.find((g) => g.legend === id);
+  if (grid) return <div className="legend"><LegendBlock spec={{ kind: "categories", title: "curves", entries: gridKey(s, grid) }} /></div>;
   const dash = { uncertain: "uncertain fit", off: "off in segment", unselected: "unselected", none: "" }[s.encoding.dash];
   return (
     <div className="legend">

@@ -172,7 +172,9 @@ main { flex: 1; display: flex; position: relative; min-height: 0; overflow: clip
 .map-frame.active .map-frame-head { border-color: var(--accent); color: var(--accent); }
 .space-panel { transform-origin: 0 0; background: var(--panel); border: 2px solid var(--accent); border-radius: 10px; box-shadow: 0 6px 24px rgba(0, 0, 0, 0.18); display: flex; flex-direction: column; overflow: hidden; }
 .space-panel-head { display: flex; justify-content: space-between; align-items: center; padding: 5px 12px; font-weight: 600; font-size: 12px; color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, var(--panel)); cursor: move; border-bottom: 1px solid var(--line); }
-.space-panel-body { flex: 1; overflow: auto; padding: 8px 12px 20px; cursor: default; user-select: text; }
+.space-panel-body { flex: 1; overflow: auto; padding: 8px 12px 20px; cursor: default; user-select: text; font-size: 11px; }
+/* controls in a 3D panel read at the size of the toolbars beside them */
+.space-panel-body :is(button, select, input) { font-size: inherit; }
 .detail section { margin-bottom: 14px; }
 .detail h2 { font-size: 15px; margin: 6px 0 4px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .detail h3 { font-size: 12px; color: var(--muted); margin: 10px 0 4px; font-weight: 600; }

@@ -14,7 +14,7 @@ import { PanelId } from "../panel/panelCcg";
 
 export type SpacePanelData = { panel: SpacePanel; k: number };
 
-export const PANEL_TITLES = { metadata: "Metadata", legend: "Legend", ccg: "CCG", details: "Selection & details", timeline: "Time slider · segments", pairs: "Pairs", stats: "Stats tests" };
+export const PANEL_TITLES = { metadata: "Metadata", legend: "Legend", ccg: "CCG Config", details: "Selection & details", timeline: "Time slider · segments", pairs: "Pairs", stats: "Stats tests" };
 const BODY = { metadata: MetadataBody, legend: LegendBody, ccg: CcgBody, details: DetailBody, timeline: Timeline, pairs: PairList, stats: StatsPanel };
 
 /** The title bar both views share: collapse and close; the Add menu brings a closed panel back. */

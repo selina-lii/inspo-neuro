@@ -158,6 +158,7 @@ export function SpaceMenu({ at, onClose, onCenter }: { at: { x: number; y: numbe
               <Many target={target!} act={act} />
               {grid.source && <button onClick={act(() => patchGrid(grid.id, { source: null }))}>disconnect its cable</button>}
               {grid.config && <button onClick={act(() => patchGrid(grid.id, { config: null }))}>disconnect its CCG config</button>}
+              {grid.legend && <button onClick={act(() => patchGrid(grid.id, { legend: null }))}>disconnect its legend</button>}
               <button onClick={act(() => removeGrid(grid.id))}>close</button>
             </>
           ) : node ? (

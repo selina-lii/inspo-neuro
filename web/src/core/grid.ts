@@ -10,6 +10,7 @@ export type CcgGrid = {
   id: string; p: Vec3; q: Quat; s?: number; source: string | null;
   cols: number; rows: number; sort: GridSort; segMode: "overlay" | "series"; axis: "x" | "y";
   segments: string[]; pairs: "shown" | "selected"; page: number; summon?: boolean; compact?: boolean; config?: string | null;
+  legend?: string | null;   // a legend panel cabled to it: one key for the grid, so its cells drop their own
 };
 
 /** A node between a source and its grids: it passes on only the pairs its mode keeps. */
@@ -21,9 +22,9 @@ export const sourceOf = (s: State, grid: CcgGrid): string | null =>
   grid.source?.startsWith("node:") ? s.pairNodes.find((n) => `node:${n.id}` === grid.source)?.source ?? null : grid.source;
 
 /** A grid draws with the options of the CCG panel cabled to it, the defaults without one. */
-/** The one grid a CCG panel is cabled to, which it then sits on. */
+/** The one grid a CCG or legend panel is cabled to, which it then sits on. */
 export const dockedOn = (s: State, panel: string): string | undefined => {
-  const on = s.grids.filter((g) => g.config === panel);
+  const on = s.grids.filter((g) => g.config === panel || g.legend === panel);
   return on.length === 1 ? on[0]!.id : undefined;
 };
 

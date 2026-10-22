@@ -28,7 +28,7 @@ export type MapInstance = { id: string; segment: string; dx: number; dy: number 
 export type NetworkCopy = { id: string; segment: string; p: [number, number, number]; s?: number };
 
 /** A panel: a React Flow node at x/y in 2D, an object at its pose in 3D; w and h, in pixels, serve both. */
-export type SpacePanel = { id: string; kind: "details" | "ccg" | "timeline" | "pairs" | "stats" | "legend" | "metadata"; x: number; y: number; w: number; h: number; auto: boolean; collapsed?: boolean; closed?: boolean; pose?: Pose; summon?: boolean; ccg?: CcgOptions };   // summon: bring it in front of the 3D camera; ccg: an added CCG panel's own options
+export type SpacePanel = { id: string; kind: "details" | "ccg" | "timeline" | "pairs" | "stats" | "legend" | "metadata"; x: number; y: number; w: number; h: number; auto: boolean; collapsed?: boolean; closed?: boolean; pose?: Pose; summon?: boolean; ccg?: CcgOptions; pair?: string | null };   // summon: bring it in front of the 3D camera; ccg: an added CCG panel's own options; pair: "session|ref|tgt" last clicked in a grid it configures
 
 /** How links are coloured: by type, by strength in their map's segment, by change from `a` to `b`, or by on/off in `a` vs `b`. */
 export type LinkColor = { kind: "type" | "strength" | "change" | "onoff" | "group" | "ends"; a: string; b: string };

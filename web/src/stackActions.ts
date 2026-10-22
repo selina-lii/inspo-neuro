@@ -140,7 +140,8 @@ export function deletePicked(): void {
   all.forEach(remove3);
 }
 
-function remove3(p: Picked3): void {
+/** Remove one object: close a test or panel, hide the open network, remove a copy with its ties, cut a cable. */
+export function remove3(p: Picked3): void {
   if (p.kind === "board") closeTest(p.id);
   else if (p.kind === "panel") closePanel(p.id);
   else if (p.kind === "tie") untie(p.id);

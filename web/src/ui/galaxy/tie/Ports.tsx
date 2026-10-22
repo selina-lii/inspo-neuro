@@ -18,7 +18,7 @@ export function TiePorts() {
   const s = useStore();
   const ids = [...s.stats.boards.filter((b) => s.stats.tests.find((t) => t.id === b.id)?.results.length).map((b) => `board:${b.id}`),
     ...(s.mainHidden ? [] : ["net:main"]), ...s.networks.map((n) => `net:${n.id}`), ...s.grids.map((g) => `grid:${g.id}`),
-    ...s.pairNodes.flatMap((n) => [`in:${n.id}`, `node:${n.id}`]), ...s.panels.filter((p) => p.kind === "ccg" && !p.closed && p.pose).map((p) => `panel:${p.id}`)];
+    ...s.pairNodes.flatMap((n) => [`in:${n.id}`, `node:${n.id}`]), ...s.panels.filter((p) => (p.kind === "ccg" || p.kind === "legend") && !p.closed && p.pose).map((p) => `panel:${p.id}`)];
   const { camera, size } = useThree();
   const [drag, setDrag] = useState<{ from: string; plane: Plane } | null>(null);
   const end = useRef(new Vector3());
@@ -57,9 +57,10 @@ export function TiePorts() {
       const input = ends.find((id) => id.startsWith("in:"));
       if (input) return void (/^(board|net):/.test(other(input)) && patchNode(input.slice(3), { source: other(input) }));
       const grid = ends.find((id) => id.startsWith("grid:"));
-      // a CCG panel configures a grid; anything else feeds it pairs
+      // a CCG panel configures a grid, a legend keys it; anything else feeds it pairs
       const panel = ends.find((id) => id.startsWith("panel:"));
-      if (panel) return void (grid && patchGrid(grid.slice(5), { config: panel.slice(6) }));
+      const legend = panel && s.panels.find((p) => p.id === panel.slice(6))?.kind === "legend";
+      if (panel) return void (grid && patchGrid(grid.slice(5), legend ? { legend: panel.slice(6) } : { config: panel.slice(6) }));
       if (grid) return patchGrid(grid.slice(5), { source: other(grid) });
       if (ends.some((id) => id.startsWith("node:"))) return;
       const [board, net] = kind === "board" ? [drag.from, target.id] : [target.id, drag.from];
@@ -89,6 +90,9 @@ export function TiePorts() {
       ))}
       {s.grids.filter((g) => g.config && ids.includes(`panel:${g.config}`)).map((g) => (
         <Cable key={`cfg${g.id}`} a={`grid:${g.id}`} b={`panel:${g.config}`} picked={false} onPick={() => undefined} onMenu={() => claimMenu({ kind: "grid", id: g.id })} />
+      ))}
+      {s.grids.filter((g) => g.legend && ids.includes(`panel:${g.legend}`)).map((g) => (
+        <Cable key={`key${g.id}`} a={`grid:${g.id}`} b={`panel:${g.legend}`} picked={false} onPick={() => undefined} onMenu={() => claimMenu({ kind: "grid", id: g.id })} />
       ))}
       {s.pairNodes.filter((n) => n.source && ids.includes(n.source)).map((n) => (
         <Cable key={n.id} a={`in:${n.id}`} b={n.source!} picked={false} onPick={() => undefined} onMenu={() => claimMenu({ kind: "node", id: n.id })} />

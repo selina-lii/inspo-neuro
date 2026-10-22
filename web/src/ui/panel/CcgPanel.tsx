@@ -1,5 +1,5 @@
 // The focused pair's CCG on its own: the plot, its peak fit and its jitter; a space panel in 2D, a card by its link in 3D.
-import { useEffect, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import { countUnsaved } from "../../actions";
 import { TYPE_COLORS } from "../../core/colors";
 import { normalize, segmentHours, type NormInputs } from "../../core/norms";
@@ -9,7 +9,9 @@ import { api, type JitterStatus } from "../../io/api";
 import { acgOf, fitOf, forgetFits, setFit, tracesKey, traceOf, waveformOf } from "../../io/traces";
 import { useStore } from "../useStore";
 import { CcgPlot, type Waveform } from "./CcgPlot";
-import { usePanelCcg } from "./panelCcg";
+import { PanelId, usePanelCcg } from "./panelCcg";
+import type { CcgGrid } from "../../core/grid";
+import { useGridItems } from "../galaxy/grid/gridItems";
 
 const plotOf = (detail: PairDetail, options: CcgOptions, color: string, norm: NormInputs) => {
   const { trace, fitScale } = normalize(detail[options.res], options.norms, norm);
@@ -18,8 +20,22 @@ const plotOf = (detail: PairDetail, options: CcgOptions, color: string, norm: No
 
 export function CcgBody() {
   const s = useStore();
-  if (s.focus?.kind !== "pair") return <div className="empty">Click a link to see its CCG here.</div>;
+  const id = useContext(PanelId);
+  const pair = s.panels.find((p) => p.id === id)?.pair;
+  const grid = s.grids.find((g) => g.config === id);
+  // a card clicked in its grid opens as the grid draws it: its segments or rows, any session
+  if (pair && grid) return <GridPairCcg grid={grid} pair={pair} />;
+  if (s.focus?.kind !== "pair") return <div className="empty">{grid ? "Click a card in its grid, or a link, to see its CCG here." : "Click a link to see its CCG here."}</div>;
   return <PairCcg ref_={s.focus.ref} tgt={s.focus.tgt} />;
+}
+
+/** A grid's card, enlarged: the grid already holds its curves. */
+function GridPairCcg({ grid, pair }: { grid: CcgGrid; pair: string }) {
+  const [ccg] = usePanelCcg();
+  const item = useGridItems(grid).find((i) => i.key === pair);
+  if (!item?.curves.length) return <div className="empty">Loading {pair.split("|")[0]}…</div>;
+  const named = item.curves.length > 1;
+  return <CcgPlot curves={item.curves.map((c) => ({ trace: c.trace, color: c.color, name: named ? c.label : undefined }))} fitScale={null} options={ccg} title={item.title} />;
 }
 
 function PairCcg({ ref_, tgt }: { ref_: number; tgt: number }) {

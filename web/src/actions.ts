@@ -318,8 +318,9 @@ export function setSpacing(spacing: number): void {
   if (layout === "physical" || layout === "axes") setLayout(layout);
 }
 
+/** A pair focused in the network: CCG panels show it again rather than what a grid last showed them. */
 export function focusPair(ref: number, tgt: number): void {
-  store.set({ focus: { kind: "pair", ref, tgt } });
+  store.set({ focus: { kind: "pair", ref, tgt }, panels: store.get().panels.map((p) => (p.pair ? { ...p, pair: null } : p)) });
 }
 
 /** A click on a neuron: it takes the focus; in minesweeper mode it also opens (or closes again) its neighbourhood. */

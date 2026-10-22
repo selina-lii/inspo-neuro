@@ -6,6 +6,7 @@ import { createPortal } from "react-dom";
 import { DoubleSide, Matrix4, Mesh, MeshBasicMaterial, NoBlending, PlaneGeometry, Plane, Quaternion, Raycaster, Scene, Vector2, Vector3, type Camera, type Object3D } from "three";
 import { CSS3DObject, CSS3DRenderer } from "three/examples/jsm/renderers/CSS3DRenderer.js";
 import { patchPanel } from "../../actions";
+import { newScale } from "../../statsActions";
 import type { Quat, Vec3 } from "../../core/stats";
 import { store, type SpacePanel } from "../../core/store";
 import { PanelHead } from "../map/SpacePanelNode";
@@ -17,7 +18,6 @@ import { PairList } from "../panel/PairList";
 import { StripTimeline } from "../panel/StripTimeline";
 import { StatsPanel } from "../stats/StatsPanel";
 import { useStore } from "../useStore";
-import type { CadHandle } from "./CadControls";
 import { claimMenu } from "./SpaceMenu";
 import { PanelId } from "../panel/panelCcg";
 import { anchors, ports } from "./tie/portAt";
@@ -52,6 +52,9 @@ function rayAt(x: number, y: number): Raycaster {
 
 const shown = (p: SpacePanel) => !p.closed && p.pose;
 const scaleOf = (p: SpacePanel) => PANEL_PX * store.get().objectScale * (p.pose?.s ?? 1);
+// a panel is laid out this many times larger and its object shrunk to match: the browser rasterises a 3D element at its
+// layout size, so magnified it would blur
+const RASTER = 3;
 
 /** The wheel scrolls a panel's own content while it can; past that, or pinched, it zooms the view as over the canvas. */
 function onWheel(this: HTMLElement, e: WheelEvent) {
@@ -91,7 +94,6 @@ export type SceneBox = { x0: number; x1: number; y0: number; y1: number; z: numb
 export function PanelLayer({ host, box }: { host: RefObject<HTMLDivElement | null>; box: SceneBox }) {
   const { panels, objectScale } = useStore();
   const { camera, gl, scene: world } = useThree();
-  const controls = useThree((t) => t.controls) as unknown as CadHandle | null;
   const renderer = useMemo(() => new CSS3DRenderer(), []);
   const scene = useMemo(() => new Scene(), []);
   const objects = useMemo(() => new Map<string, CSS3DObject>(), []);
@@ -104,14 +106,15 @@ export function PanelLayer({ host, box }: { host: RefObject<HTMLDivElement | nul
   }, [camera]);
   useEffect(() => {
     const at = { left: box.y1, below: box.y0 - 1.5, above: box.y1 + 1.5 };
+    const k = newScale();
     for (const p of panels.filter((q) => !q.pose)) {
-      const [w, h] = [p.w * PANEL_PX * objectScale, (p.collapsed ? 32 : p.h) * PANEL_PX * objectScale];
+      const [w, h] = [p.w * PANEL_PX * objectScale * k, (p.collapsed ? 32 : p.h) * PANEL_PX * objectScale * k];
       const spot = SPOT[p.kind];
       const x = spot === "left" ? box.x0 - 1.5 - w / 2 : box.x0 + w / 2;
       const y = spot === "above" ? at.above + h / 2 : at[spot] - h / 2;
       if (spot === "above") at.above += h + 0.5;
       else at[spot] -= h + 0.5;
-      patchPanel(p.id, { pose: { p: [x, y, box.z], q: [0, 0, 0, 1] } });
+      patchPanel(p.id, { pose: { p: [x, y, box.z], q: [0, 0, 0, 1], s: k } });
     }
   }, [panels, box]);
   useEffect(() => {
@@ -119,8 +122,10 @@ export function PanelLayer({ host, box }: { host: RefObject<HTMLDivElement | nul
     for (const p of panels.filter((q) => q.summon && !q.closed)) {
       const c = view!.camera;
       const ahead = c.getWorldDirection(new Vector3());
-      const dist = Math.min(controls ? c.position.distanceTo(controls.target) : 15, 30);
-      patchPanel(p.id, { summon: false, pose: { p: c.position.clone().addScaledVector(ahead, Math.max(dist * 0.8, 4)).toArray() as Vec3, q: c.quaternion.toArray() as Quat } });
+      const k = p.pose?.s ?? newScale();
+      // far enough that the panel, at the shared scale, fills about half the view
+      const dist = p.h * PANEL_PX * store.get().objectScale * k * 1.6;
+      patchPanel(p.id, { summon: false, pose: { p: c.position.clone().addScaledVector(ahead, dist).toArray() as Vec3, q: c.quaternion.toArray() as Quat, s: k } });
     }
   }, [panels]);
   useFrame((st) => {
@@ -134,19 +139,26 @@ export function PanelLayer({ host, box }: { host: RefObject<HTMLDivElement | nul
       if (!o) objects.set(p.id, (o = new CSS3DObject(elementFor(p.id)))), scene.add(o), (o.element.style.opacity = "");
       o.position.fromArray(p.pose!.p);
       o.quaternion.fromArray(p.pose!.q);
-      o.scale.setScalar(scaleOf(p));
+      o.scale.setScalar(scaleOf(p) / RASTER);
       // a CCG panel cabled to one grid alone sits on it, above its toolbar, and goes where the grid goes
       const host = dockedOn(store.get(), p.id);
       const a = host ? anchors.get(`grid:${host}`) : undefined;
       if (a) {
         const bar = objects.get(`bar:grid:${host}`);
-        o.scale.setScalar(a.scale * PANEL_PX);   // at the grid's scale, so its title matches the grid's
+        o.scale.setScalar((a.scale * PANEL_PX) / RASTER);   // at the grid's scale, so its title matches the grid's
         const lift = (bar ? bar.element.offsetHeight * bar.scale.x : 0) + 0.1 + (o.element.offsetHeight * o.scale.x) / 2;
         o.quaternion.copy(a.q);
-        o.position.copy(a.at).add(new Vector3((o.element.offsetWidth * o.scale.x) / 2, lift, 0).applyQuaternion(a.q));
+        // a legend sits right of the grid's CCG panel when that is docked too
+        const cfg = p.kind === "legend" ? store.get().grids.find((g) => g.id === host)?.config : undefined;
+        const beside = cfg && dockedOn(store.get(), cfg) === host ? objects.get(cfg) : undefined;
+        const x = beside ? beside.element.offsetWidth * beside.scale.x + 0.2 : 0;
+        o.position.copy(a.at).add(new Vector3(x + (o.element.offsetWidth * o.scale.x) / 2, lift, 0).applyQuaternion(a.q));
       }
-      // a CCG panel's link dot, just off its right edge, cables its options into grids
-      if (p.kind === "ccg") ports.set(`panel:${p.id}`, new Vector3((p.w * scaleOf(p)) / 2 + 0.3, 0, 0).applyQuaternion(o.quaternion).add(o.position));
+      // a CCG or legend panel's link dot, off its top-right corner by its title row, cables it into grids
+      if (p.kind === "ccg" || p.kind === "legend") {
+        const k = o.scale.x;
+        ports.set(`panel:${p.id}`, new Vector3((o.element.offsetWidth / 2 + 12 * RASTER) * k, (o.element.offsetHeight / 2 - 14 * RASTER) * k, 0).applyQuaternion(o.quaternion).add(o.position));
+      }
       // CSS3D draws a panel behind the camera mirrored: hide it once the camera has passed it
       o.element.style.visibility = o.position.clone().sub(st.camera.position).dot(st.camera.getWorldDirection(ahead)) > 0.2 ? "" : "hidden";
     }
@@ -262,7 +274,7 @@ function Panel3D({ panel, picked, onPick }: { panel: SpacePanel; picked: boolean
     },
   };
   return (
-    <div ref={root} className={`space-panel panel3d${picked ? " picked" : ""}`} style={{ width: panel.w, height: panel.collapsed ? "auto" : panel.h }}
+    <div ref={root} className={`space-panel panel3d${picked ? " picked" : ""}`} style={{ width: panel.w, height: panel.collapsed ? "auto" : panel.h, zoom: RASTER }}
       onPointerDown={onPick}
       onContextMenu={(e) => (e.preventDefault(), claimMenu({ kind: "panel", id: panel.id }))}>
       <PanelHead panel={panel} {...head} />

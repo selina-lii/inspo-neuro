@@ -75,7 +75,7 @@ export type Pose = { p: Vec3; q: Quat; s?: number };   // s: the board's own siz
 export type PairLines = "off" | "faint" | "picked";
 
 /** A test's results drawn on one board in 3D; one board per test. */
-export type Board = { id: string; res: string; pose: Pose; lines?: PairLines };
+export type Board = { id: string; res: string; pose: Pose; lines?: PairLines; unplaced?: boolean };   // unplaced: opened before the 3D view measured the network
 
 export type StatsPick = { ids: Set<string>; pair: string | null; lineage: boolean };
 
@@ -169,8 +169,8 @@ const AXIS_QUATS: Record<string, Quat> = {
 /** A board's orientation with its face (local +z) toward `axis`, upright where that is defined. */
 export const axisQuat = (axis: string): Quat => AXIS_QUATS[axis]!;
 
-/** New boards line up right of the network, each beside the last. */
-export function defaultPose(boards: Board[], center: Vec3, extent: number): Pose {
-  const x = boards.reduce((right, b) => Math.max(right, b.pose.p[0] + 8), center[0] + extent / 2 + 4);
+/** New boards line up right of the network, each beside the last; `half`: the new board's half width in the world. */
+export function defaultPose(boards: Board[], center: Vec3, extent: number, half: number): Pose {
+  const x = boards.reduce((right, b) => Math.max(right, b.pose.p[0] + 2 * half + 2), center[0] + extent / 2 + 4 + half);
   return { p: [x, center[1], center[2]], q: axisQuat("+z") };
 }

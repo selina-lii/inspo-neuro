@@ -167,10 +167,8 @@ export function GalaxyView({ dark }: { dark: boolean }) {
         <GizmoHelper alignment="bottom-right" margin={[70, 70]}>
           <GizmoViewport labels={["x", "y", "z"]} axisColors={["#e05555", "#3fbf6b", "#3a6df0"]} labelColor="#fff" />
         </GizmoHelper>
-        {/* hidden but tied, its frame stays: the stack behind it still needs a handle */}
-        {(!mainOff || tiedMain) && (
-          <MainNetwork box={box} label={`network · ${s.session}${mainOff ? " (hidden)" : ""}`}>
-          {!mainOff && <>
+        {!mainOff && (
+          <MainNetwork box={box} label={`network · ${s.session}`}>
           {probeList.map((p) => (
             <ProbeShank key={p.shank.id} probe={p} open={expanded.has(p.shank.id)}
               onHover={(on) => openShank(on ? p.shank.id : null)} onClick={() => togglePin(p.shank.id)} />
@@ -183,7 +181,6 @@ export function GalaxyView({ dark }: { dark: boolean }) {
             setHover(idx === null ? null : { kind: "neuron", idx });
             if (hoverShank !== null) openShank(idx !== null && neurons[idx]?.probe_shank === hoverShank ? hoverShank : null);
           }} />
-          </>}
           </MainNetwork>
         )}
         <LabelSync labels={labels} elements={labelEls} />

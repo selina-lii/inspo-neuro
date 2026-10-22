@@ -158,7 +158,7 @@ export function duplicate3(targets: Picked3[]): void {
   for (const t of targets) {
     if (t.kind === "grid") duplicateGrid(t.id);
     else if (t.kind === "board") duplicateTest(t.id);
-    else if (t.kind === "panel" && s.panels.find((p) => p.id === t.id)?.kind === "ccg") addCcgPanel(t.id);
+    else if (t.kind === "panel" && ["ccg", "legend"].includes(s.panels.find((p) => p.id === t.id)!.kind)) addCcgPanel(t.id);
     else if (t.kind === "network" && t.id !== "main") {
       const { center, extent } = sceneFrame();
       addNetwork(s.networks.find((n) => n.id === t.id)!.segment, center, extent);

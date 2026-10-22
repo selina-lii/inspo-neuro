@@ -17,7 +17,7 @@ import { useNear } from "../useNear";
 const SIZE = { w: 2.6, h: 1.5 };
 
 /** A pair's curves, one per row, on the CCG panel's plot; the playing row is bold. */
-export const drawOverlay = (curves: { row: StackRow; trace: Trace }[], title: string, bold: string | null, picked: boolean, options: CcgOptions, near = false): CanvasTexture =>
+export const drawOverlay = (curves: { row: StackRow; trace: Trace }[], title: string, bold: string | null, picked: boolean, options: CcgOptions, near = 0): CanvasTexture =>
   ccgTexture({ curves: curves.map(({ row, trace }) => ({ trace, color: row.color, name: row.name, base: row.color, bold: bold === row.name, faint: bold !== null && bold !== row.name })), fitScale: null, options, title }, picked, near);
 
 type CardSpec = { key: string; layer: DrawnLayer; ref: number; tgt: number; at: Vector3; side: Vector3; curves: { row: StackRow; trace: Trace }[]; picked: boolean };
