@@ -16,6 +16,7 @@ export function PairNodeObject({ node, dark }: { node: PairNode; dark: boolean }
   useEffect(() => void runPick(node.id), [query]);
   const lines = [
     node.sessions.length ? `sessions: ${node.sessions.join(", ")}` : "every session",
+    ...(node.conn_types.length ? [`types: ${node.conn_types.join(", ")}`] : []),
     ...(node.rules.length ? node.rules.map((r) => `${r.kind}${r.name ? ` ${r.name}` : ""} is ${r.values.join(" or ") || "…"}`) : ["all pairs"]),
     ...(node.states.length ? [`state: ${node.states.join(", ")}`] : []),
     ...node.ranges.map(rangeText),

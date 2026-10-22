@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef } from "react";
 import { BufferGeometry, Float32BufferAttribute, Plane, Vector3, type Group, Quaternion } from "three";
 import { focusPair, openPanelAt, patchPanel } from "../../../actions";
 import { PICK_COLOR } from "../../../core/colors";
-import { CELL, cellSize, colsOf, gapOf, optionsOf, pageSize, slotAt, styledCurve, traysOf, type CcgGrid, type GridItem } from "../../../core/grid";
+import { CELL, cellSize, colsOf, optionsOf, pageSize, slotAt, styledCurve, traysOf, type CcgGrid, type GridItem } from "../../../core/grid";
 import type { Quat, Vec3 } from "../../../core/stats";
 import { store } from "../../../core/store";
 import { patchGrid } from "../../../gridActions";
@@ -192,7 +192,7 @@ function Cell({ item, grid, n, at, dark, group, order, series, metric, ylim }: {
   const first = grid.segMode === "series" ? [at[0] - c.w / 2 + CELL.w / 2, at[1] + c.h / 2 - CELL.h / 2] : at;
   // a pair clicked here does what its dot on the board does; without a board, it focuses the pair
   const pick = (it: GridItem, e: ThreeEvent<MouseEvent>) => {
-    // ⌘ picks or drops one card, shift picks the run of cards from the last one clicked; tags and moves act on them
+    // a click picks this card alone, ⌘ picks or drops one, shift picks the run from the last one clicked; tags and moves act on them
     const from = order.indexOf(anchor), to = order.indexOf(it.key);
     if (e.shiftKey && from >= 0) return store.set({ cells: new Set([...s.cells, ...order.slice(Math.min(from, to), Math.max(from, to) + 1)]) });
     anchor = it.key;
@@ -201,7 +201,7 @@ function Cell({ item, grid, n, at, dark, group, order, series, metric, ylim }: {
       if (!cells.delete(it.key)) cells.add(it.key);
       return store.set({ cells });
     }
-    if (s.cells.size) store.set({ cells: new Set() });
+    store.set({ cells: new Set([it.key]) });
     const [kind, id] = (gridSource(s, grid.id) ?? ":").split(":");
     const board = kind === "board" ? id : s.ties.find((t) => t.network === id)?.board;
     if (board) pickPair(board, it.session, it.ref, it.tgt);
@@ -242,7 +242,7 @@ function Cell({ item, grid, n, at, dark, group, order, series, metric, ylim }: {
             begin({ move() {}, end: () => void (sweep = null) });
           }}
           onPointerEnter={() => sweep?.order === order && paint(item.key)}>
-          <planeGeometry args={grid.compact ? [CELL.w, CELL.h] : [CELL.w * 0.98, CELL.h * 0.98]} />
+          <planeGeometry args={[CELL.w, CELL.h]} />
           <meshBasicMaterial map={t} transparent opacity={s.stats.pick.pair && s.stats.pick.pair !== item.key ? 0.15 : 1} />
         </mesh>
       ))}
@@ -267,9 +267,8 @@ function SlotHandle({ grid, n, at, group }: { grid: CcgGrid; n: number; at: [num
               const hit = r.ray.intersectPlane(plane, new Vector3());
               if (!hit) return;
               const local = group.current!.worldToLocal(hit);
-              const gap = gapOf(grid);
-              const cols = grid.list ? grid.cols : Math.max(1, Math.round((local.x + gap) / (c.w + gap)));
-              const rows = Math.max(1, Math.round((-local.y + gap) / (c.h + gap)));
+              const cols = grid.list ? grid.cols : Math.max(1, Math.round(local.x / c.w));
+              const rows = Math.max(1, Math.round(-local.y / c.h));
               if (cols !== last[0] || rows !== last[1]) patchGrid(grid.id, { cols, rows, page: 0 });
               last = [cols, rows];
             },

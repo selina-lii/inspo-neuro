@@ -10,12 +10,25 @@ export function usePopover() {
   const pop = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!open) return;
-    const inside = (n: Node) => ref.current?.contains(n) || pop.current?.contains(n);
+    // a 3D panel's select opens its list outside the popover
+    const inside = (n: Node) => ref.current?.contains(n) || pop.current?.contains(n) || (n as HTMLElement).closest?.(".panel-select");
     const close = (e: PointerEvent) => ref.current && !inside(e.target as Node) && setOpen(false);
     window.addEventListener("pointerdown", close);
     return () => window.removeEventListener("pointerdown", close);
   }, [open]);
   return { open, setOpen, ref, pop };
+}
+
+/** A list click as a file list takes it: alone it picks one item, ⌘/Ctrl adds or drops one, Shift picks the run from the last click. */
+export function useListClick(items: string[], selected: string[], onChange: (next: string[]) => void) {
+  const anchor = useRef<string | null>(null);
+  return (item: string, e: React.MouseEvent) => {
+    e.preventDefault();
+    const [a, b] = [items.indexOf(anchor.current ?? item), items.indexOf(item)];
+    if (e.shiftKey && a >= 0) return onChange([...new Set([...(e.metaKey || e.ctrlKey ? selected : []), ...items.slice(Math.min(a, b), Math.max(a, b) + 1)])]);
+    anchor.current = item;
+    onChange(e.metaKey || e.ctrlKey ? (selected.includes(item) ? selected.filter((x) => x !== item) : [...selected, item]) : [item]);
+  };
 }
 
 type Props = {
@@ -38,10 +51,7 @@ export function ListPicker({ plural, items, selected, onChange: set, single = fa
   const all = !single && items.length > 0 && items.every((i) => selected.includes(i));
   const label = selected.length === 0 ? (empty ?? "—") : all ? `all ${plural}` : selected.length <= 2 ? selected.map(display).join(", ") : `${selected.length} ${plural}`;
   const shown = items.filter((i) => display(i).toLowerCase().includes(query.toLowerCase()));
-  const toggle = (item: string) => {
-    if (single) return onChange([item]), setOpen(false);
-    onChange(selected.includes(item) ? selected.filter((x) => x !== item) : [...selected, item]);
-  };
+  const click = useListClick(shown.filter((i) => !disabled.includes(i)), selected, onChange);
 
   return (
     <div className={`picker${locked ? " locked" : ""}`} ref={ref}>
@@ -57,8 +67,9 @@ export function ListPicker({ plural, items, selected, onChange: set, single = fa
           </div>
           <div className="picker-list">
             {shown.map((item) => (
-              <label key={item} className={disabled.includes(item) ? "muted" : ""}>
-                <input type={single ? "radio" : "checkbox"} disabled={disabled.includes(item)} checked={selected.includes(item)} onChange={() => toggle(item)} />
+              <label key={item} className={disabled.includes(item) ? "muted" : ""}
+                onClick={(e) => !disabled.includes(item) && (single ? (onChange([item]), setOpen(false)) : click(item, e))}>
+                <input type={single ? "radio" : "checkbox"} disabled={disabled.includes(item)} checked={selected.includes(item)} readOnly />
                 {display(item)}
               </label>
             ))}
@@ -70,7 +81,7 @@ export function ListPicker({ plural, items, selected, onChange: set, single = fa
 }
 
 /** On a 3D object's bar the list leaves the bar's plane for the screen, opening upward over the object instead of behind the canvas. */
-function float(anchor: HTMLElement | null, pop: ReactNode): ReactNode {
+export function float(anchor: HTMLElement | null, pop: ReactNode): ReactNode {
   if (!anchor?.closest(".board-tools")) return pop;
   const box = anchor.getBoundingClientRect();
   return createPortal(<div className="picker-float" style={{ left: box.left, bottom: window.innerHeight - box.top + 4, maxHeight: box.top - 8 }}>{pop}</div>, document.body);

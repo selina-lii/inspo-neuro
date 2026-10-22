@@ -1,6 +1,6 @@
 // A row's pair rules: a pair joins the row when every rule holds. The same cascade as the Qt rule row: kind, name, side, values.
 import type { Rule, StatsOptions } from "../../core/stats";
-import { usePopover } from "./ListPicker";
+import { float, useListClick, usePopover } from "./ListPicker";
 
 const describe = (r: Rule, display: (v: string) => string) => {
   const subject = r.kind.startsWith("pair") ? "pair" : `${r.side} neuron`;
@@ -8,7 +8,7 @@ const describe = (r: Rule, display: (v: string) => string) => {
 };
 
 export function RulesPicker({ rules, onChange, options, locked = false }: { rules: Rule[]; onChange(next: Rule[]): void; options: StatsOptions; locked?: boolean }) {
-  const { open, setOpen, ref } = usePopover();
+  const { open, setOpen, ref, pop } = usePopover();
   const display = (v: string) => options.display[v] ?? v;
   const label = rules.length === 0 ? "all pairs" : rules.length === 1 ? describe(rules[0]!, display) : `${rules.length} rules`;
   const set = (i: number, patch: Partial<Rule>) => onChange(rules.map((r, k) => (k === i ? { ...r, ...patch } : r)));
@@ -20,8 +20,8 @@ export function RulesPicker({ rules, onChange, options, locked = false }: { rule
       <button className={rules.length ? "on" : ""} disabled={locked} title={rules.map((r) => describe(r, display)).join("\nand ")} onClick={() => setOpen(!open)}>
         {locked ? "↑ " : ""}{label} ▾
       </button>
-      {open && (
-        <div className="picker-pop rules-pop">
+      {open && float(ref.current, (
+        <div className="picker-pop rules-pop" ref={pop}>
           <div className="muted">A pair joins when every rule holds.</div>
           {rules.map((r, i) => {
             const names = Object.keys(options.rules[r.kind] ?? {});
@@ -44,21 +44,27 @@ export function RulesPicker({ rules, onChange, options, locked = false }: { rule
                   )}
                   <button className="linkish" onClick={() => onChange(rules.filter((_, k) => k !== i))}>remove</button>
                 </div>
-                <div className="rule-values">
-                  {values.map((v) => (
-                    <label key={v}>
-                      <input type="checkbox" checked={r.values.includes(v)}
-                        onChange={() => set(i, { values: r.values.includes(v) ? r.values.filter((x) => x !== v) : [...r.values, v] })} />
-                      {display(v)}
-                    </label>
-                  ))}
-                </div>
+                <RuleValues values={values} picked={r.values} display={display} onChange={(next) => set(i, { values: next })} />
               </div>
             );
           })}
           <button onClick={() => onChange([...rules, fresh(kinds[0]!)])}>+ rule</button>
         </div>
-      )}
+      ))}
+    </div>
+  );
+}
+
+function RuleValues({ values, picked, display, onChange }: { values: string[]; picked: string[]; display(v: string): string; onChange(next: string[]): void }) {
+  const click = useListClick(values, picked, onChange);
+  return (
+    <div className="rule-values">
+      {values.map((v) => (
+        <label key={v} onClick={(e) => click(v, e)}>
+          <input type="checkbox" checked={picked.includes(v)} readOnly />
+          {display(v)}
+        </label>
+      ))}
     </div>
   );
 }

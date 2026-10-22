@@ -1,4 +1,4 @@
-// A pair node's float bar: the sessions and rules a stats row picks by, then pair states and value ranges.
+// A pair node's float bar: the sessions, conn types and rules a stats row picks by, then pair states and value ranges.
 import type { PairNode, PairRange } from "../../../core/grid";
 import { patchNode } from "../../../gridActions";
 import { ListPicker } from "../../stats/ListPicker";
@@ -23,6 +23,7 @@ export function NodeBar({ node }: { node: PairNode }) {
   return (
     <FloatBar id={`node:${node.id}`}>
       <ListPicker plural="sessions" items={options.pickers.sess.items} selected={node.sessions} empty="every session" onChange={(sessions) => set({ sessions })} />
+      <ListPicker plural="types" items={options.pickers.ct.items} selected={node.conn_types} empty="every type" onChange={(conn_types) => set({ conn_types })} />
       <RulesPicker rules={node.rules} options={options} onChange={(rules) => set({ rules })} />
       <span className="sep" />
       {STATES.map(([k, label]) => (

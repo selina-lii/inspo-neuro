@@ -10,7 +10,7 @@ export type GridSort = "session" | "strength" | "on" | "ref";
 export type CcgGrid = {
   id: string; p: Vec3; q: Quat; s?: number; label?: string;
   cols: number; rows: number; sort: GridSort; segMode: "overlay" | "series"; axis: "x" | "y";
-  segments: string[]; pairs: "shown" | "selected"; page: number; summon?: boolean; compact?: boolean;
+  segments: string[]; pairs: "shown" | "selected"; page: number; summon?: boolean;
   picking?: boolean;   // select mode: a click picks a card, a drag sweeps a run of them
   tray?: string;   // the set of trays it shares its source's pairs with; each pair lives in one tray
   keys?: string[];   // the pairs this tray holds; without keys, every pair no other tray in its set holds
@@ -43,13 +43,13 @@ export type PairRange = { field: "strength" | "cs" | "rate"; segment: string; si
 /** A pair source: the server resolves its sessions, rules, states and ranges; pairs added by hand join them. */
 export type PairNode = {
   id: string; p: Vec3; q: Quat; summon?: boolean; label?: string;
-  sessions: string[]; rules: Rule[]; states: string[]; ranges: PairRange[]; added: string[];
+  sessions: string[]; conn_types: string[]; rules: Rule[]; states: string[]; ranges: PairRange[]; added: string[];
 };
 
-export const PICK_DEFAULTS = { sessions: [], rules: [], states: [], ranges: [], added: [] };
+export const PICK_DEFAULTS = { sessions: [], conn_types: [], rules: [], states: [], ranges: [], added: [] };
 
 /** What the server resolves a node's pick from. */
-export const pickQuery = (n: PairNode) => ({ sessions: n.sessions, rules: n.rules, states: n.states, ranges: n.ranges });
+export const pickQuery = (n: PairNode) => ({ sessions: n.sessions, conn_types: n.conn_types, rules: n.rules, states: n.states, ranges: n.ranges });
 
 /** A node's pairs: its pick's, then the ones added by hand. */
 export const nodePairs = (s: State, n: PairNode): string[] => [...new Set([...(s.picks[n.id] ?? []), ...n.added])];
@@ -79,7 +79,7 @@ export function windowed(trace: Trace, [lo, hi]: [number | null, number | null])
   return { lags: cut(trace.lags)!, ccg: cut(trace.ccg)!, baseline: cut(trace.baseline)!, p: cut(trace.p), pc: cut(trace.pc) };
 }
 
-export const CELL = { w: 2.4, h: 1.4, gap: 0.15, depth: 1.2, info: 4 };
+export const CELL = { w: 2.4, h: 1.4, depth: 1.2, info: 4 };   // cells sit edge to edge
 
 export const colsOf = (grid: CcgGrid) => (grid.list ? 1 : grid.cols);
 
@@ -92,8 +92,6 @@ export function trayKeys(s: State, grid: CcgGrid): { own: boolean; keys: Set<str
 /** The trays in a grid's set, the first one first. */
 export const traysOf = (s: State, grid: CcgGrid): CcgGrid[] => (grid.tray ? s.grids.filter((g) => g.tray === grid.tray).sort((a, b) => Number(Boolean(a.keys)) - Number(Boolean(b.keys))) : [grid]);
 
-/** The space between cells: none when compact. */
-export const gapOf = (grid: CcgGrid) => (grid.compact ? 0 : CELL.gap);
 
 export function sortItems(items: GridItem[], sort: GridSort, sessions: string[]): GridItem[] {
   const order = new Map(sessions.map((s, i) => [s, i]));
@@ -115,12 +113,12 @@ export function cellSize(grid: CcgGrid, n: number): { w: number; h: number } {
 /** The grid's front face, in its own frame: left edge at x 0, top edge at y 0. */
 export function pageSize(grid: CcgGrid, n: number): { w: number; h: number } {
   const c = cellSize(grid, n);
-  return { w: (grid.list ? CELL.info : 0) + colsOf(grid) * c.w + (colsOf(grid) - 1) * gapOf(grid), h: grid.rows * c.h + (grid.rows - 1) * gapOf(grid) };
+  return { w: (grid.list ? CELL.info : 0) + colsOf(grid) * c.w, h: grid.rows * c.h };
 }
 
 /** The centre of slot *i* on a page. */
 export function slotAt(grid: CcgGrid, n: number, i: number): [number, number] {
   const c = cellSize(grid, n);
   const [col, row] = [i % colsOf(grid), Math.floor(i / colsOf(grid))];
-  return [(grid.list ? CELL.info : 0) + col * (c.w + gapOf(grid)) + c.w / 2, -(row * (c.h + gapOf(grid)) + c.h / 2)];
+  return [(grid.list ? CELL.info : 0) + col * c.w + c.w / 2, -(row * c.h + c.h / 2)];
 }

@@ -74,4 +74,23 @@ test("duplicating a workspace saves its copy and opens it", async () => {
   assert.equal(await app.state((s) => s.grids.length), grids);
 });
 
+test("a pair node's rule stays open while edited, and its values pick as a list does", async () => {
+  await app.call("gridActions.ts", "addNode");
+  const node = await app.state((s) => s.pairNodes.at(-1).id);
+  await app.call("stackActions.ts", "pick3", "node", node);
+  await app.settle(800);
+  // the bar lies on the node in 3D, wherever the camera is: press it as a click event would
+  await app.page.locator(".board-tools button", { hasText: "all pairs" }).dispatchEvent("click");
+  await app.page.locator(".rules-pop button", { hasText: "+ rule" }).click();
+  const value = (v) => app.page.locator(".rules-pop .rule-values label", { hasText: v });
+  const picked = () => app.page.evaluate((id) => window.neuromapStore.get().pairNodes.find((n) => n.id === id).rules[0].values, node);
+  await value("a").click();
+  await value("c").click({ modifiers: ["Shift"] });
+  assert.deepEqual(await picked(), ["a", "b", "c"]);
+  await value("b").click({ modifiers: ["Control"] });
+  assert.deepEqual(await picked(), ["a", "c"]);
+  await value("d").click();
+  assert.deepEqual(await picked(), ["d"]);
+});
+
 test("no page errors", () => assert.deepEqual(app.errors, []));

@@ -76,7 +76,7 @@ export function GridBar({ grid }: { grid: CcgGrid }) {
       <Picked grid={grid} />
       <span className="sep" />
       {/* the grid's own layout: folds away, never removed */}
-      <button className={grid.layoutOpen ? "on" : ""} title="layout: rows × cols, list, overlay or series, compact, one scale" onClick={() => set({ layoutOpen: !grid.layoutOpen })}>⚙ {grid.layoutOpen ? "◂" : "▸"}</button>
+      <button className={grid.layoutOpen ? "on" : ""} title="layout: rows × cols, list, overlay or series, one scale" onClick={() => set({ layoutOpen: !grid.layoutOpen })}>⚙ {grid.layoutOpen ? "◂" : "▸"}</button>
       {grid.layoutOpen && (
         <>
           {count("rows")}{!grid.list && <>×{count("cols")}</>}
@@ -88,7 +88,6 @@ export function GridBar({ grid }: { grid: CcgGrid }) {
             <button key={a} className={grid.axis === a ? "on" : ""} title={`series along ${a}`} onClick={() => set({ axis: a })}>{a}</button>
           ))}
           <span className="sep" />
-          <button className={grid.compact ? "on" : ""} title="cells edge to edge, no margins" onClick={() => set({ compact: !grid.compact })}>compact</button>
           <button className={grid.sameScale ? "on" : ""} title="every card on one y range: the whole grid's, across its pages" onClick={() => set({ sameScale: !grid.sameScale })}>same scale</button>
         </>
       )}

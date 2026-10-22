@@ -13,10 +13,10 @@ RES_DROP = ('common_pairs', 'norm_vals', 'norm_pairs')   # carried by the rows i
 
 def rule_choices(cd, sd) -> dict:
     """Per rule kind, ``{name: values}`` as the Qt rule row offers them; '' when the kind takes no name."""
+    # no conn-type rule: rows and pair nodes pick conn types on their own
     return {
         DerivedRule.PAIR_TAG: {'': sd.groups.groups + sd.groups.special_groups()},
         DerivedRule.PAIR_LOCATION: {n: ['yes', 'no'] for n in DerivedRule.NAMED[DerivedRule.PAIR_LOCATION]},
-        DerivedRule.PAIR_CONN: {'': list(cd.conf.conn_type_labels)},
         DerivedRule.PAIR_SIGNIFICANCE: {r.name: list(DerivedRule.VERDICTS) for r in cd.rule_book.later_sets()},
         DerivedRule.NEURON_TAG: {n: list(cd.nd.tag_labels(n)) for n in cd.nd.tag_names},
         DerivedRule.NEURON_GROUP: {'': list(sd.neuron_groups.groups)},
