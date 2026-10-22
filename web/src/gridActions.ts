@@ -3,6 +3,7 @@ import { fail, targetPairs } from "./actions";
 import { CURVE_DEFAULT, PICK_DEFAULTS, pickQuery, type CcgGrid, type CurveStyle, type PairNode, type StyleNode } from "./core/grid";
 import { activeSegment, store } from "./core/store";
 import { api } from "./io/api";
+import { unfeedTest } from "./feedActions";
 
 export const setGrids = (grids: CcgGrid[]) => store.set({ grids });
 
@@ -124,6 +125,14 @@ export function removeNode(id: string): void {
 
 /** Grids configured or keyed by a panel that is gone fall back to the default options and their own keys. */
 export const dropConfig = (panel: string) => setGrids(store.get().grids.map((g) => ({ ...g, config: g.config === panel ? null : g.config, legend: g.legend === panel ? null : g.legend })));
+
+/** Cut a grid's cable: to its source, CCG config, legend or style, or the test it feeds. */
+export function cutCable(id: string): void {
+  const [what, grid, test] = id.split("|") as [string, string, string];
+  if (what === "feed") return unfeedTest(grid, test);
+  const cut: Record<string, Partial<CcgGrid>> = { src: { source: null }, cfg: { config: null }, key: { legend: null }, sty: { style: null } };
+  patchGrid(grid, cut[what]!);
+}
 
 /** Grids cabled to a port that is gone lose their source. */
 export const dropSource = (port: string) => setGrids(store.get().grids.map((g) => (g.source === port ? { ...g, source: null } : g)));

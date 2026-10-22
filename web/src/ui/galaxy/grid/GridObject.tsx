@@ -63,7 +63,7 @@ export function GridObject({ grid, dark }: { grid: CcgGrid; dark: boolean }) {
   useEffect(() => void (grid.page > pages - 1 && patchGrid(grid.id, { page: pages - 1 })), [grid.page, pages]);
 
   const feeds = testsFedBy(grid.id).map((t) => t.id).join();
-  useEffect(() => syncFeeds(grid, order), [order.join(), grid.segments.join(), feeds]);
+  useEffect(() => syncFeeds(grid, order), [order.join(), grid.segments.join(), grid.source, items, feeds]);
 
   // a pair focused elsewhere brings up the page that holds it
   const focusKey = s.stats.pick.pair ?? (s.focus?.kind === "pair" ? `${s.session}|${s.focus.ref}|${s.focus.tgt}` : null);

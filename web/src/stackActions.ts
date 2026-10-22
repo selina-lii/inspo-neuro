@@ -1,7 +1,7 @@
 // Ties between stats boards and networks: the cable, the session stack it grows (fetched a layer at a time), row playback.
 import { addNetwork, closePanel, fail, removeNetwork, setMainHidden } from "./actions";
 import { closeTest, moveBoard, sceneFrame } from "./statsActions";
-import { removeGrid } from "./gridActions";
+import { cutCable, removeGrid } from "./gridActions";
 import { sessionPairs, stackRows, testSessions, type StackLayer, type StackRow, type Tie } from "./core/stack";
 import { axisQuat, type Quat, type StatsResult, type StatsTest, type Vec3 } from "./core/stats";
 import { activeSegment, store, type Picked3 } from "./core/store";
@@ -170,6 +170,7 @@ export function remove3(p: Picked3): void {
   if (p.kind === "board") closeTest(p.id);
   else if (p.kind === "panel") closePanel(p.id);
   else if (p.kind === "tie") untie(p.id);
+  else if (p.kind === "cable") cutCable(p.id);
   else if (p.kind === "grid") removeGrid(p.id);
   else if (p.id === "main") setMainHidden(true);
   else {

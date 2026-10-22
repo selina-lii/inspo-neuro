@@ -21,7 +21,7 @@ import { PickCard } from "./tie/OverlayCards";
 import { TiedStacks } from "./tie/TiedStacks";
 import { probes, positions3 } from "./layout3";
 import { buildBatches, Heads, LinkBatch, Neurons, ProbeShank } from "./networkParts";
-import { CarrySync, claimMenu, resetClaim, SpaceMenu, type Target } from "./SpaceMenu";
+import { CarrySync, claimMenu, resetClaim, SpaceMenu } from "./SpaceMenu";
 import { actsOn, useBody } from "./select3";
 import { useBoardDrag } from "./stats/boardDrag";
 import { NetworkFrame } from "./NetworkFrame";
@@ -210,7 +210,7 @@ export function GalaxyView({ dark }: { dark: boolean }) {
       </div>
       <SpaceMenu at={menuAt} onClose={() => setMenuAt(null)} onCenter={(t, face) => {
         const c = controls.current;
-        const spotOf = (u: Target) => {
+        const spotOf = (u: { kind: string; id: string }) => {
           const net = s.networks.find((n) => n.id === u.id);
           const p = s.panels.find((q) => q.id === u.id);
           return u.kind === "board" || u.kind === "tie" ? centers.get(`board:${u.id}`) : u.kind === "grid" || u.kind === "node" || u.kind === "style" ? centers.get(`${u.kind}:${u.id}`)
@@ -218,8 +218,8 @@ export function GalaxyView({ dark }: { dark: boolean }) {
             : p?.pose ? { at: new Vector3(...p.pose.p), size: Math.max(p.w, p.h) * PANEL_PX * s.objectScale * (p.pose.s ?? 1) } : undefined;
         };
         const panel = s.panels.find((q) => q.id === t.id);
-        // a selection is framed whole, as one sphere around its members
-        const spots = (t.kind === "node" || t.kind === "style" ? [t] : actsOn({ kind: t.kind, id: t.id })).flatMap((u) => spotOf(u) ?? []);
+        // centring frames the whole selection the item is in; facing looks at the item alone
+        const spots = (face || t.kind === "node" || t.kind === "style" ? [t] : actsOn({ kind: t.kind, id: t.id })).flatMap((u) => spotOf(u) ?? []);
         const mid = spots.reduce((m, x) => m.add(x.at), new Vector3()).divideScalar(spots.length || 1);
         const spot = spots.length > 1 ? { at: mid, size: Math.max(...spots.map((x) => 2 * x.at.distanceTo(mid) + x.size)) } : spotOf(t);
         if (!c || !spot) return;

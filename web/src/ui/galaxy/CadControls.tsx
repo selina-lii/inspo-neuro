@@ -37,7 +37,7 @@ export function CadControls({ ref }: { ref?: Ref<CadHandle> }) {
   const tween = useRef<Tween | null>(null);
 
   const handle = useMemo<CadHandle>(() => {
-    // a jump to a view carries the panels along; centering on one item leaves everything where it is
+    // a jump to a view carries the panels along; centering on or facing one item leaves everything where it is
     const goTo = (pos: Vector3, center: Vector3, up: Vector3, carry = true) => {
       const q1 = new Quaternion().setFromRotationMatrix(new Matrix4().lookAt(pos, center, up));
       const one = new Vector3(1, 1, 1);
@@ -55,7 +55,7 @@ export function CadControls({ ref }: { ref?: Ref<CadHandle> }) {
         goTo(sphere.center.clone().addScaledVector(back, distFor(sphere.radius) * 1.05), sphere.center, camera.up.clone());
       },
       center: (at, size) => goTo(at.clone().addScaledVector(camera.position.clone().sub(target).normalize(), distFor(size / 2) * 1.2), at, camera.up.clone(), false),
-      look: (center, normal, up, size) => goTo(center.clone().addScaledVector(normal.clone().normalize(), distFor(size / 2) * 1.1), center, up),
+      look: (center, normal, up, size) => goTo(center.clone().addScaledVector(normal.clone().normalize(), distFor(size / 2) * 1.1), center, up, false),
     };
   }, [camera, scene, target]);
   useImperativeHandle(ref, () => handle, [handle]);

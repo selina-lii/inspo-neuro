@@ -14,7 +14,7 @@ import { AddMenu } from "../menu/AddMenu";
 import { TrayMenu } from "./grid/TrayMenu";
 import { store } from "../../core/store";
 import { useStore } from "../useStore";
-import { actsOn, align3, duplicate3 } from "./select3";
+import { actsOn, align3, duplicate3, snapTo3 } from "./select3";
 
 export type Target = { kind: "board" | "network" | "panel" | "tie" | "grid" | "node" | "style"; id: string };
 let pending: Target | null = null;
@@ -74,6 +74,7 @@ function Many({ target, act }: { target: Target; act: (f: () => void) => () => v
     <>
       {all.some((t) => t.kind === "board" || t.kind === "grid" || t.kind === "panel" || (t.kind === "network" && t.id !== "main")) && <button onClick={act(() => duplicate3(all))}>duplicate{n}</button>}
       {all.length > 1 && <button onClick={act(() => align3(lead, all))}>align the selection to this</button>}
+      {all.length > 1 && <button title="turn the others to face as this does and set them flush beside it, an edge in line" onClick={act(() => snapTo3(lead, all))}>snap the selection to this</button>}
     </>
   );
 }

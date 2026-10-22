@@ -50,13 +50,15 @@ export const pickQuery = (n: PairNode) => ({ sessions: n.sessions, rules: n.rule
 /** A node's pairs: its pick's, then the ones added by hand. */
 export const nodePairs = (s: State, n: PairNode): string[] => [...new Set([...(s.picks[n.id] ?? []), ...n.added])];
 
-/** A grid draws with the options of the CCG panel cabled to it, the defaults without one. */
-/** The one grid a CCG or legend panel is cabled to, which it then sits on. */
+/** The one grid a CCG or legend panel is cabled to, which it then sits on; trays of one set share theirs on the first tray. */
 export const dockedOn = (s: State, panel: string): string | undefined => {
   const on = s.grids.filter((g) => g.config === panel || g.legend === panel);
-  return on.length === 1 ? on[0]!.id : undefined;
+  if (on.length === 1) return on[0]!.id;
+  const set = on[0]?.tray;
+  return set && on.every((g) => g.tray === set) ? traysOf(s, on[0]!)[0]!.id : undefined;
 };
 
+/** A grid draws with the options of the CCG panel cabled to it, the defaults without one. */
 export const optionsOf = (s: State, grid: CcgGrid): CcgOptions => (grid.config ? panelCcg(s, grid.config) : DEFAULT_CCG);
 
 export type GridCurve = { label: string; color: string; trace: Trace };

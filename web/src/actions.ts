@@ -193,7 +193,11 @@ export const panelsFrom = (saved: SpacePanel[] | undefined): SpacePanel[] =>
   saved?.length ? [...DEFAULT_PANELS.map((d) => saved.find((p) => p.id === d.id) ?? d), ...saved.filter((p) => p.ccg && !DEFAULT_PANELS.some((d) => d.id === p.id))] : DEFAULT_PANELS;
 
 /** Show a panel, expanded: where it last was in 2D, in front of the camera in 3D. */
-export const openPanel = (id: string): void => patchPanel(id, { collapsed: false, closed: false, summon: store.get().view === "3d" });
+/** A panel opened fresh starts with no cables, whatever it held when it was closed. */
+export function openPanel(id: string): void {
+  if (store.get().panels.find((p) => p.id === id)?.closed) dropConfig(id);
+  patchPanel(id, { collapsed: false, closed: false, summon: store.get().view === "3d" });
+}
 
 /** Show a panel at a place in 3D, as a CCG card's double-click does. */
 export const openPanelAt = (id: string, pose: Pose): void => patchPanel(id, { collapsed: false, closed: false, pose });
@@ -220,11 +224,11 @@ export function addCcgPanel(from = "ccg"): void {
   store.set({ panels: [...s.panels, panel] });
 }
 
-/** Close a panel: an added CCG panel goes, and the grids it configured fall back to the defaults. */
+/** Close a panel: an added CCG panel goes; either way its cables go, so the grids it configured fall back to the defaults. */
 export function closePanel(id: string): void {
+  dropConfig(id);
   if (DEFAULT_PANELS.some((d) => d.id === id)) return patchPanel(id, { closed: true });
   store.set({ panels: store.get().panels.filter((p) => p.id !== id) });
-  dropConfig(id);
 }
 
 export function patchPanel(id: string, patch: Partial<SpacePanel>): void {

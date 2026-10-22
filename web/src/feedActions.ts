@@ -3,6 +3,7 @@ import { traysOf, type CcgGrid } from "./core/grid";
 import { newRow, type RowConfig } from "./core/stats";
 import { store } from "./core/store";
 import { newTest, runTest, setRows } from "./statsActions";
+import { stackOf } from "./stackActions";
 
 export const testsFedBy = (grid: string) => store.get().stats.tests.filter((t) => t.config.rows.some((r) => r.fed === grid));
 
@@ -12,15 +13,22 @@ function gridLabel(grid: CcgGrid): string {
   return trays.length > 1 ? `tray ${trays.indexOf(grid) + 1}` : "grid";
 }
 
-/** A test's rows with a grid's rows in step with its pairs and segments; what was set on a row by hand stays. */
+/** The grid's curves and the segments each is measured in: a board's rows off a board, else one per grid segment. */
+function gridCurves(grid: CcgGrid): { label: string; segments: string[] }[] {
+  const [kind, id] = (grid.source ?? ":").split(":");
+  const st = kind === "board" ? stackOf(id!) : null;
+  return st ? st.rows.map((r) => ({ label: r.name, segments: r.segments })) : grid.segments.map((seg) => ({ label: seg, segments: [seg] }));
+}
+
+/** A test's rows with a grid's rows in step with its pairs and curves; what was set on a row by hand stays. */
 function withGrid(rows: RowConfig[], grid: CcgGrid, keys: string[]): RowConfig[] {
   const options = store.get().stats.options!;
   const sessions = [...new Set(keys.map((k) => k.split("|")[0]!))];
   const mine: RowConfig[] = [];
-  for (const seg of grid.segments) {
-    const old = rows.find((r) => r.fed === grid.id && r.segments[0] === seg);
-    const base = old ?? { ...newRow([...rows, ...mine], options), name: `${gridLabel(grid)} ${seg}` };
-    mine.push({ ...base, sessions, conn_types: options.pickers.ct.items, segments: [seg], rules: [], follow: null, follow_pickers: [], fed: grid.id, pairs: [...keys].sort() });
+  for (const c of gridCurves(grid)) {
+    const old = rows.find((r) => r.fed === grid.id && r.segments.join() === c.segments.join());
+    const base = old ?? { ...newRow([...rows, ...mine], options), name: `${gridLabel(grid)} ${c.label}` };
+    mine.push({ ...base, sessions, conn_types: options.pickers.ct.items, segments: c.segments, rules: [], follow: null, follow_pickers: [], fed: grid.id, pairs: [...keys].sort() });
   }
   const at = rows.findIndex((r) => r.fed === grid.id);
   const rest = rows.filter((r) => r.fed !== grid.id);

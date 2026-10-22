@@ -3,7 +3,7 @@
 import { useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useMemo, useRef, type RefObject } from "react";
 import { createPortal } from "react-dom";
-import { DoubleSide, Matrix4, Mesh, MeshBasicMaterial, NoBlending, PlaneGeometry, Plane, Quaternion, Raycaster, Scene, Vector2, Vector3, type Camera, type Object3D } from "three";
+import { BoxGeometry, DoubleSide, Matrix4, Mesh, MeshBasicMaterial, NoBlending, PlaneGeometry, Plane, Quaternion, Raycaster, Scene, Vector2, Vector3, type Camera, type Object3D } from "three";
 import { CSS3DObject, CSS3DRenderer } from "three/examples/jsm/renderers/CSS3DRenderer.js";
 import { patchPanel } from "../../actions";
 import { newScale } from "../../statsActions";
@@ -79,10 +79,12 @@ export function carryPanels(from: Matrix4, to: Matrix4): void {
   store.set({ panels });
 }
 
-/** Turn a panel to face the viewer. */
+/** Turn a panel to face the viewer, upright. */
 export const facePanel = (id: string) => {
   const p = store.get().panels.find((q) => q.id === id)!;
-  patchPanel(id, { pose: { ...p.pose!, q: view!.camera.quaternion.toArray() as Quat } });
+  const at = new Vector3(...p.pose!.p);
+  const q = new Quaternion().setFromRotationMatrix(new Matrix4().lookAt(view!.camera.position, at, new Vector3(0, 1, 0)));
+  patchPanel(id, { pose: { ...p.pose!, q: q.toArray() as Quat } });
 };
 
 /** Where unplaced panels go around the network's box: a column left of it, a row under it, the stats editor above. */
@@ -154,8 +156,8 @@ export function PanelLayer({ host, box }: { host: RefObject<HTMLDivElement | nul
         const x = beside ? beside.element.offsetWidth * beside.scale.x + 0.2 : 0;
         o.position.copy(a.at).add(new Vector3(x + (o.element.offsetWidth * o.scale.x) / 2, lift, 0).applyQuaternion(a.q));
       }
-      // a CCG or legend panel's link dot, off its top-right corner by its title row, cables it into grids
-      if (p.kind === "ccg" || p.kind === "legend") {
+      // a CCG, legend or stats panel's link dot, off its top-right corner by its title row: into grids, or onto the test it edits
+      if (p.kind === "ccg" || p.kind === "legend" || p.kind === "stats") {
         const k = o.scale.x;
         ports.set(`panel:${p.id}`, new Vector3((o.element.offsetWidth / 2 + 12 * RASTER) * k, (o.element.offsetHeight / 2 - 14 * RASTER) * k, 0).applyQuaternion(o.quaternion).add(o.position));
       }
@@ -192,6 +194,18 @@ export function PanelLayer({ host, box }: { host: RefObject<HTMLDivElement | nul
       m.quaternion.copy(o.quaternion);
       m.scale.set(o.element.offsetWidth * o.scale.x, o.element.offsetHeight * o.scale.x, 1);
     }
+    // a thin slab behind each panel, so it still shows edge-on and from behind, where the page itself is hidden
+    SLAB_MAT.color.setStyle(getComputedStyle(document.documentElement).getPropertyValue("--panel").trim() || "#ffffff");
+    for (const [key, m] of slabs) if (!objects.has(key)) (st.scene.remove(m), slabs.delete(key));
+    for (const [key, o] of objects) {
+      if (key.startsWith("bar:")) continue;
+      let m = slabs.get(key);
+      if (!m) slabs.set(key, (m = new Mesh(BOX, SLAB_MAT))), st.scene.add(m);
+      const depth = SLAB * store.get().objectScale;
+      m.quaternion.copy(o.quaternion);
+      m.position.copy(o.position).add(new Vector3(0, 0, -depth / 2 - 0.002).applyQuaternion(o.quaternion));
+      m.scale.set(o.element.offsetWidth * o.scale.x, o.element.offsetHeight * o.scale.x, depth);
+    }
     renderer.render(scene, st.camera);
     // DOM cannot sink behind other DOM by depth: nearer panels stack above, the picked one above all; none ever fades
     const picked = store.get().picked3;
@@ -201,6 +215,7 @@ export function PanelLayer({ host, box }: { host: RefObject<HTMLDivElement | nul
     }
   });
   const holes = useMemo(() => new Map<string, Mesh>(), []);
+  const slabs = useMemo(() => new Map<string, Mesh>(), []);
   useEffect(() => {
     // the pointer goes to whichever is nearest under it: a page through its window, else the canvas
     const ray = new Raycaster();
@@ -222,13 +237,17 @@ export function PanelLayer({ host, box }: { host: RefObject<HTMLDivElement | nul
 // a page's window in the canvas: it clears the canvas to see-through and keeps its depth
 const UNIT = new PlaneGeometry(1, 1);
 const HOLE = new MeshBasicMaterial({ color: 0x000000, opacity: 0, blending: NoBlending, side: DoubleSide });
+const BOX = new BoxGeometry(1, 1, 1);
+const SLAB_MAT = new MeshBasicMaterial();
+const SLAB = 0.12;   // its depth, in 3D units at objectScale 1
 
 /** Outside the canvas: each shown panel's content, rendered into the element its CSS3D object places. */
 export function Panels3D() {
   const { panels } = useStore();
   const s = useStore();
   useEffect(() => {
-    const away = (e: PointerEvent) => !e.shiftKey && !(e.target as HTMLElement).closest?.(".panel3d") && store.get().picked3?.kind === "panel" && store.set({ picked3: null });
+    // a press on the panel's own gizmo (it has just set pointer.busy) keeps the panel selected
+    const away = (e: PointerEvent) => !e.shiftKey && !pointer.busy && !(e.target as HTMLElement).closest?.(".panel3d") && store.get().picked3?.kind === "panel" && store.set({ picked3: null });
     window.addEventListener("pointerdown", away);
     return () => window.removeEventListener("pointerdown", away);
   }, []);
