@@ -3,7 +3,7 @@
 import { useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useMemo, useRef, type RefObject } from "react";
 import { createPortal } from "react-dom";
-import { DoubleSide, Matrix4, Mesh, MeshBasicMaterial, NoBlending, PlaneGeometry, Plane, Quaternion, Raycaster, Scene, Vector2, Vector3, type Camera, type Object3D } from "three";
+import { BoxGeometry, DoubleSide, Matrix4, Mesh, MeshBasicMaterial, NoBlending, PlaneGeometry, Plane, Quaternion, Raycaster, Scene, Vector2, Vector3, type Camera, type Object3D } from "three";
 import { CSS3DObject, CSS3DRenderer } from "three/examples/jsm/renderers/CSS3DRenderer.js";
 import { patchPanel } from "../../actions";
 import { newScale } from "../../statsActions";
@@ -194,6 +194,18 @@ export function PanelLayer({ host, box }: { host: RefObject<HTMLDivElement | nul
       m.quaternion.copy(o.quaternion);
       m.scale.set(o.element.offsetWidth * o.scale.x, o.element.offsetHeight * o.scale.x, 1);
     }
+    // a thin slab behind each panel, so it still shows edge-on and from behind, where the page itself is hidden
+    SLAB_MAT.color.setStyle(getComputedStyle(document.documentElement).getPropertyValue("--panel").trim() || "#ffffff");
+    for (const [key, m] of slabs) if (!objects.has(key)) (st.scene.remove(m), slabs.delete(key));
+    for (const [key, o] of objects) {
+      if (key.startsWith("bar:")) continue;
+      let m = slabs.get(key);
+      if (!m) slabs.set(key, (m = new Mesh(BOX, SLAB_MAT))), st.scene.add(m);
+      const depth = SLAB * store.get().objectScale;
+      m.quaternion.copy(o.quaternion);
+      m.position.copy(o.position).add(new Vector3(0, 0, -depth / 2 - 0.002).applyQuaternion(o.quaternion));
+      m.scale.set(o.element.offsetWidth * o.scale.x, o.element.offsetHeight * o.scale.x, depth);
+    }
     renderer.render(scene, st.camera);
     // DOM cannot sink behind other DOM by depth: nearer panels stack above, the picked one above all; none ever fades
     const picked = store.get().picked3;
@@ -203,6 +215,7 @@ export function PanelLayer({ host, box }: { host: RefObject<HTMLDivElement | nul
     }
   });
   const holes = useMemo(() => new Map<string, Mesh>(), []);
+  const slabs = useMemo(() => new Map<string, Mesh>(), []);
   useEffect(() => {
     // the pointer goes to whichever is nearest under it: a page through its window, else the canvas
     const ray = new Raycaster();
@@ -224,6 +237,9 @@ export function PanelLayer({ host, box }: { host: RefObject<HTMLDivElement | nul
 // a page's window in the canvas: it clears the canvas to see-through and keeps its depth
 const UNIT = new PlaneGeometry(1, 1);
 const HOLE = new MeshBasicMaterial({ color: 0x000000, opacity: 0, blending: NoBlending, side: DoubleSide });
+const BOX = new BoxGeometry(1, 1, 1);
+const SLAB_MAT = new MeshBasicMaterial();
+const SLAB = 0.12;   // its depth, in 3D units at objectScale 1
 
 /** Outside the canvas: each shown panel's content, rendered into the element its CSS3D object places. */
 export function Panels3D() {
