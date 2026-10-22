@@ -2,7 +2,7 @@
 import { useFrame } from "@react-three/fiber";
 import { useMemo, useRef } from "react";
 import { BufferGeometry, Float32BufferAttribute, Vector3, type Group, Quaternion } from "three";
-import type { Board, StatsPick, StatsTest, StatsValue } from "../../../core/stats";
+import { shownResult, type Board, type StatsPick, type StatsTest, type StatsValue } from "../../../core/stats";
 import { slideBoard } from "../../../stackActions";
 import { selected3 } from "../../../core/select";
 import { PICK_COLOR } from "../../../core/colors";
@@ -25,12 +25,8 @@ type Props = { board: Board; test: StatsTest; values: Record<string, StatsValue>
 
 export function ResultBoard({ board, test, values, grayed, pick, dark, active, objectScale, playRow }: Props) {
   const full = test.results.find((r) => r.resolution === board.res) ?? test.results[0]!;
-  const result = useMemo(() => {
-    const keep = full.rows.map((r) => !board.hidden?.includes(r.name));
-    return { ...full, rows: full.rows.filter((_, i) => keep[i]), n: full.n.filter((_, i) => keep[i]) };
-  }, [full, board.hidden?.join()]);
-  // playback steps through every row: a hidden one lights nothing
-  const played = playRow === null ? -1 : result.rows.findIndex((r) => r.name === full.rows[playRow]?.name);
+  const result = shownResult(full, board.hidden);
+  const played = playRow ?? -1;
   const layout = useMemo(() => layoutBoard(result, values, test.config.view), [result, values, test.config.view]);
   const group = useRef<Group>(null);
   const drag = useBoardDrag(board.id, group, (p, q) => slideBoard(board.id, p, q));
@@ -68,7 +64,7 @@ export function ResultBoard({ board, test, values, grayed, pick, dark, active, o
       <lineSegments geometry={border}><lineBasicMaterial color={bar} /></lineSegments>
       <Label3D text={title} position={[x0 + 0.12, yTop + 0.22, 0]} height={0.24} color="#ffffff" anchor="left" bold />
       <BoardPlot layout={layout} result={result} fg={fg} muted={muted} fade={layout.dots.some((d) => pick.ids.has(d.id)) ? 0.2 : 1} />
-      {played >= 0 && (
+      {played >= 0 && layout.rows[played] && (
         <mesh position={[layout.rows[played]!.x, (y0 + yTop) / 2, -0.015]}>
           <planeGeometry args={[ROW_W, yTop - y0]} />
           <meshBasicMaterial color="#ffb000" transparent opacity={0.18} depthWrite={false} side={2} />

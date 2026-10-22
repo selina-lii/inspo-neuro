@@ -3,7 +3,7 @@ import { addNetwork, closePanel, fail, removeNetwork, setMainHidden } from "./ac
 import { closeTest, moveBoard, sceneFrame } from "./statsActions";
 import { cutCable, removeGrid, removeNode, removeStyle } from "./gridActions";
 import { sessionPairs, stackRows, testSessions, type StackLayer, type StackRow, type Tie } from "./core/stack";
-import { axisQuat, type Quat, type StatsResult, type StatsTest, type Vec3 } from "./core/stats";
+import { axisQuat, shownResult, type Quat, type StatsResult, type StatsTest, type Vec3 } from "./core/stats";
 import { activeSegment, store, type Picked3 } from "./core/store";
 import { api } from "./io/api";
 import { undo } from "./history";
@@ -62,8 +62,10 @@ export function stackOf(board: string): { test: StatsTest; result: StatsResult; 
   const { stats } = store.get();
   const test = stats.tests.find((t) => t.id === board);
   const b = stats.boards.find((x) => x.id === board);
-  const result = test?.results.find((r) => r.resolution === b?.res) ?? test?.results[0];
-  if (!test || !result || !stats.options) return null;
+  const full = test?.results.find((r) => r.resolution === b?.res) ?? test?.results[0];
+  if (!test || !full || !stats.options) return null;
+  // a row the board hides is gone from all it feeds too
+  const result = shownResult(full, b?.hidden);
   return { test, result, sessions: testSessions(result, stats.values), rows: stackRows(result, test.config, stats.options) };
 }
 

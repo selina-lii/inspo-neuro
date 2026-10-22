@@ -148,6 +148,21 @@ export function dealFamily(rows: RowConfig[], at: number, members: string[], opt
 }
 
 /** Every value of the same pair on a board, in row order: the pair's lineage across the test's conditions. */
+const shownCache = new WeakMap<StatsResult, Map<string, StatsResult>>();
+
+/** A result as its board shows it: the rows it hides left out, the same object for the same hide. */
+export function shownResult(result: StatsResult, hidden: string[] = []): StatsResult {
+  if (!hidden.length) return result;
+  const byKey = shownCache.get(result) ?? new Map<string, StatsResult>();
+  shownCache.set(result, byKey);
+  const key = hidden.join("\n");
+  if (!byKey.has(key)) {
+    const keep = result.rows.map((r) => !hidden.includes(r.name));
+    byKey.set(key, { ...result, rows: result.rows.filter((_, i) => keep[i]), n: result.n.filter((_, i) => keep[i]) });
+  }
+  return byKey.get(key)!;
+}
+
 export function lineageIds(result: StatsResult, values: Record<string, StatsValue>, pair: string): string[] {
   return result.rows.flatMap((r) => r.ids.filter((id) => values[id]?.pair === pair));
 }
