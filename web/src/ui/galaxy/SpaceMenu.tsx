@@ -11,7 +11,7 @@ import { AddMenu } from "../menu/AddMenu";
 import { TrayMenu } from "./grid/TrayMenu";
 import { store } from "../../core/store";
 import { useStore } from "../useStore";
-import { cut } from "../../wireActions";
+import { cut, replace } from "../../wireActions";
 import { wiresOf, type Role } from "../../core/wires";
 import { begin, objectGesture, pointerAt } from "./gesture";
 import { rename } from "./titleTip";
@@ -101,6 +101,12 @@ export function SpaceMenu({ at, onClose, onCenter }: { at: { x: number; y: numbe
               <button onClick={act(() => onCenter(target!, true))}>face me</button>
               <button onClick={act(() => carry(target!))}>move</button>
               <Many target={target!} act={act} />
+              {s.tests.length > 1 && (
+                <select value="" title="another open test takes this one's cables" onChange={(e) => (replace(`board:${board.id}`, `board:${e.target.value}`), onClose())}>
+                  <option value="" disabled>replace with…</option>
+                  {s.tests.filter((t) => t.id !== board.id).map((t) => <option key={t.id} value={t.id}>{s.boards.find((b) => b.id === t.id)?.label || t.name || "unsaved test"}</option>)}
+                </select>
+              )}
               <button onClick={act(() => closeTest(board.id))}>close</button>
             </>
           ) : target?.kind === "tie" ? (

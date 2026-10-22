@@ -82,9 +82,8 @@ async function afterOpen(place: Place | null): Promise<void> {
   if (!names.length) await newWorkspace();
   else await openWorkspace(back?.workspace ?? names[0]!);
   if (back && back.session === store.get().session) {
-    store.set({ view: back.view, focus: back.focus });
+    store.set({ focus: back.focus });
     if (back.layout !== "physical") await setLayout(back.layout);
-    if (back.view === "3d") await setView("3d");
   }
 }
 

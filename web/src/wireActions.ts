@@ -1,9 +1,9 @@
 // Cabling: a drag from one port to another becomes the wire its ends allow; cutting one undoes what it did.
-import { roleOf, type Port, type Role, type Wire } from "./core/wires";
+import { roleOf, wiresOf, type Port, type Role, type Wire } from "./core/wires";
 import { store } from "./core/store";
 import { feedTest, unfeedTest } from "./feedActions";
 import { setActiveTest } from "./statsActions";
-import { tie, untie } from "./stackActions";
+import { setTies, tie, untie } from "./stackActions";
 
 const setWires = (wires: Wire[]) => store.set({ wires });
 const ends = (w: Wire) => [w.from, w.to];
@@ -28,6 +28,17 @@ export function cut(w: Wire): void {
   if (role === "tie") return untie(w.from.slice(6));
   if (role === "feed") return unfeedTest(w.from.slice(5), w.to.slice(6));
   setWires(store.get().wires.filter((x) => x.from !== w.from || x.to !== w.to));
+}
+
+/** *by* takes every cable at *old*, which keeps none. */
+export function replace(old: Port, by: Port): void {
+  const swap = (p: Port) => (p === old ? by : p);
+  // a tie moves as it is: untying first would drop the network it owns
+  setTies(store.get().ties.filter((t) => `board:${t.board}` !== by).map((t) => (`board:${t.board}` === old ? { ...t, board: by.slice(6) } : t)));
+  for (const w of wiresOf(store.get()).filter((x) => x.role !== "tie" && ends(x).includes(old))) {
+    cut(w);
+    connect(swap(w.from), swap(w.to));
+  }
 }
 
 /** An object gone: every stored wire at its port goes with it. */

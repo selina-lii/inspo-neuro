@@ -31,7 +31,6 @@ export async function launch() {
   });
   await page.goto(url);
   await page.waitForFunction(() => window.neuromapStore?.get().links.length, null, { timeout: 60000 });
-  await page.getByRole("button", { name: "3D", exact: true }).click();
   await page.waitForFunction(() => window.neuromapCamera, null, { timeout: 30000 });
   // panels closed: the tests look at objects in the space
   await page.evaluate(() => window.neuromapStore.set({ panels: window.neuromapStore.get().panels.map((p) => ({ ...p, closed: true })) }));

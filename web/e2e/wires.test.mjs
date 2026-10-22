@@ -55,6 +55,18 @@ test("a tray shares its set's source; removing a grid takes its wires", async ()
   assert.ok(!(await wires()).some((w) => w.includes(`grid:${tray}`)));
 });
 
+test("replacing a test hands its cables to the other test", async () => {
+  await app.call("statsActions.ts", "newTest");
+  const t2 = await app.state((s) => s.stats.active);
+  await app.call("stackActions.ts", "tie", t1, "main");
+  await app.call("wireActions.ts", "replace", `board:${t1}`, `board:${t2}`);
+  const w = await wires();
+  assert.ok(w.includes(`board:${t2}>grid:${g}:pairs`), "the grid now draws from the new test");
+  assert.ok(w.some((x) => x.startsWith(`board:${t2}>net:`) && x.endsWith(":tie")), "and the tie moved");
+  assert.ok(!w.some((x) => x.includes(`board:${t1}`)), "the old test keeps none");
+  await app.call("wireActions.ts", "replace", `board:${t2}`, `board:${t1}`);
+});
+
 test("a workspace saved with sources on the grids opens with them as wires", async () => {
   await app.settle(900);   // the open workspace is saved
   const ws = app.api.workspaces.main;

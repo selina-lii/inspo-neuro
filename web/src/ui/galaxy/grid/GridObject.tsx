@@ -1,4 +1,4 @@
-// A CCG grid in 3D: the front page's images, later pages as outlines behind it; the title bar drags it, ⇲ sets rows × cols.
+// A CCG grid in 3D: the front page's images, one outline behind it when there are more pages; the title bar drags it, ⇲ sets rows × cols.
 import { useFrame, useThree, type ThreeEvent } from "@react-three/fiber";
 import { useEffect, useMemo, useRef } from "react";
 import { BufferGeometry, Float32BufferAttribute, Plane, Vector3, type Group, Quaternion } from "three";
@@ -32,7 +32,7 @@ import { rename, titleTip } from "../titleTip";
 import { barPress } from "../gesture";
 
 const BAR = 0.44;
-const HINT_PAGES = 5;
+const HINT_PAGES = 1;   // one outline says there are more pages
 
 const rect = (x0: number, y0: number, x1: number, y1: number, z: number) => [x0, y0, z, x1, y0, z, x1, y0, z, x1, y1, z, x1, y1, z, x0, y1, z, x0, y1, z, x0, y0, z];
 

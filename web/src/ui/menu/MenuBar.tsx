@@ -1,5 +1,5 @@
 // The menu bar: what is open on the left, every other control folded into a menu, the save state on the right.
-import { openProject, resetPanels, saveEdits, setView } from "../../actions";
+import { openProject, resetPanels, saveEdits } from "../../actions";
 import { store } from "../../core/store";
 import { useEffect } from "react";
 import { deleteWorkspace, duplicateWorkspace, newWorkspace, openWorkspace, refreshWorkspaces, renameWorkspace } from "../../workspaceActions";
@@ -47,15 +47,10 @@ export function MenuBar() {
         {() => (
           <div className="menu-help">
             <p><b>3D:</b> drag pans · ⌘-drag rotates about the point under the cursor · wheel or pinch zooms · click selects · shift- or ⌘-click adds · G shows the move/turn gizmo · right-click adds or moves objects · in a CCG grid, ⌘-click picks a card and shift-click a run of cards · hover a probe to fan its neurons out by height, click it to keep them out</p>
-            <p><b>2D:</b> drag pans · wheel zooms · shift-drag box-selects · ⌘-click adds · drag a map by its title · drag neurons into an area to tag them</p>
             <p><b>keys:</b> ↑↓ or j k step pairs · shift S / U / D sets selected / unselected / deleted · group hotkeys tag · ⌘S saves · Esc clears</p>
           </div>
         )}
       </Menu>
-      <span className="sep" />
-      <div className="seg">
-        {(["2d", "3d"] as const).map((v) => <button key={v} className={s.view === v ? "on" : ""} onClick={() => setView(v)}>{v.toUpperCase()}</button>)}
-      </div>
       <span className="grow" />
       <button className={s.unsaved ? "on" : ""} disabled={!s.unsaved} onClick={saveEdits} title="write tags, pair states and peak calls to disk (⌘S); nothing is written until then">
         {s.unsaved ? `save ${s.unsaved} edit${s.unsaved > 1 ? "s" : ""}` : "saved"}

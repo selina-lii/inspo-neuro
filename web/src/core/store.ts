@@ -198,7 +198,7 @@ const initial: State = {
   axes: { x: "rate", y: "out strength" },
   positions: [],
   areas: [],
-  view: "2d",
+  view: "3d",   // the 2D map is hidden for now
   zMetric: "log rate",
   embedding3: null,
   traces: null,
