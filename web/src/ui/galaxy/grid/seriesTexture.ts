@@ -6,7 +6,8 @@ import { srgb } from "../ccgTexture";
 const [W, H] = [480, 280];
 const PAD = { l: 44, r: 12, t: 30, b: 34 };
 
-export function drawSeries(title: string, points: { label: string; color: string; value: number | null }[], metric: string, picked: boolean): CanvasTexture {
+/** `ylim`: a range shared across the grid, else the card's own from 0 to its values. */
+export function drawSeries(title: string, points: { label: string; color: string; value: number | null }[], metric: string, picked: boolean, ylim?: [number, number]): CanvasTexture {
   const root = getComputedStyle(document.documentElement);
   const c = document.createElement("canvas");
   [c.width, c.height] = [W, H];
@@ -19,7 +20,7 @@ export function drawSeries(title: string, points: { label: string; color: string
   g.textAlign = "center";
   g.fillText(title, W / 2, 19);
   const ys = points.flatMap((p) => (p.value === null ? [] : [p.value]));
-  const [lo, hi] = ys.length ? [Math.min(0, ...ys), Math.max(0, ...ys)] : [0, 1];
+  const [lo, hi] = ylim ?? (ys.length ? [Math.min(0, ...ys), Math.max(0, ...ys)] : [0, 1]);
   const span = hi - lo || 1;
   const sx = (i: number) => PAD.l + ((i + 0.5) * (W - PAD.l - PAD.r)) / Math.max(points.length, 1);
   const sy = (v: number) => H - PAD.b - ((v - lo) / span) * (H - PAD.t - PAD.b);

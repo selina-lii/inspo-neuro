@@ -18,6 +18,8 @@ export type CcgGrid = {
   style?: string | null;   // the style node cabled to it
   view?: "ccg" | "stats";   // stats: each card plots the pair's value per curve, as its linked test measures it
   metric?: string;   // the stats metric that view plots
+  sameScale?: boolean;   // every card on one y range, the grid's whole
+  layoutOpen?: boolean;   // its bar shows the layout settings
 };
 
 /** The test a grid's stats view measures under: the board feeding it, else a test it feeds. */

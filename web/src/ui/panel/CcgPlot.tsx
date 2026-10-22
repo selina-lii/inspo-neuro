@@ -29,8 +29,9 @@ function niceTicks(lo: number, hi: number, n: number): number[] {
 }
 const fmt = (v: number) => (Math.abs(v) >= 100 ? v.toFixed(0) : +v.toPrecision(3)).toString();
 
-export function CcgPlot({ curves, fitScale, rawFit, options, acgs, wave, jitter, onPeak, title, stroke = 1, card = false }: {
-  stroke?: number; card?: boolean; curves: Curve[]; fitScale: number | null; rawFit?: PairDetail["fit"] | null; options: CcgOptions; acgs?: Acgs; wave?: Waveform; jitter?: JitterResult | null; onPeak?: (peak: FitPeak) => void; title: string;
+/** `ylim`: a y range shared with other plots, else the plot's own. */
+export function CcgPlot({ curves, fitScale, rawFit, options, acgs, wave, jitter, onPeak, title, stroke = 1, card = false, ylim }: {
+  stroke?: number; card?: boolean; ylim?: [number, number]; curves: Curve[]; fitScale: number | null; rawFit?: PairDetail["fit"] | null; options: CcgOptions; acgs?: Acgs; wave?: Waveform; jitter?: JitterResult | null; onPeak?: (peak: FitPeak) => void; title: string;
 }) {
   // the lag under the pointer, or the one a click pinned
   const [cursor, setCursor] = useState<{ i: number; pinned: boolean } | null>(null);
@@ -43,8 +44,7 @@ export function CcgPlot({ curves, fitScale, rawFit, options, acgs, wave, jitter,
   const x0 = lags[0]!;
   const x1 = lags[lags.length - 1]!;
   const ys = curves.flatMap((c) => [...c.trace.ccg, ...(options.baseline ? c.trace.baseline : [])]);
-  const ymax = Math.max(...ys, ...(fit?.curve ?? [])) * 1.08 || 1;
-  const ymin = Math.min(0, ...ys) * 1.08;
+  const [ymin, ymax] = ylim ?? [Math.min(0, ...ys) * 1.08, Math.max(...ys, ...(fit?.curve ?? [])) * 1.08 || 1];
   // jitter traces are raw counts on this resolution's bins: they follow scalar normalisations like the fit
   const jit = options.jitter && jitter && fitScale !== null && jitter.j_avg.length === lags.length
     ? { avg: jitter.j_avg.map((v) => v / fitScale), lo: (jitter.bands?.["2.5"] ?? jitter.j_lo).map((v) => v / fitScale), hi: (jitter.bands?.["97.5"] ?? jitter.j_hi).map((v) => v / fitScale) }

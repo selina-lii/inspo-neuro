@@ -65,6 +65,17 @@ export function GridObject({ grid, dark }: { grid: CcgGrid; dark: boolean }) {
   useEffect(() => void (grid.page > pages - 1 && patchGrid(grid.id, { page: pages - 1 })), [grid.page, pages]);
 
   const series = useSeries(grid, order);
+  const o = optionsOf(s, grid);
+  // one y range for every card in the grid, across its pages
+  const ylim = useMemo((): [number, number] | undefined => {
+    if (!grid.sameScale) return undefined;
+    const ys = grid.view === "stats"
+      ? Object.values(series ?? {}).flatMap((byPair) => order.flatMap((k) => (byPair[k] == null ? [] : [byPair[k]!])))
+      : items.flatMap((it) => it.curves.flatMap((c) => [...c.trace.ccg, ...(o.baseline ? c.trace.baseline : [])]));
+    if (!ys.length) return undefined;
+    const [lo, hi] = [Math.min(0, ...ys), Math.max(0, ...ys)];
+    return grid.view === "stats" ? [lo, hi || 1] : [lo * 1.08, hi * 1.08 || 1];
+  }, [grid.sameScale, grid.view, series, items, order, o.baseline]);
   const feeds = testsFedBy(grid.id).map((t) => t.id).join();
   useEffect(() => syncFeeds(grid, order), [order.join(), grid.segments.join(), grid.source, items, feeds]);
 
@@ -102,7 +113,7 @@ export function GridObject({ grid, dark }: { grid: CcgGrid; dark: boolean }) {
       <Label3D text={title} position={[0.05, BAR / 2, 0]} height={0.24} color="#ffffff" anchor="left" bold />
       <lineSegments geometry={frame}><lineBasicMaterial color={picked ? PICK_COLOR : "#3a6df0"} transparent opacity={0.6} /></lineSegments>
       {items.slice(page * per, (page + 1) * per).map((item, i) => (
-        <Cell key={item.key} item={item} grid={grid} n={n} at={slotAt(grid, n, i)} dark={dark} group={group} order={order} series={series} />
+        <Cell key={item.key} item={item} grid={grid} n={n} at={slotAt(grid, n, i)} dark={dark} group={group} order={order} series={series} ylim={ylim} />
       ))}
       {/* later pages: outlines only; a click on one brings its page to the front */}
       <lineSegments geometry={hints}><lineBasicMaterial color={dark ? "#8b919c" : "#7a7f88"} transparent opacity={0.35} /></lineSegments>
@@ -149,7 +160,7 @@ function endSweep(): void {
   pointer.busy = false;
 }
 
-function Cell({ item, grid, n, at, dark, group, order, series }: { item: GridItem; grid: CcgGrid; n: number; at: [number, number]; dark: boolean; group: React.RefObject<Group | null>; order: string[]; series: Series | null }) {
+function Cell({ item, grid, n, at, dark, group, order, series, ylim }: { item: GridItem; grid: CcgGrid; n: number; at: [number, number]; dark: boolean; group: React.RefObject<Group | null>; order: string[]; series: Series | null; ylim?: [number, number] }) {
   const s = useStore();
   const o = optionsOf(s, grid);
   // an open legend cabled to the grid keys every cell at once
@@ -164,16 +175,16 @@ function Cell({ item, grid, n, at, dark, group, order, series }: { item: GridIte
     if (grid.view === "stats") {
       if (!series) return [];
       const points = gridKey(s, grid).map(([label, color]) => ({ label, color, value: series[label]?.[item.key] ?? null }));
-      return [drawSeries(item.title, points, grid.metric ?? "Conn Strength", focused)];
+      return [drawSeries(item.title, points, grid.metric ?? "Conn Strength", focused, ylim)];
     }
     if (!item.curves.length) return [];
     const styled = item.curves.map((c) => styledCurve(s, grid, c));
     if (grid.segMode === "overlay") {
       const curves = styled.sort((a, b) => a.layer - b.layer).map((c) => ({ row: { name: keyed ? "" : c.label, color: c.color, segments: [] }, trace: c.trace, width: c.width, alpha: c.alpha }));
-      return [drawOverlay(curves, title, null, focused, o, near)];
+      return [drawOverlay(curves, title, null, focused, o, near, ylim)];
     }
-    return styled.map((c) => drawCcg(c.trace, title ? `${title} · ${c.label}` : c.label, c.color, focused, { options: o, base: c.color, width: c.width, alpha: c.alpha }, near));
-  }, [item, grid.segMode, focused, dark, o, near, keyed, title, style, series, grid.view]);
+    return styled.map((c) => drawCcg(c.trace, title ? `${title} · ${c.label}` : c.label, c.color, focused, { options: o, base: c.color, width: c.width, alpha: c.alpha, ylim }, near));
+  }, [item, grid.segMode, focused, dark, o, near, keyed, title, style, series, grid.view, ylim?.join()]);
   useEffect(() => () => textures.forEach((t) => t.dispose()), [textures]);
   const c = cellSize(grid, n);
   const step = grid.axis === "x" ? [CELL.w, 0] : [0, -CELL.h];

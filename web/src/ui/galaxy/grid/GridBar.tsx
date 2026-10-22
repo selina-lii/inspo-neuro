@@ -35,14 +35,6 @@ export function GridBar({ grid }: { grid: CcgGrid }) {
         {SORTS.map(([k, label]) => <option key={k} value={k}>{label}</option>)}
       </select>
       <span className="sep" />
-      {count("rows")}{!grid.list && <>×{count("cols")}</>}
-      <button className={grid.list ? "on" : ""} title="one column, an info line beside each pair" onClick={() => set({ list: !grid.list, page: 0 })}>list</button>
-      <span className="sep" />
-      <button className={grid.segMode === "overlay" ? "on" : ""} title="one image per pair, a curve per segment or row" onClick={() => set({ segMode: "overlay" })}>overlay</button>
-      <button className={grid.segMode === "series" ? "on" : ""} title="one image per segment or row, side by side" onClick={() => set({ segMode: "series" })}>series</button>
-      {grid.segMode === "series" && (["x", "y"] as const).map((a) => (
-        <button key={a} className={grid.axis === a ? "on" : ""} title={`series along ${a}`} onClick={() => set({ axis: a })}>{a}</button>
-      ))}
       <button className={grid.view !== "stats" ? "on" : ""} title="each card: the pair's CCGs" onClick={() => set({ view: "ccg" })}>CCG</button>
       <button className={grid.view === "stats" ? "on" : ""} title="each card: the pair's value per curve, measured as its linked test measures it" onClick={() => set({ view: "stats" })}>stats</button>
       {grid.view === "stats" && options && (
@@ -50,8 +42,6 @@ export function GridBar({ grid }: { grid: CcgGrid }) {
           {options.pickers.data.items.map((m) => <option key={m} disabled={options.disabled_metrics.includes(m)}>{m}</option>)}
         </select>
       )}
-      <span className="sep" />
-      <button className={grid.compact ? "on" : ""} title="cells edge to edge, no margins" onClick={() => set({ compact: !grid.compact })}>compact</button>
       {bySegment && (
         <>
           <span className="sep" />
@@ -70,6 +60,24 @@ export function GridBar({ grid }: { grid: CcgGrid }) {
       <span className="sep" />
       <button className={grid.picking ? "on" : ""} title="click cards to pick them, drag across cards to pick a run" onClick={() => set({ picking: !grid.picking })}>select</button>
       <Picked grid={grid} />
+      <span className="sep" />
+      {/* the grid's own layout: folds away, never removed */}
+      <button className={grid.layoutOpen ? "on" : ""} title="layout: rows × cols, list, overlay or series, compact, one scale" onClick={() => set({ layoutOpen: !grid.layoutOpen })}>⚙ {grid.layoutOpen ? "◂" : "▸"}</button>
+      {grid.layoutOpen && (
+        <>
+          {count("rows")}{!grid.list && <>×{count("cols")}</>}
+          <button className={grid.list ? "on" : ""} title="one column, an info line beside each pair" onClick={() => set({ list: !grid.list, page: 0 })}>list</button>
+          <span className="sep" />
+          <button className={grid.segMode === "overlay" ? "on" : ""} title="one image per pair, a curve per segment or row" onClick={() => set({ segMode: "overlay" })}>overlay</button>
+          <button className={grid.segMode === "series" ? "on" : ""} title="one image per segment or row, side by side" onClick={() => set({ segMode: "series" })}>series</button>
+          {grid.segMode === "series" && (["x", "y"] as const).map((a) => (
+            <button key={a} className={grid.axis === a ? "on" : ""} title={`series along ${a}`} onClick={() => set({ axis: a })}>{a}</button>
+          ))}
+          <span className="sep" />
+          <button className={grid.compact ? "on" : ""} title="cells edge to edge, no margins" onClick={() => set({ compact: !grid.compact })}>compact</button>
+          <button className={grid.sameScale ? "on" : ""} title="every card on one y range: the whole grid's, across its pages" onClick={() => set({ sameScale: !grid.sameScale })}>same scale</button>
+        </>
+      )}
     </FloatBar>
   );
 }
