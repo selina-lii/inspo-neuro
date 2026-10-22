@@ -1,10 +1,10 @@
 // Ties between stats boards and networks: the cable, the session stack it grows (fetched a layer at a time), row playback.
-import { closePanel, fail, removeNetwork, setMainHidden } from "./actions";
-import { closeTest, moveBoard } from "./statsActions";
+import { addNetwork, closePanel, fail, removeNetwork, setMainHidden } from "./actions";
+import { closeTest, moveBoard, sceneFrame } from "./statsActions";
 import { removeGrid } from "./gridActions";
 import { sessionPairs, stackRows, testSessions, type StackLayer, type StackRow, type Tie } from "./core/stack";
 import { axisQuat, type Quat, type StatsResult, type StatsTest, type Vec3 } from "./core/stats";
-import { store, type Picked3 } from "./core/store";
+import { activeSegment, store, type Picked3 } from "./core/store";
 import { api } from "./io/api";
 import { undo } from "./history";
 import { same3, selection3 } from "./core/select";
@@ -19,10 +19,19 @@ export function loadTies(saved: Tie[]): void {
   // a tied board turned off the side wall goes back to it
   const ties = saved.filter((t) => boards.has(t.board));
   store.set({ ties: ties.map((t) => (boards.get(t.board)!.pose.q.every((v, i) => Math.abs(v - side[i]!) < 1e-3) ? t : { ...t, fresh: true })) });
+  // boards saved sharing one network each get a copy of their own
+  const seen = new Set<string>();
+  for (const t of store.get().ties) seen.has(t.network) ? tie(t.board, t.network) : seen.add(t.network);
 }
 
-/** One board, one network: cabling a board again moves its cable. */
-export const tie = (board: string, network: string) => setTies([...store.get().ties.filter((t) => t.board !== board), { board, network, fresh: true }]);
+/** One board, one network: cabling a board again moves its cable; a network tied to another board gets a copy for this one, so their stacks move apart. */
+export function tie(board: string, network: string): void {
+  const s = store.get();
+  const taken = s.ties.some((t) => t.network === network && t.board !== board);
+  const { center, extent } = sceneFrame();
+  const own = taken ? addNetwork(network === "main" ? activeSegment(s) : s.networks.find((n) => n.id === network)!.segment, center, extent) : network;
+  setTies([...store.get().ties.filter((t) => t.board !== board), { board, network: own, fresh: true }]);
+}
 
 export function arranged(board: string): void {
   const at = store.get().stats.boards.find((b) => b.id === board)!.pose.p;
