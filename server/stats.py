@@ -2,6 +2,7 @@
 import itertools
 import shutil
 import threading
+import traceback
 import time
 
 import numpy as np
@@ -130,6 +131,7 @@ def _run(p, job: dict):
             b.run()
             job['payload'] = stats_views.result_payload(b, b.results)
     except Exception as exc:
+        traceback.print_exc()   # the job carries one line; the console keeps where it came from
         job['error'] = f'{type(exc).__name__}: {exc}'
     finally:
         p.release_others()
