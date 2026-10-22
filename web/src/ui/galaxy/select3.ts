@@ -186,5 +186,36 @@ export function align3(lead: Picked3, targets: Picked3[]): void {
   if (to) turnTo(targets.filter((x) => !same3(x, lead)), to.q);
 }
 
+/** A flat object's face: its centre and half extents along its own right and up. */
+const faceOf = (from: Placement) => {
+  const o = from.at.clone().sub(from.pivot).applyQuaternion(from.q.clone().invert());
+  return { c: from.pivot.clone(), hw: Math.abs(o.x), hh: Math.abs(o.y) };
+};
+
+/** Turn the others to *lead*'s front and set them flush beside it, one after another on the side each is nearest:
+ * left or right with top edges aligned, above or below with left edges aligned. */
+export function snapTo3(lead: Picked3, targets: Picked3[]): void {
+  const to = placeOf(lead);
+  if (!to || !to.turns) return;
+  const right = new Vector3(1, 0, 0).applyQuaternion(to.q), up = new Vector3(0, 1, 0).applyQuaternion(to.q);
+  const gap = 0.3 * store.get().objectScale;
+  let prev = faceOf(to);
+  const movers = targets.filter((x) => !same3(x, lead) && movable(x)).flatMap((t) => {
+    const from = placeOf(t);
+    return from?.turns ? [{ t, from }] : [];
+  }).sort((a, b) => a.from.pivot.distanceTo(to.pivot) - b.from.pivot.distanceTo(to.pivot));
+  for (const { t, from } of movers) {
+    const me = faceOf(from);
+    const d = me.c.clone().sub(prev.c);
+    const [dx, dy] = [d.dot(right), d.dot(up)];
+    const side = Math.abs(dx) / (prev.hw + me.hw) >= Math.abs(dy) / (prev.hh + me.hh);
+    const c = side
+      ? prev.c.clone().addScaledVector(right, Math.sign(dx || 1) * (prev.hw + me.hw + gap)).addScaledVector(up, prev.hh - me.hh)
+      : prev.c.clone().addScaledVector(up, Math.sign(dy || -1) * (prev.hh + me.hh + gap)).addScaledVector(right, me.hw - prev.hw);
+    commit(t, transformed(from, c.clone().sub(from.pivot), to.q.clone().multiply(from.q.clone().invert())));
+    prev = { c, hw: me.hw, hh: me.hh };
+  }
+}
+
 /** Face *target*, or its whole selection, toward an axis. */
 export const snap3 = (target: Picked3, axis: string) => turnTo(actsOn(target), new Quaternion(...axisQuat(axis)));
