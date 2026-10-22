@@ -25,7 +25,7 @@ export const claimMenu = (target: Target) => void (pending ??= target);
 /** A right press starts a fresh claim. */
 export const resetClaim = () => void (pending = null);
 
-// the construct being carried; Esc or a press's release sets it down where it is
+// the construct being carried; Esc or a click sets it down where it is
 let carrying: Target | null = null;
 const carryListeners = new Set<(t: Target | null) => void>();
 function carry(t: Target | null) {
@@ -96,12 +96,14 @@ export function SpaceMenu({ at, onClose, onCenter }: { at: { x: number; y: numbe
   }, [at]);
   useEffect(() => {
     if (!moving) return;
-    const stop = (e: Event) => (e instanceof KeyboardEvent ? e.key === "Escape" : true) && carry(null);
-    window.addEventListener("keydown", stop);
-    window.addEventListener("pointerup", stop);
+    const esc = (e: KeyboardEvent) => e.key === "Escape" && carry(null);
+    // the press that sets it down is spent on that: it must not start a drag of what lies under it
+    const drop = (e: PointerEvent) => (e.stopPropagation(), carry(null));
+    window.addEventListener("keydown", esc);
+    window.addEventListener("pointerdown", drop, true);
     return () => {
-      window.removeEventListener("keydown", stop);
-      window.removeEventListener("pointerup", stop);
+      window.removeEventListener("keydown", esc);
+      window.removeEventListener("pointerdown", drop, true);
     };
   }, [moving]);
 
