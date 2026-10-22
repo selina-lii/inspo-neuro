@@ -132,4 +132,40 @@ test("a pair node's rule stays open while edited, and its values pick as a list 
   assert.deepEqual(await app.page.evaluate((id) => window.neuromapStore.get().pairNodes.find((n) => n.id === id).segments, node), ["all"], "a segment keeps the pairs on in it");
 });
 
+test("flipping one grid's page redraws its own cards alone; the View menu hides cables", async () => {
+  const ids = [];
+  for (const _ of [0, 1]) {
+    await app.call("gridActions.ts", "addGrid");
+    ids.push(await app.state((s) => s.grids.at(-1).id));
+    await app.call("wireActions.ts", "connect", "net:main", `grid:${ids.at(-1)}`);
+  }
+  await app.settle(2500);
+  await app.page.evaluate(() => {
+    window.__canvases = 0;
+    const make = document.createElement.bind(document);
+    document.createElement = (tag, ...a) => (tag === "canvas" && new Error().stack.includes("ccgTexture") && window.__canvases++, make(tag, ...a));
+  });
+  await app.call("gridActions.ts", "patchGrid", ids[0], { page: 1 });
+  await app.settle(1500);
+  const drawn = await app.page.evaluate(() => window.__canvases);
+  await app.call("wireActions.ts", "connect", `grid:${ids[0]}`, "panel:legend");
+  await app.settle(800);
+  const draws = () => app.page.evaluate(() => new Promise((done) => {
+    const gl = document.querySelector("canvas").getContext("webgl2");
+    const [de, da] = [gl.drawElements, gl.drawArrays];
+    let n = 0;
+    gl.drawElements = (...a) => (n++, de.apply(gl, a));
+    gl.drawArrays = (...a) => (n++, da.apply(gl, a));
+    requestAnimationFrame(() => (n = 0, requestAnimationFrame(() => ((gl.drawElements = de), (gl.drawArrays = da), done(n)))));
+  }));
+  const shown = await draws();
+  await app.page.evaluate(() => window.neuromapStore.set({ cables: false }));
+  await app.settle(300);
+  const hidden = await draws();
+  await app.page.evaluate(() => window.neuromapStore.set({ cables: true }));
+  for (const id of ids) await app.call("gridActions.ts", "removeGrid", id);
+  assert.equal(drawn, 12, "the flipped grid's page of 12 cards, and nothing in the other grid");
+  assert.ok(hidden < shown, `hiding cables draws less: ${shown} → ${hidden}`);
+});
+
 test("no page errors", () => assert.deepEqual(app.errors, []));

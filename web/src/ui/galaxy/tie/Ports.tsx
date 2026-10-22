@@ -66,7 +66,7 @@ export function TiePorts() {
       {ids.map((id) => <Port key={id} id={id} lit={drag === id} onPointerDown={start(id)} />)}
       {drag && <lineSegments geometry={line}><lineBasicMaterial color="#ff1dce" /></lineSegments>}
       {/* a cable shows while both its ends do */}
-      {wiresOf(s).filter((w) => ids.includes(w.from) && ids.includes(w.to)).map((w) => {
+      {s.cables && wiresOf(s).filter((w) => ids.includes(w.from) && ids.includes(w.to)).map((w) => {
         const id = `${w.from}>${w.to}`;
         const pick: Picked3 | undefined = w.role === "tie" ? { kind: "tie", id: idOf(w.from) } : w.role === "edit" ? undefined : { kind: "cable", id };
         const grid = [w.from, w.to].find((p) => p.startsWith("grid:"));

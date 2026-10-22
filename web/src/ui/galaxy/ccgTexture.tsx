@@ -1,4 +1,5 @@
 // A CCG card in 3D: the CCG panel's own plot, rasterised into a texture.
+import { useEffect, useRef, useState } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { CanvasTexture, LinearFilter, SRGBColorSpace } from "three";
 import { PICK_COLOR } from "../../core/colors";
@@ -52,12 +53,28 @@ export function ccgTexture(plot: Plot, picked: boolean, near = 0): CanvasTexture
   t.anisotropy = 8;
   // up close the texture is drawn at screen resolution: mipmaps would only blur its detail
   if (near) [t.generateMipmaps, t.minFilter] = [false, LinearFilter];
-  img.onload = () => {
+  t.userData.drawn = img.decode().then(() => {
     g.drawImage(img, 0, 0);
     g.strokeStyle = picked ? PICK_COLOR : root.getPropertyValue("--line");
     g.lineWidth = picked ? 10 : 3;
     g.strokeRect(g.lineWidth / 2, g.lineWidth / 2, c.width - g.lineWidth, c.height - g.lineWidth);
     t.needsUpdate = true;
-  };
+  });
   return t;
+}
+
+/** The textures on show: new ones take over only once drawn, so a redraw never blanks a card. */
+export function useDrawn(fresh: CanvasTexture[]): CanvasTexture[] {
+  const [shown, setShown] = useState(fresh);
+  const now = useRef(shown);
+  useEffect(() => {
+    let live = true;
+    Promise.all(fresh.map((t) => t.userData.drawn)).then(() => live && setShown((now.current = fresh)));
+    return () => {
+      live = false;
+      if (now.current !== fresh) fresh.forEach((t) => t.dispose());
+    };
+  }, [fresh]);
+  useEffect(() => () => shown.forEach((t) => t.dispose()), [shown]);
+  return shown;
 }

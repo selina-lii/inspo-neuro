@@ -1,14 +1,14 @@
 // Overlay CCG cards on a tied stack: one billboard per pair beside its link on its session's layer, one curve per test row
 // that holds the pair (row colours, the CCG panel's norms). During playback the current row's curve is bold.
 import { useFrame, useThree } from "@react-three/fiber";
-import { useEffect, useMemo, useRef } from "react";
+import { useMemo, useRef } from "react";
 import { type CanvasTexture, Vector3, type Group } from "three";
 import type { CcgOptions } from "../../../core/store";
 import { rowsWithPair, rowTrace, type StackRow, type Tie } from "../../../core/stack";
 import type { Trace } from "../../../core/types";
 import { stackOf } from "../../../stackActions";
 import { useStore } from "../../useStore";
-import { ccgTexture } from "../ccgTexture";
+import { ccgTexture, useDrawn } from "../ccgTexture";
 import { curve, SEGMENTS } from "../curve";
 import { layerShift, type DrawnLayer } from "./Stack";
 import { anchors } from "./portAt";
@@ -69,9 +69,8 @@ function OverlayCard({ card, bold, dark, scale }: { card: CardSpec; bold: string
   const a = card.layer.neurons[card.ref];
   const b = card.layer.neurons[card.tgt];
   const near = useNear(group, SIZE.w * scale);
-  const texture = useMemo(() => drawOverlay(card.curves, `${card.layer.session} #${a?.id} → #${b?.id}`, bold, card.picked, options, near),
-    [card.curves, bold, card.picked, dark, a?.id, b?.id, card.layer.session, options, near]);
-  useEffect(() => () => texture.dispose(), [texture]);
+  const [texture] = useDrawn(useMemo(() => [drawOverlay(card.curves, `${card.layer.session} #${a?.id} → #${b?.id}`, bold, card.picked, options, near)],
+    [card.curves, bold, card.picked, dark, a?.id, b?.id, card.layer.session, options, near]));
   const [w, h] = [SIZE.w * scale, SIZE.h * scale];
   const pos = useMemo(() => card.at.clone().addScaledVector(card.side, h * 0.6 + 0.3), [card.at, card.side, h]);
   useFrame(() => group.current?.quaternion.copy(camera.quaternion));   // a billboard: always faces the viewer
@@ -99,8 +98,7 @@ export function PickCard({ dark }: { dark: boolean }) {
     return trace ? [{ row: st.rows[i]!, trace }] : [];
   }) : []), [layer, st?.result, s.stats.pick.pair, s.ccg.norms]);
   const [a, b] = [layer?.neurons[Number(r)], layer?.neurons[Number(t)]];
-  const texture = useMemo(() => (curves.length ? drawOverlay(curves, `${layer!.session} #${a?.id} → #${b?.id}`, null, true, s.ccg) : null), [curves, dark, s.ccg]);
-  useEffect(() => () => texture?.dispose(), [texture]);
+  const [texture] = useDrawn(useMemo(() => (curves.length ? [drawOverlay(curves, `${layer!.session} #${a?.id} → #${b?.id}`, null, true, s.ccg)] : []), [curves, dark, s.ccg]));
   const scale = s.objectScale * s.cardScale * 1.6;
   const [w, h] = [SIZE.w * scale, SIZE.h * scale];
   useFrame(() => {

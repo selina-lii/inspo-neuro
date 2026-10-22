@@ -2,7 +2,7 @@
 // link), drawn into a canvas texture so a large group stays cheap. Click a card to focus its pair and get its corner
 // ticks; double-click opens the extended view, the CCG panel with its controls, beside it.
 import { useFrame, useThree } from "@react-three/fiber";
-import { useEffect, useMemo, useRef } from "react";
+import { useMemo, useRef } from "react";
 import { type CanvasTexture, type Group, Vector3 } from "three";
 import { focusPair, openPanelAt } from "../../actions";
 import { paletteColor, TYPE_COLORS } from "../../core/colors";
@@ -12,7 +12,7 @@ import { activeSegment, store, type CcgOptions } from "../../core/store";
 import { linkKey, type Link, type Point3, type Trace } from "../../core/types";
 import { tracesKey, traceOf } from "../../io/traces";
 import { useStore } from "../useStore";
-import { ccgTexture } from "./ccgTexture";
+import { ccgTexture, useDrawn } from "./ccgTexture";
 import { curve, SEGMENTS } from "./curve";
 import { PANEL_PX } from "./Panels3D";
 import { Corners } from "./stats/BoardCorners";
@@ -36,13 +36,12 @@ function Card({ link, at, side, focused, dark, scale }: { link: Link; at: Vector
   const held = Boolean(s.session && s.traces === tracesKey(s.session, segment));
   const [a, b] = [s.neurons[link.ref], s.neurons[link.tgt]];
   const near = useNear(group, SIZE.w * scale);
-  const texture = useMemo(() => {
+  const [texture] = useDrawn(useMemo(() => {
     const raw = held ? traceOf(s.session!, segment, link.ref, link.tgt, s.ccg.res) : null;
-    if (!raw) return null;
+    if (!raw) return [];
     const trace = normalize(raw, s.ccg.norms, { refRate: a?.rate ?? 1, tgtRate: b?.rate ?? 1, hours: segmentHours(s, segment) }).trace;
-    return drawCcg(trace, `#${a?.id} → #${b?.id}`, TYPE_COLORS[link.type] ?? "#888", focused, { options: s.ccg, base: paletteColor(segment) }, near);
-  }, [held, s.session, segment, link, s.ccg, focused, dark, a, b, near]);
-  useEffect(() => () => texture?.dispose(), [texture]);
+    return [drawCcg(trace, `#${a?.id} → #${b?.id}`, TYPE_COLORS[link.type] ?? "#888", focused, { options: s.ccg, base: paletteColor(segment) }, near)];
+  }, [held, s.session, segment, link, s.ccg, focused, dark, a, b, near]));
   const [w, h] = [SIZE.w * scale, SIZE.h * scale];
   const pos = useMemo(() => at.clone().addScaledVector(side, (h * 0.5 + 0.3) * (focused ? 1.6 : 1)), [at, side, h, focused]);
   useFrame(() => group.current?.quaternion.copy(camera.quaternion));   // a billboard: always faces the viewer

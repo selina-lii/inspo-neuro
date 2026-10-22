@@ -43,6 +43,13 @@ export function ViewMenu() {
           <button onClick={() => store.set({ sweep: { ...s.sweep, open: new Set() } })}>close all {s.sweep.open.size}</button>
         )}
       </MenuSection>
+      {s.view === "3d" && (
+        <MenuSection title="3D">
+          <label title="the cables between objects; their ports stay, so you can still connect">
+            <input type="checkbox" checked={s.cables} onChange={(e) => store.set({ cables: e.target.checked })} />cables
+          </label>
+        </MenuSection>
+      )}
       {s.view === "2d" && (
         <MenuSection title="2D">
           <label title="a small map of the whole space in the corner: panels in blue, the box is what you see">

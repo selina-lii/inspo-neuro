@@ -67,6 +67,7 @@ export type State = {
   segLinks: Record<string, SegLinks>;   // per segment, loaded on first use
   neuronValues: NeuronValues | null;
   overview: boolean;   // the 2D overview map in the corner
+  cables: boolean;
   sweep: { on: boolean; open: Set<number> };   // minesweeper mode: each clicked neuron opens its neighbours too
   networks: NetworkCopy[];   // extra copies of this session's network in 3D, each showing one segment
   objectScale: number;   // size of the objects placed in 3D (boards, panels, CCG cards), together
@@ -163,6 +164,7 @@ const initial: State = {
   segLinks: {},
   neuronValues: null,
   overview: false,
+  cables: true,
   sweep: { on: false, open: new Set() },
   networks: [],
   objectScale: 0.6,
