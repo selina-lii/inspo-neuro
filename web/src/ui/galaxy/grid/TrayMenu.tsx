@@ -1,7 +1,8 @@
-// A grid's trays in its right-click menu: move the picked cards to another tray, merge this one into another, tag every pair in it.
+// A grid's trays in its right-click menu: move or copy the picked cards to another tray, merge this one into another, tag every pair in it.
+import { Fragment } from "react";
 import { keyedPairs, toggleGroup } from "../../../actions";
 import { traysOf, type CcgGrid } from "../../../core/grid";
-import { mergeTray, moveToTray } from "../../../gridActions";
+import { mergeTray, sendToTray } from "../../../gridActions";
 import { testFromGrid, testsFedBy, unfeedTest } from "../../../feedActions";
 import { useStore } from "../../useStore";
 import { useGridItems } from "./gridItems";
@@ -18,8 +19,12 @@ export function TrayMenu({ grid, act }: { grid: CcgGrid; act: (f: () => void) =>
       {picked.length > 0 && (
         <>
           <button onClick={act(() => void exportCards(grid, picked))}>export {picked.length} picked to images</button>
-          <button onClick={act(() => moveToTray(grid.id, picked, null))}>move {picked.length} picked to a new tray</button>
-          {trays.map((t, i) => t.id !== grid.id && <button key={t.id} onClick={act(() => moveToTray(grid.id, picked, t.id))}>move {picked.length} picked to tray {i + 1}</button>)}
+          {(["move", "copy"] as const).map((how) => (
+            <Fragment key={how}>
+              <button onClick={act(() => sendToTray(grid.id, picked, null, how === "copy"))}>{how} {picked.length} picked to a new tray</button>
+              {trays.map((t, i) => t.id !== grid.id && <button key={t.id} onClick={act(() => sendToTray(grid.id, picked, t.id, how === "copy"))}>{how} {picked.length} picked to tray {i + 1}</button>)}
+            </Fragment>
+          ))}
         </>
       )}
       {trays.map((t, i) => t.id !== grid.id && <button key={`m${t.id}`} onClick={act(() => mergeTray(grid.id, t.id))}>merge this tray into tray {i + 1}</button>)}

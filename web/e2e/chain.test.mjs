@@ -49,7 +49,7 @@ test("stats 1 → tray → stats 2 keeps every pair's own values", async () => {
 
   // a tray of pairs from both sessions, including the same ref-tgt in two sessions where there is one
   const picked = all.filter((_, i) => i % 3 === 0);
-  await app.call("gridActions.ts", "moveToTray", g1, picked, null);
+  await app.call("gridActions.ts", "sendToTray", g1, picked, null, false);
   const g2 = await app.state((s) => s.grids.at(-1).id);
   assert.deepEqual((await gridKeys(g2)).sort(), [...picked].sort(), "the new tray holds exactly the moved pairs");
   assert.equal((await gridKeys(g1)).filter((k) => picked.includes(k)).length, 0, "a pair lives in one tray");

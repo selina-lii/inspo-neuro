@@ -48,11 +48,30 @@ test("a tray shares its set's source; removing a grid takes its wires", async ()
     const { gridPairs } = await import("/src/stackActions.ts");
     return gridPairs(window.neuromapStore.get().grids.find((x) => x.id === id)).slice(0, 5);
   }, g);
-  await app.call("gridActions.ts", "moveToTray", g, keys, null);
+  await app.call("gridActions.ts", "sendToTray", g, keys, null, false);
   const tray = await app.state((s) => s.grids.at(-1).id);
   assert.ok((await wires()).includes(`board:${t1}>grid:${tray}:pairs`));
   await app.call("gridActions.ts", "removeGrid", tray);
   assert.ok(!(await wires()).some((w) => w.includes(`grid:${tray}`)));
+});
+
+test("copied pairs stay in their tray and sit once in the other", async () => {
+  const pairs = (id) => app.page.evaluate(async (id) => {
+    const { gridPairs } = await import("/src/stackActions.ts");
+    return gridPairs(window.neuromapStore.get().grids.find((x) => x.id === id));
+  }, id);
+  const all = await pairs(g);
+  await app.call("gridActions.ts", "sendToTray", g, all.slice(0, 3), null, true);
+  const tray = await app.state((s) => s.grids.at(-1).id);
+  await app.call("gridActions.ts", "sendToTray", g, all.slice(0, 5), tray, true);
+  assert.deepEqual((await pairs(tray)).sort(), all.slice(0, 5).sort(), "a pair sits once in a tray");
+  assert.deepEqual((await pairs(g)).sort(), [...all].sort(), "a copy leaves the first tray whole");
+  await app.call("gridActions.ts", "sendToTray", g, all.slice(0, 2), tray, false);
+  assert.deepEqual((await pairs(g)).sort(), all.slice(2).sort(), "a move takes them out");
+  await app.call("gridActions.ts", "removeGrid", g);
+  const heir = await app.state((s) => s.grids.at(-1).id);
+  assert.deepEqual((await pairs(heir)).sort(), [...all].sort(), "the next tray inherits what the first held");
+  g = heir;
 });
 
 test("replacing a test hands its cables to the other test", async () => {

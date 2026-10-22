@@ -1,7 +1,7 @@
 // CCG grids and pair-filter nodes: add one, change its settings, cable it to a source, remove it.
 import { fail, targetPairs } from "./actions";
-import { CURVE_DEFAULT, PICK_DEFAULTS, pickQuery, type CcgGrid, type CurveStyle, type PairNode, type StyleNode } from "./core/grid";
-import { activeSegment, store } from "./core/store";
+import { CURVE_DEFAULT, PICK_DEFAULTS, pickQuery, trayKeys, type CcgGrid, type CurveStyle, type PairNode, type StyleNode } from "./core/grid";
+import { activeSegment, store, type State } from "./core/store";
 import { api } from "./io/api";
 import { copyWires, cut, dropPort } from "./wireActions";
 
@@ -88,19 +88,22 @@ export function duplicateGrid(id: string): void {
   copyWires(id, copy);
 }
 
-/** Moves pairs from a grid into a tray of its set, a new one beside it when `to` is null. */
-export function moveToTray(id: string, keys: string[], to: string | null): void {
+/** A tray with *keys* put in it, or taken out. */
+function hold(s: State, g: CcgGrid, keys: string[], put: boolean): CcgGrid {
+  const t = trayKeys(s, g);
+  const next = new Set(t.keys);
+  for (const k of keys) put === t.own ? next.add(k) : next.delete(k);
+  return t.own ? { ...g, keys: [...next] } : { ...g, out: [...next] };
+}
+
+/** Moves or copies pairs from a grid into a tray of its set, a new one beside it when `to` is null. */
+export function sendToTray(id: string, keys: string[], to: string | null, copy: boolean): void {
   const s = store.get();
   const g = s.grids.find((x) => x.id === id)!;
   const tray = g.tray ?? g.id;
   const target = to ?? newId();
-  const moved = new Set(keys);
-  const grids = s.grids.map((x) => {
-    const y = x.id === id ? { ...x, tray } : x;
-    if (y.tray !== tray || !y.keys) return y;
-    return { ...y, keys: y.id === target ? [...new Set([...y.keys, ...keys])] : y.keys.filter((k) => !moved.has(k)) };
-  });
-  if (!to) grids.push({ ...g, tray, id: target, keys, page: 0, picking: false, p: [g.p[0] + 3, g.p[1] - 3, g.p[2]] });
+  const grids = s.grids.map((x) => (x.id === target ? hold(s, x, keys, true) : x.id === id ? { ...(copy ? x : hold(s, x, keys, false)), tray } : x));
+  if (!to) grids.push({ ...g, tray, id: target, keys, out: undefined, page: 0, picking: false, p: [g.p[0] + 3, g.p[1] - 3, g.p[2]] });
   setGrids(grids);
   if (!to) copyWires(id, target);
   store.set({ cells: new Set() });
@@ -112,18 +115,19 @@ export const patchNode = (id: string, patch: Partial<PairNode>) => setNodes(stor
 
 /** Every pair of tray `from` moves into tray `into`, and `from` closes; into the first tray, or from it, the result is the first tray. */
 export function mergeTray(from: string, into: string): void {
-  const grids = store.get().grids;
-  const [a, b] = [grids.find((g) => g.id === from)!, grids.find((g) => g.id === into)!];
-  const keys = a.keys && b.keys ? [...new Set([...b.keys, ...a.keys])] : undefined;
-  setGrids(grids.filter((g) => g.id !== from).map((g) => (g.id === into ? { ...g, keys } : g)));
+  const s = store.get();
+  const [a, b] = [s.grids.find((g) => g.id === from)!, s.grids.find((g) => g.id === into)!];
+  const merged = a.keys ? hold(s, b, a.keys, true) : hold(s, a, b.keys!, true);
+  setGrids(s.grids.filter((g) => g.id !== from).map((g) => (g.id === into ? { ...b, keys: merged.keys, out: merged.out } : g)));
 }
 
 export function removeGrid(id: string): void {
-  const gone = store.get().grids.find((g) => g.id === id)!;
-  const rest = store.get().grids.filter((g) => g.id !== id);
-  // the set's first tray hands the pairs no other tray holds to the next one
+  const s = store.get();
+  const gone = s.grids.find((g) => g.id === id)!;
+  const rest = s.grids.filter((g) => g.id !== id);
+  // the set's first tray hands what it holds to the next one
   const heir = gone.tray && !gone.keys ? rest.find((g) => g.tray === gone.tray) : undefined;
-  setGrids(rest.map((g) => (g === heir ? { ...g, keys: undefined } : g)));
+  setGrids(rest.map((g) => (g === heir ? { ...g, keys: undefined, out: hold(s, gone, g.keys ?? [], true).out } : g)));
   dropPort(`grid:${id}`);
 }
 

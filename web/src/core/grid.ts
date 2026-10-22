@@ -13,8 +13,9 @@ export type CcgGrid = {
   cols: number; rows: number; sort: GridSort; segMode: "overlay" | "series"; axis: "x" | "y";
   segments: string[]; pairs: "shown" | "selected"; page: number; summon?: boolean;
   picking?: boolean;   // select mode: a click picks a card, a drag sweeps a run of them
-  tray?: string;   // the set of trays it shares its source's pairs with; each pair lives in one tray
-  keys?: string[];   // the pairs this tray holds; without keys, every pair no other tray in its set holds
+  tray?: string;   // the set of trays it shares its source's pairs with; a pair may sit in several, once in each
+  keys?: string[];   // the pairs this tray holds; the set's first tray has none and holds every pair but its `out`
+  out?: string[];
   list?: boolean;   // one column, an info line beside each pair
   view?: "ccg" | "stats";   // stats: each card plots the pair's value per curve, as its linked test measures it
   metric?: string;   // the stats metric that view plots
@@ -84,10 +85,11 @@ export const CELL = { w: 2.4, h: 1.4, depth: 1.2, info: 4 };   // cells sit edge
 
 export const colsOf = (grid: CcgGrid) => (grid.list ? 1 : grid.cols);
 
-/** The pairs a tray keeps: its own keys, or none of the keys its sibling trays hold. */
+/** The pairs a tray keeps: its own keys, or all but its `out`. */
 export function trayKeys(s: State, grid: CcgGrid): { own: boolean; keys: Set<string> } {
   if (grid.keys) return { own: true, keys: new Set(grid.keys) };
-  return { own: false, keys: new Set(s.grids.filter((g) => g.tray && g.tray === grid.tray && g.keys).flatMap((g) => g.keys!)) };
+  // first trays saved before copies existed left out whatever their siblings held
+  return { own: false, keys: new Set(grid.out ?? s.grids.filter((g) => g.tray && g.tray === grid.tray && g.keys).flatMap((g) => g.keys!)) };
 }
 
 /** The trays in a grid's set, the first one first. */
