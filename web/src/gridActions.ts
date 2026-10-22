@@ -119,7 +119,12 @@ export function removeGrid(id: string): void {
   // the set's first tray hands the pairs no other tray holds to the next one
   const heir = gone.tray && !gone.keys ? rest.find((g) => g.tray === gone.tray) : undefined;
   setGrids(rest.map((g) => (g === heir ? { ...g, keys: undefined } : g)));
+  store.set({ networks: store.get().networks.map((n) => (n.input === id ? { ...n, input: null } : n)) });
 }
+
+/** A network copy shows the pairs of *grid*; null: its tests' again. */
+export const setNetworkInput = (network: string, grid: string | null) =>
+  store.set({ networks: store.get().networks.map((n) => (n.id === network ? { ...n, input: grid } : n)) });
 
 export function removeNode(id: string): void {
   setNodes(store.get().pairNodes.filter((n) => n.id !== id));
@@ -133,6 +138,7 @@ export const dropConfig = (panel: string) => setGrids(store.get().grids.map((g) 
 export function cutCable(id: string): void {
   const [what, grid, test] = id.split("|") as [string, string, string];
   if (what === "feed") return unfeedTest(grid, test);
+  if (what === "in") return setNetworkInput(grid, null);
   const cut: Record<string, Partial<CcgGrid>> = { src: { source: null }, cfg: { config: null }, key: { legend: null }, sty: { style: null } };
   patchGrid(grid, cut[what]!);
 }

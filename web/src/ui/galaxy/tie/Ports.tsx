@@ -3,7 +3,7 @@
 import { useFrame, useThree, type ThreeEvent } from "@react-three/fiber";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { BufferGeometry, Float32BufferAttribute, type Group, type Mesh, Plane, Quaternion, Vector3 } from "three";
-import { patchGrid } from "../../../gridActions";
+import { patchGrid, setNetworkInput } from "../../../gridActions";
 import { feedTest } from "../../../feedActions";
 import { setActiveTest } from "../../../statsActions";
 import { tie } from "../../../stackActions";
@@ -72,6 +72,8 @@ export function TiePorts() {
       if (style) return void (grid && patchGrid(grid.slice(5), { style: style.slice(6) }));
       // dragged from a grid to a board, the grid feeds the test; the other way, the board feeds the grid
       if (grid && drag.from === grid && other(grid).startsWith("board:")) return feedTest(grid.slice(5), other(grid).slice(6));
+      // dragged from a grid to a network copy, the network shows the grid's pairs
+      if (grid && drag.from === grid && other(grid).startsWith("net:") && other(grid) !== "net:main") return setNetworkInput(other(grid).slice(4), grid.slice(5));
       if (grid) return patchGrid(grid.slice(5), { source: other(grid) });
       if (ends.some((id) => id.startsWith("node:"))) return;
       const [board, net] = kind === "board" ? [drag.from, target.id] : [target.id, drag.from];
@@ -109,6 +111,9 @@ export function TiePorts() {
       {s.stats.active && ids.includes("panel:stats") && ids.includes(`board:${s.stats.active}`) && (
         <Cable key="edit" a="panel:stats" b={`board:${s.stats.active}`} picked={false} onMenu={() => claimMenu({ kind: "panel", id: "stats" })} />
       )}
+      {s.networks.filter((n) => n.input && ids.includes(`grid:${n.input}`)).map((n) => (
+        <Cable key={`in${n.id}`} a={`grid:${n.input}`} b={`net:${n.id}`} {...pickable(`in|${n.id}`)} onMenu={() => claimMenu({ kind: "network", id: n.id })} />
+      ))}
       {s.grids.filter((g) => g.style && ids.includes(`style:${g.style}`)).map((g) => (
         <Cable key={`sty${g.id}`} a={`grid:${g.id}`} b={`style:${g.style}`} {...pickable(`sty|${g.id}`)} onMenu={() => claimMenu({ kind: "grid", id: g.id })} />
       ))}

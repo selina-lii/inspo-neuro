@@ -5,6 +5,7 @@ import { cutCable, removeGrid, removeNode, removeStyle } from "./gridActions";
 import { sessionPairs, stackRows, testSessions, type StackLayer, type StackRow, type Tie } from "./core/stack";
 import { axisQuat, shownResult, type Quat, type StatsResult, type StatsTest, type Vec3 } from "./core/stats";
 import { activeSegment, store, type Picked3 } from "./core/store";
+import { nodePairs, trayKeys, type CcgGrid } from "./core/grid";
 import { api } from "./io/api";
 import { undo } from "./history";
 import { same3, selection3 } from "./core/select";
@@ -69,8 +70,23 @@ export function stackOf(board: string): { test: StatsTest; result: StatsResult; 
   return { test, result, sessions: testSessions(result, stats.values), rows: stackRows(result, test.config, stats.options) };
 }
 
-/** The pairs (ref-tgt) of *session* in the tests tied to *network*; null when nothing is tied to it. */
+/** A grid's own pairs ("session|ref|tgt") when it draws them from a test or a pair node; null from a network. */
+export function gridPairs(grid: CcgGrid): string[] | null {
+  const s = store.get();
+  const [kind, id] = (grid.source ?? ":").split(":") as [string, string];
+  const st = kind === "board" ? stackOf(id) : null;
+  const node = kind === "node" ? s.pairNodes.find((n) => n.id === id) : undefined;
+  const all = st ? st.result.rows.flatMap((r) => r.ids.flatMap((v) => s.stats.values[v]?.pair ?? [])) : node ? nodePairs(s, node) : null;
+  const tray = trayKeys(s, grid);
+  return all && [...new Set(all)].filter((k) => tray.keys.has(k) === tray.own);
+}
+
+/** The pairs (ref-tgt) of *session* *network* shows: its input grid's, else those of the tests tied to it; null when neither. */
 export function tiedPairs(network: string, session: string): Set<string> | null {
+  const input = store.get().networks.find((n) => n.id === network)?.input;
+  const grid = input ? store.get().grids.find((g) => g.id === input) : undefined;
+  const fromGrid = grid ? gridPairs(grid) : null;
+  if (fromGrid) return new Set(fromGrid.flatMap((k) => (k.startsWith(`${session}|`) ? [k.slice(session.length + 1).replace("|", "-")] : [])));
   const boards = store.get().ties.filter((t) => t.network === network).map((t) => stackOf(t.board)).filter((x) => x !== null);
   return boards.length ? new Set(boards.flatMap((st) => sessionPairs(st.result, store.get().stats.values, session))) : null;
 }

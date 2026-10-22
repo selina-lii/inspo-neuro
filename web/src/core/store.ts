@@ -25,7 +25,7 @@ export type Toast = { text: string; undo?: () => void } | null;
 /** One map in the space: the same neurons, shown for one segment, offset from the first map. */
 export type MapInstance = { id: string; segment: string; dx: number; dy: number };
 /** A network copy in 3D: *p* is where its centre sits in the scene, *s* its own size. */
-export type NetworkCopy = { id: string; segment: string; p: [number, number, number]; s?: number };
+export type NetworkCopy = { id: string; segment: string; p: [number, number, number]; s?: number; input?: string | null };   // input: the CCG grid whose pairs it shows
 
 /** A panel: a React Flow node at x/y in 2D, an object at its pose in 3D; w and h, in pixels, serve both. */
 export type SpacePanel = { id: string; kind: "details" | "ccg" | "timeline" | "pairs" | "stats" | "legend" | "metadata"; x: number; y: number; w: number; h: number; auto: boolean; collapsed?: boolean; closed?: boolean; pose?: Pose; summon?: boolean; ccg?: CcgOptions; pair?: string | null };   // summon: bring it in front of the 3D camera; ccg: an added CCG panel's own options; pair: "session|ref|tgt" last clicked in a grid it configures
