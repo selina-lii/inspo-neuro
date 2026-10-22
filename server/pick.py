@@ -55,10 +55,11 @@ def pick(cfg: Pick):
     p = project()
     rules = [DerivedRule(**r) for r in cfg.rules]
     out = []
-    with p.lock:
-        for session in cfg.sessions or list(p.cd.sessions):
+    for session in cfg.sessions or list(p.cd.sessions):
+        # the lock is taken a session at a time, so the viewer's own loads get in between
+        with p.lock:
             try:
                 out += _session(p, session, cfg, rules)
-            finally:   # one session's CCGs at a time
+            finally:
                 p.release_others()
     return dict(pairs=out)

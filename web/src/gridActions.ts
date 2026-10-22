@@ -46,7 +46,10 @@ export function addGrid(): void {
   }]);
 }
 
-export const addNode = () => setNodes([...store.get().pairNodes, { id: `n${Date.now().toString(36)}`, p: [0, 0, 0], q: [0, 0, 0, 1], summon: true, ...PICK_DEFAULTS }]);
+export function addNode(): void {
+  const { session } = store.get();
+  setNodes([...store.get().pairNodes, { id: `n${Date.now().toString(36)}`, p: [0, 0, 0], q: [0, 0, 0, 1], summon: true, ...PICK_DEFAULTS, sessions: session ? [session] : [] }]);
+}
 
 /** Resolve a node's pick on the server; a reply for a pick since changed is dropped. */
 export async function runPick(id: string): Promise<void> {
