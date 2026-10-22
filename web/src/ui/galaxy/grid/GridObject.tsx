@@ -13,7 +13,7 @@ import { useBody } from "../select3";
 import { useStore } from "../../useStore";
 import { drawCcg } from "../CcgCards";
 import { PANEL_PX } from "../Panels3D";
-import { pointer } from "../pointer";
+import { modKey, pointer } from "../pointer";
 import { claimMenu } from "../SpaceMenu";
 import { Corners } from "../stats/BoardCorners";
 import { useBoardDrag } from "../stats/boardDrag";
@@ -37,6 +37,7 @@ export function GridObject({ grid, dark }: { grid: CcgGrid; dark: boolean }) {
   const camera = useThree((t) => t.camera);
   const n = grid.segMode === "series" ? Math.max(1, ...items.map((x) => x.curves.length)) : 1;
   const per = grid.cols * grid.rows;
+  const order = useMemo(() => items.map((x) => x.key), [items]);
   const pages = Math.max(1, Math.ceil(items.length / per));
   const page = Math.min(grid.page, pages - 1);
   const { w, h } = pageSize(grid, n);
@@ -86,7 +87,7 @@ export function GridObject({ grid, dark }: { grid: CcgGrid; dark: boolean }) {
       <Label3D text={title} position={[0.05, BAR / 2, 0]} height={0.24} color="#ffffff" anchor="left" bold />
       <lineSegments geometry={frame}><lineBasicMaterial color={picked ? PICK_COLOR : "#3a6df0"} transparent opacity={0.6} /></lineSegments>
       {items.slice(page * per, (page + 1) * per).map((item, i) => (
-        <Cell key={item.key} item={item} grid={grid} n={n} at={slotAt(grid, n, i)} dark={dark} group={group} />
+        <Cell key={item.key} item={item} grid={grid} n={n} at={slotAt(grid, n, i)} dark={dark} group={group} order={order} />
       ))}
       {/* later pages: outlines only; a click on one brings its page to the front */}
       <lineSegments geometry={hints}><lineBasicMaterial color={dark ? "#8b919c" : "#7a7f88"} transparent opacity={0.35} /></lineSegments>
@@ -115,7 +116,25 @@ const sourceLabel = (source: string | null) => {
 };
 
 /** One pair: its curves overlaid in one image, or one image per curve in series. */
-function Cell({ item, grid, n, at, dark, group }: { item: GridItem; grid: CcgGrid; n: number; at: [number, number]; dark: boolean; group: React.RefObject<Group | null> }) {
+// the card a shift-click runs from: the last one clicked in any grid
+let anchor = "";
+// a drag across cards in select mode: from where, adding or dropping, over what was picked before
+let sweep: { order: string[]; from: number; add: boolean; base: Set<string> } | null = null;
+
+function paint(key: string): void {
+  if (!sweep) return;
+  const to = sweep.order.indexOf(key);
+  const cells = new Set(sweep.base);
+  for (const k of sweep.order.slice(Math.min(sweep.from, to), Math.max(sweep.from, to) + 1)) sweep.add ? cells.add(k) : cells.delete(k);
+  store.set({ cells });
+}
+
+function endSweep(): void {
+  sweep = null;
+  pointer.busy = false;
+}
+
+function Cell({ item, grid, n, at, dark, group, order }: { item: GridItem; grid: CcgGrid; n: number; at: [number, number]; dark: boolean; group: React.RefObject<Group | null>; order: string[] }) {
   const s = useStore();
   const o = optionsOf(s, grid);
   // an open legend cabled to the grid keys every cell at once
@@ -137,8 +156,11 @@ function Cell({ item, grid, n, at, dark, group }: { item: GridItem; grid: CcgGri
   const first = grid.segMode === "series" ? [at[0] - c.w / 2 + CELL.w / 2, at[1] + c.h / 2 - CELL.h / 2] : at;
   // a pair clicked here does what its dot on the board does; without a board, it focuses the pair
   const pick = (it: GridItem, e: ThreeEvent<MouseEvent>) => {
-    // shift or ⌘: add the pair to (or drop it from) the cells that tags and moves act on
-    if (e.shiftKey || e.metaKey) {
+    // ⌘ picks or drops one card, shift picks the run of cards from the last one clicked; tags and moves act on them
+    const from = order.indexOf(anchor), to = order.indexOf(it.key);
+    if (e.shiftKey && from >= 0) return store.set({ cells: new Set([...s.cells, ...order.slice(Math.min(from, to), Math.max(from, to) + 1)]) });
+    anchor = it.key;
+    if (modKey(e.nativeEvent)) {
       const cells = new Set(s.cells);
       if (!cells.delete(it.key)) cells.add(it.key);
       return store.set({ cells });
@@ -168,8 +190,19 @@ function Cell({ item, grid, n, at, dark, group }: { item: GridItem; grid: CcgGri
   return (
     <group ref={cells}>
       {textures.map((t, k) => (
-        <mesh key={k} position={[first[0]! + step[0]! * k, first[1]! + step[1]! * k, 0]}
-          onClick={(e) => e.delta <= 4 && (e.stopPropagation(), pick(item, e))} onDoubleClick={open}>
+        <mesh key={k} userData={{ card: true }} position={[first[0]! + step[0]! * k, first[1]! + step[1]! * k, 0]}
+          onClick={(e) => e.delta <= 4 && (e.stopPropagation(), !grid.picking && pick(item, e))} onDoubleClick={open}
+          onPointerDown={(e) => {
+            if (!grid.picking || e.button !== 0) return;
+            e.stopPropagation();
+            // select mode: the press picks (or drops) this card, and a drag on sweeps every card in between
+            pointer.busy = true;
+            anchor = item.key;
+            sweep = { order, from: order.indexOf(item.key), add: !s.cells.has(item.key), base: new Set(s.cells) };
+            paint(item.key);
+            window.addEventListener("pointerup", endSweep, { once: true });
+          }}
+          onPointerEnter={() => sweep?.order === order && paint(item.key)}>
           <planeGeometry args={grid.compact ? [CELL.w, CELL.h] : [CELL.w * 0.98, CELL.h * 0.98]} />
           <meshBasicMaterial map={t} transparent opacity={s.stats.pick.pair && s.stats.pick.pair !== item.key ? 0.15 : 1} />
         </mesh>

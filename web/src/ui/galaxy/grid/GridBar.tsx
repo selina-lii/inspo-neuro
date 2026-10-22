@@ -1,6 +1,10 @@
 // A CCG grid's float bar: sort, rows × cols, segments overlaid or in series (along x or y), which pairs, pages.
+import { movePairs, targetPairs, toggleGroup } from "../../../actions";
+import { realGroups } from "../../../core/colors";
 import { sourceOf, type CcgGrid, type GridSort } from "../../../core/grid";
+import { store } from "../../../core/store";
 import { patchGrid } from "../../../gridActions";
+import { useGridItems } from "./gridItems";
 import { MAIN_SEGMENT } from "../../menu/AddMenu";
 import { useStore } from "../../useStore";
 import { FloatBar } from "../stats/BoardOverlay";
@@ -49,6 +53,36 @@ export function GridBar({ grid }: { grid: CcgGrid }) {
       <span className="sep" />
       <button title="previous page" disabled={grid.page === 0} onClick={() => set({ page: grid.page - 1 })}>◀</button>
       <button title="next page" onClick={() => set({ page: grid.page + 1 })}>▶</button>
+      <span className="sep" />
+      <button className={grid.picking ? "on" : ""} title="click cards to pick them, drag across cards to pick a run" onClick={() => set({ picking: !grid.picking })}>select</button>
+      <Picked grid={grid} />
     </FloatBar>
+  );
+}
+
+/** While cards are picked: how many, pick a page or all or none, tag them, move them. */
+function Picked({ grid }: { grid: CcgGrid }) {
+  const s = useStore();
+  const keys = useGridItems(grid).map((x) => x.key);
+  const n = keys.filter((k) => s.cells.has(k)).length;
+  if (!n && !grid.picking) return null;
+  const per = grid.cols * grid.rows;
+  const add = (more: string[]) => store.set({ cells: new Set([...s.cells, ...more]) });
+  const states = [["S", "sel", "selected"], ["U", "unsel", "unselected"], ["D", "del", "deleted"]] as const;
+  return (
+    <>
+      <span className="muted">{s.cells.size} picked</span>
+      <button title="pick every card on this page" onClick={() => add(keys.slice(grid.page * per, (grid.page + 1) * per))}>page</button>
+      <button title="pick every card in the grid" onClick={() => add(keys)}>all</button>
+      <button title="pick none" disabled={!s.cells.size} onClick={() => store.set({ cells: new Set() })}>none</button>
+      <span className="sep" />
+      <select value="" disabled={!s.cells.size} title="tag the picked pairs, or untag them when all are in" onChange={(e) => e.target.value && toggleGroup(e.target.value)}>
+        <option value="">tag…</option>
+        {realGroups(s.pairGroups).map((g) => <option key={g} value={g}>{g}{s.groupMeta[g]?.hotkey ? ` (${s.groupMeta[g]!.hotkey})` : ""}</option>)}
+      </select>
+      {states.map(([k, st, label]) => (
+        <button key={k} disabled={!s.cells.size} title={`move the picked pairs to ${label} (Shift ${k})`} onClick={() => movePairs(targetPairs(), st)}>{k}</button>
+      ))}
+    </>
   );
 }

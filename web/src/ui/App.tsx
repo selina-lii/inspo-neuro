@@ -59,6 +59,8 @@ export function App() {
       // whatever is selected in 3D: Delete removes it
       if ((e.key === "Delete" || e.key === "Backspace") && st.picked3) return e.preventDefault(), deletePicked();
       if (e.key === "Escape") return store.set({ focus: null, picked3: null, sweep: { ...st.sweep, open: new Set() }, cells: new Set() }), clearPick();
+      // G: the selection's move and turn gizmo, on or off
+      if (e.key === "g" && st.picked3) return store.set({ gizmo: !st.gizmo });
       const pairs = targetPairs();
       const states = { S: "sel", U: "unsel", D: "del" } as const;
       if (e.shiftKey && e.key in states && pairs.size) return movePairs(pairs, states[e.key as keyof typeof states]);

@@ -76,7 +76,7 @@ export type State = {
   playback: Playback | null;
   pickCard: StackLayer | null;   // the picked stats dot's pair across the test's rows, fetched alone for its card
   picked3: Picked3 | null;   // the object selected in 3D: what Delete removes
-  gizmo: boolean;   // the selection carries its transform gizmo: a ⌘-click selected it
+  gizmo: boolean;   // the selection carries its transform gizmo: G toggles it
   more3: Picked3[];   // the rest of a shift-click selection; picked3 leads it
   mainHidden: boolean;
   mainAt: [number, number, number];   // the open session's network, moved from where its layout puts it

@@ -28,10 +28,14 @@ export function useBody(kind: Picked3["kind"], id: string, group: RefObject<Obje
 }
 
 /** What the ray meets first: an object, the gizmo, or nothing. */
-export function rayPick(raycaster: Raycaster, scene: Object3D): Picked3 | typeof TRIAD | null {
+const hits = (raycaster: Raycaster, scene: Object3D) => {
   const solids: Object3D[] = [];
   scene.traverse((o) => (o.type === "Mesh" || o.type === "InstancedMesh") && solids.push(o));
-  for (const hit of raycaster.intersectObjects(solids, false)) {
+  return raycaster.intersectObjects(solids, false);
+};
+
+export function rayPick(raycaster: Raycaster, scene: Object3D): Picked3 | typeof TRIAD | null {
+  for (const hit of hits(raycaster, scene)) {
     for (let o: Object3D | null = hit.object; o; o = o.parent) {
       const pick = o.userData.pick as Picked3 | typeof TRIAD | undefined;
       if (pick) return pick;
@@ -40,12 +44,14 @@ export function rayPick(raycaster: Raycaster, scene: Object3D): Picked3 | typeof
   return null;
 }
 
-/** A click: the object under it is selected, with its gizmo on a ⌘-click; empty space deselects; the gizmo keeps the selection. */
-export function pickAt(raycaster: Raycaster, scene: Object3D, gizmo: boolean): void {
+/** A click: the object under it is selected (Shift or ⌘ adds it); empty space deselects; the gizmo keeps the selection. */
+export function pickAt(raycaster: Raycaster, scene: Object3D): void {
+  // a CCG card's click picks its pair: the grid around it stays as selected as it was
+  if (hits(raycaster, scene)[0]?.object.userData.card) return;
   const hit = rayPick(raycaster, scene);
   if (hit === TRIAD) return;
   if (hit) pick3(hit.kind, hit.id);
-  store.set(hit ? { gizmo } : { picked3: null, gizmo: false });
+  else store.set({ picked3: null, more3: [], gizmo: false });
 }
 
 /** What moves this way: everything but the cables. */

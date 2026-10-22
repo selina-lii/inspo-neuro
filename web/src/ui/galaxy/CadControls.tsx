@@ -186,7 +186,7 @@ export function CadControls({ ref }: { ref?: Ref<CadHandle> }) {
         carry = null;
       } else if (drag && !drag.moved && e.button === 0) {
         ray.setFromCamera(ndc(e.clientX, e.clientY), camera);
-        pickAt(ray, scene, modKey(e));
+        pickAt(ray, scene);
       }
       drag = null;
       // an object's drag holds the pointer for one press: a release it missed must not lock the camera

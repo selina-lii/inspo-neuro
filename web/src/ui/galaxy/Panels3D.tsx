@@ -24,7 +24,7 @@ import { anchors, ports } from "./tie/portAt";
 import { PANEL_PX, TITLE_FONT } from "../../core/store";
 import { selected3 } from "../../core/select";
 import { pick3 } from "../../stackActions";
-import { modKey, pointer } from "./pointer";
+import { pointer } from "./pointer";
 import { dockedOn } from "../../core/grid";
 import { commit, commitGroup, groupOf, placeOf, preview, previewGroup, startOf, transformed, type Group3, type Placement } from "./select3";
 
@@ -232,7 +232,7 @@ export function Panels3D() {
     window.addEventListener("pointerdown", away);
     return () => window.removeEventListener("pointerdown", away);
   }, []);
-  return <>{panels.filter(shown).map((p) => createPortal(<Panel3D panel={p} picked={selected3(s, "panel", p.id)} onPick={(e) => (pick3("panel", p.id), modKey(e) && store.set({ gizmo: true }))} />, elementFor(p.id), p.id))}</>;
+  return <>{panels.filter(shown).map((p) => createPortal(<Panel3D panel={p} picked={selected3(s, "panel", p.id)} onPick={() => pick3("panel", p.id)} />, elementFor(p.id), p.id))}</>;
 }
 
 function Panel3D({ panel, picked, onPick }: { panel: SpacePanel; picked: boolean; onPick(e: React.PointerEvent): void }) {

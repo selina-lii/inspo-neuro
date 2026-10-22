@@ -83,7 +83,7 @@ const api = (path, method) => {
   return undefined;
 };
 const browser = await chromium.launch({ executablePath: process.env.BROWSER, headless: true, args: ["--use-angle=swiftshader", "--enable-unsafe-swiftshader"] });
-const page = await browser.newPage({ viewport: { width: 1600, height: 1000 }, deviceScaleFactor: 2 });
+const page = await browser.newPage({ viewport: { width: 1912, height: 800 }, deviceScaleFactor: 2 });
 const errors = []; page.on("pageerror", (e) => errors.push(String(e).slice(0, 200)));
 const unknown = new Set();
 await page.route("**/api/**", (r) => {
@@ -109,7 +109,7 @@ await page.getByRole("button", { name: "fit all" }).click(); await page.waitForT
 // every object faces +z: the front view squares up to all of them, as "face me" does for a selection
 await page.getByRole("button", { name: "front" }).click(); await page.waitForTimeout(1200);
 await page.getByRole("button", { name: "fit all" }).click(); await page.waitForTimeout(1500);
-await page.mouse.move(1000, 600); for (let k = 0; k < 3; k++) { await page.mouse.wheel(0, -120); await page.waitForTimeout(150); }
+await page.mouse.move(956, 430); for (let k = 0; k < Number(process.env.ZOOM ?? 3); k++) { await page.mouse.wheel(0, -120); await page.waitForTimeout(150); }
 await page.waitForTimeout(1000);
 // a card clicked in the grid opens in the CCG config cabled to it
 const card = JSON.parse(process.env.CARD ?? "[280, 515]");

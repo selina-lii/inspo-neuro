@@ -11,6 +11,7 @@ export type CcgGrid = {
   cols: number; rows: number; sort: GridSort; segMode: "overlay" | "series"; axis: "x" | "y";
   segments: string[]; pairs: "shown" | "selected"; page: number; summon?: boolean; compact?: boolean; config?: string | null;
   legend?: string | null;   // a legend panel cabled to it: one key for the grid, so its cells drop their own
+  picking?: boolean;   // select mode: a click picks a card, a drag sweeps a run of them
 };
 
 /** A node between a source and its grids: it passes on only the pairs its mode keeps. */

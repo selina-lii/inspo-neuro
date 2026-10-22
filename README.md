@@ -27,9 +27,9 @@ cd web && npm install && npm run dev   # http://localhost:5174
 - 3D: probes per shank (hover to fan a shank's neurons out, click to keep them out), an axis gizmo, and camera views.
 - Stats tests as boards: one dot per value, bars with error bars or violins, significance brackets. Click a dot to open
   its CCG, double-click for the same pair in every group. A board can bring in its other sessions as layers behind the network.
-- CCG grids fed by a network, a stats board or a pair filter. Shift- or ⌘-click cells to pick pairs from any session,
-  then tag them with a group hotkey or move them with Shift S / U / D.
-- Objects move, turn and snap as in a 3D modelling app: drag a title bar, use the gizmo, snap to an axis.
+- CCG grids fed by a network, a stats board or a pair filter. ⌘-click cards to pick pairs from any session (shift-click
+  picks a run), then tag them with a group hotkey or move them with Shift S / U / D.
+- Objects move, turn and snap as in a 3D modelling app: drag a title bar, press G for the gizmo, snap to an axis.
   A board and the network it is tied to move together.
 - ⌘Z / ⇧⌘Z undo and redo both arrangement and edits.
 - Named workspaces per project (File menu); a reload reopens the last one.
