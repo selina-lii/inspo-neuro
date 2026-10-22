@@ -48,7 +48,7 @@ export const row = (id, name, segments, extra = {}) => ({ id, name, color: COLOR
 export const OPTIONS = {
   pickers: { sess: picker("sessions", "session", SESSIONS), ct: picker("conn_types", "type", ["E PYR→PYR"]), seg: picker("segments", "segment", SEGMENTS),
     res: picker("resolution", "resolution", ["lowres"]), grp: picker("rules", "group", []), data: picker("data_type", "metric", ["Conn Strength"]) },
-  families: {}, family_prefix: "", all_segments: "all", disabled_metrics: [], test_types: ["One-way ANOVA + Tukey"], p_adjust: ["holm"], test_n_groups: { "One-way ANOVA + Tukey": [2, 99] },
+  families: {}, family_prefix: "", all_segments: "all", disabled_metrics: [], test_types: ["One-way ANOVA + Tukey", "Repeated-measures ANOVA"], p_adjust: ["holm"], test_n_groups: { "One-way ANOVA + Tukey": [2, 99], "Repeated-measures ANOVA": [2, 99] },
   rules: {}, sides: ["two-sided"], display: {}, colors: COLORS, defaults: { test: testCfg, view, row: row(0, "", []), display: {} },
 };
 

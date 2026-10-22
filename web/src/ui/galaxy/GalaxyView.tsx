@@ -34,6 +34,7 @@ import { lookAtBoard, ViewButtons } from "./ViewButtons";
 import { selected3 } from "../../core/select";
 import { secondary } from "./pointer";
 import { barPress } from "./gesture";
+import { PanelSelect } from "./PanelSelect";
 
 /** Aim the camera at the cloud once per session and layout; afterwards panning is the viewer's own. */
 const NONE = new Set<number>();
@@ -214,6 +215,7 @@ export function GalaxyView({ dark }: { dark: boolean }) {
           </div>
         ))}
       </div>
+      <PanelSelect />
       <SpaceMenu at={menuAt} onClose={() => setMenuAt(null)} onCenter={(t, face) => {
         const c = controls.current;
         const spotOf = (u: { kind: string; id: string }) => {
