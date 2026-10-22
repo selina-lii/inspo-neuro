@@ -29,7 +29,7 @@ export function useGridItems(grid: CcgGrid): GridItem[] {
   const tray = trayKeys(s, grid);
   const [loaded, setLoaded] = useState(0);
   useEffect(() => {
-    if (kind === "board") return ensureStack(id);
+    if (kind === "board") return ensureStack(id, o.res);
     // the open session's pairs come from its network; the others' from their layers
     for (const [session, pairs] of bySession) if (session !== s.session) ensureLayer(session, grid.segments, pairs, o.res);
     if ((kind !== "net" && !bySession.has(s.session ?? "")) || !s.session) return;
@@ -68,7 +68,7 @@ function layerItems(layer: StackLayer, grid: CcgGrid, links: Link[], o: CcgOptio
   return links.map((l) => {
     const [a, b] = [layer.neurons[l.ref], layer.neurons[l.tgt]];
     const curves = grid.segments.flatMap((seg) => {
-      const trace = rowTrace(layer, { name: seg, color: paletteColor(seg), segments: [seg] }, l.ref, l.tgt, o.norms);
+      const trace = rowTrace(layer, { name: seg, color: paletteColor(seg), segments: [seg] }, l.ref, l.tgt, o.norms, o.res);
       return trace ? [{ label: seg, color: paletteColor(seg), trace }] : [];
     });
     return {
@@ -106,7 +106,7 @@ function boardItems(s: State, board: string, o: CcgOptions): GridItem[] {
     const link = layer.links.find((l) => l.ref === ref && l.tgt === tgt);
     const rows = rowsWithPair(st.result, s.stats.values, pair);
     const curves = rows.flatMap((i) => {
-      const trace = rowTrace(layer, st.rows[i]!, ref, tgt, o.norms);
+      const trace = rowTrace(layer, st.rows[i]!, ref, tgt, o.norms, o.res);
       return trace ? [{ label: st.rows[i]!.name, color: st.rows[i]!.color, trace }] : [];
     });
     const on = link ? rows.filter((i) => st.rows[i]!.segments.some((seg) => layer.segLinks[seg]?.on[link.i])).length : 0;

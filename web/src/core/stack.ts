@@ -13,9 +13,12 @@ export type Playback = { board: string; row: number; playing: boolean; ms: numbe
 /** A pair's CCG, baseline, then the ref's and target's ACGs, on the layer's lags. */
 export type PairRow = [number[], number[], number[], number[]];
 
+/** One resolution's CCGs of a layer: the segments and pairs fetched so far. */
+export type LayerCcgs = { lags: number[]; traces: Record<string, Record<string, PairRow>>; segs: string[]; pairs: string[] };
+
 export type StackLayer = {
   session: string; neurons: Neuron[]; links: Link[]; shanks: Shank[]; hours: Record<string, number>; segLinks: Record<string, SegLinks>;
-  lags: number[]; traces: Record<string, Record<string, PairRow>>; res: string; norms: string; segs: string[]; pairs: string[]; want?: string;
+  ccgs: Record<string, LayerCcgs>; norms: string; want?: string;
 };
 
 export type StackRow = { name: string; color: string; segments: string[] };
@@ -46,11 +49,12 @@ export const rowsWithPair = (result: StatsResult, values: Record<string, StatsVa
   result.rows.flatMap((r, i) => (r.ids.some((id) => values[id]?.pair === pair) ? [i] : []));
 
 /** A pair's CCG in one row: the row's segments summed, counts and hours alike, then the CCG panel's norms. */
-export function rowTrace(layer: StackLayer, row: StackRow, ref: number, tgt: number, norms: string[]): Trace | null {
-  const parts = row.segments.map((s) => ({ t: layer.traces[s]?.[`${ref}-${tgt}`], h: layer.hours[s] ?? 0 })).filter((x) => x.t);
+export function rowTrace(layer: StackLayer, row: StackRow, ref: number, tgt: number, norms: string[], res: string): Trace | null {
+  const c = layer.ccgs[res];
+  const parts = row.segments.map((s) => ({ t: c?.traces[s]?.[`${ref}-${tgt}`], h: layer.hours[s] ?? 0 })).filter((x) => x.t);
   if (!parts.length) return null;
   const sum = (k: 0 | 1 | 2 | 3) => parts[0]!.t![k].map((_, i) => parts.reduce((a, x) => a + x.t![k][i]!, 0));
-  const raw: Trace = { lags: layer.lags, ccg: sum(0), baseline: sum(1), acgs: { ref: sum(2), tgt: sum(3) } };
+  const raw: Trace = { lags: c!.lags, ccg: sum(0), baseline: sum(1), acgs: { ref: sum(2), tgt: sum(3) } };
   const [a, b] = [layer.neurons[ref], layer.neurons[tgt]];
   return normalize(raw, norms, { refRate: a?.rate ?? 1, tgtRate: b?.rate ?? 1, hours: parts.reduce((x, p) => x + p.h, 0) }).trace;
 }

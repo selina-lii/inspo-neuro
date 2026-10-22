@@ -39,7 +39,7 @@ export function OverlayCards({ tie, layers, anchor, dark }: { tie: Tie; layers: 
       const [a, b] = [layer?.pts[ref], layer?.pts[tgt]];
       if (!layer?.data || !a || !b) return [];
       const curves = rowsWithPair(st.result, values, pair).flatMap((i) => {
-        const trace = rowTrace(layer.data!, st.rows[i]!, ref, tgt, s.ccg.norms);
+        const trace = rowTrace(layer.data!, st.rows[i]!, ref, tgt, s.ccg.norms, st.result.resolution);
         return trace ? [{ row: st.rows[i]!, trace }] : [];
       });
       if (!curves.length) return [];
@@ -95,7 +95,7 @@ export function PickCard({ dark }: { dark: boolean }) {
   const st = layer ? stackOf(board) : null;
   const [, r, t] = (s.stats.pick.pair ?? "").split("|");
   const curves = useMemo(() => (layer && st && s.stats.pick.pair ? rowsWithPair(st.result, s.stats.values, s.stats.pick.pair).flatMap((i) => {
-    const trace = rowTrace(layer, st.rows[i]!, Number(r), Number(t), s.ccg.norms);
+    const trace = rowTrace(layer, st.rows[i]!, Number(r), Number(t), s.ccg.norms, st.result.resolution);
     return trace ? [{ row: st.rows[i]!, trace }] : [];
   }) : []), [layer, st?.result, s.stats.pick.pair, s.ccg.norms]);
   const [a, b] = [layer?.neurons[Number(r)], layer?.neurons[Number(t)]];

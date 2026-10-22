@@ -113,15 +113,17 @@ export function GridObject({ grid, dark }: { grid: CcgGrid; dark: boolean }) {
 
   return (
     <group ref={group} position={grid.p} quaternion={grid.q} scale={scale} {...body} onContextMenu={() => claimMenu({ kind: "grid", id: grid.id })}>
-      <mesh position={[w / 2, BAR / 2, -0.01]} onPointerDown={barPress({ kind: "grid", id: grid.id })} {...titleTip(`${grid.label || "CCG grid"} · ${items.length} pairs`)} onDoubleClick={(e) => (e.stopPropagation(), rename({ kind: "grid", id: grid.id }))}>
+      <mesh position={[w / 2, BAR / 2, -0.01]} onPointerDown={barPress({ kind: "grid", id: grid.id })} {...titleTip(title)} onDoubleClick={(e) => (e.stopPropagation(), rename({ kind: "grid", id: grid.id }))}>
         <planeGeometry args={[w + 0.2, BAR]} />
         <meshBasicMaterial color={picked ? PICK_COLOR : "#3a6df0"} transparent opacity={0.85} side={2} />
       </mesh>
       <Label3D text={title} position={[0.05, BAR / 2, 0]} height={0.24} color="#ffffff" anchor="left" bold />
       <lineSegments geometry={frame}><lineBasicMaterial color={picked ? PICK_COLOR : "#3a6df0"} transparent opacity={0.6} /></lineSegments>
-      {items.slice(page * per, (page + 1) * per).map((item, i) => (
-        <Cell key={item.key} item={item} grid={grid} n={n} at={slotAt(grid, n, i)} dark={dark} group={group} order={order} look={look} />
-      ))}
+      <group {...titleTip(`${grid.label || "CCG grid"} · ${items.length} pairs`)}>
+        {items.slice(page * per, (page + 1) * per).map((item, i) => (
+          <Cell key={item.key} item={item} grid={grid} n={n} at={slotAt(grid, n, i)} dark={dark} group={group} order={order} look={look} />
+        ))}
+      </group>
       {/* later pages: outlines only; a click on one brings its page to the front */}
       <lineSegments geometry={hints}><lineBasicMaterial color={dark ? "#8b919c" : "#7a7f88"} transparent opacity={0.35} /></lineSegments>
       {Array.from({ length: Math.min(HINT_PAGES, pages - page - 1) }, (_, k) => (

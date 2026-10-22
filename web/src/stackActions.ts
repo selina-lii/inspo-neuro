@@ -92,16 +92,18 @@ export function tiedPairs(network: string, session: string): Set<string> | null 
 
 let chain: Promise<void> = Promise.resolve();
 
-/** Fetch the layers a tied board needs. */
-export function ensureStack(board: string): void {
+/** Fetch the layers a tied board needs, at *res* for a grid's cards. */
+export function ensureStack(board: string, res?: string): void {
   const st = stackOf(board);
   if (!st) return;
   const segments = [...new Set(st.rows.flatMap((r) => r.segments))];
-  for (const session of st.sessions) ensureLayer(session, segments, sessionPairs(st.result, store.get().stats.values, session), st.result.resolution);
+  for (const session of st.sessions) ensureLayer(session, segments, sessionPairs(st.result, store.get().stats.values, session), res ?? st.result.resolution);
 }
 
-const holds = (layer: StackLayer | undefined, segments: string[], pairs: string[], res: string, norms: string): boolean =>
-  Boolean(layer) && layer!.res === res && layer!.norms === norms && segments.every((x) => layer!.segs.includes(x)) && pairs.every((x) => layer!.pairs.includes(x));
+const holds = (layer: StackLayer | undefined, segments: string[], pairs: string[], res: string, norms: string): boolean => {
+  const c = layer?.norms === norms ? layer.ccgs[res] : undefined;
+  return Boolean(c) && segments.every((x) => c!.segs.includes(x)) && pairs.every((x) => c!.pairs.includes(x));
+};
 
 /** One layer per session holds what every board and grid asked of it, fetched a session at a time (the server holds one session's CCGs at once). */
 export function ensureLayer(session: string, segments: string[], pairs: string[], res: string): void {
@@ -110,14 +112,15 @@ export function ensureLayer(session: string, segments: string[], pairs: string[]
   chain = chain.then(async () => {
     const old = store.get().stack[session];
     if (holds(old, segments, pairs, res, `${norms}`)) return;
-    // what the layer already held stays, at the same resolution and norms
-    const keep = old?.res === res && old.norms === `${norms}`;
-    const segs = [...new Set([...(keep ? old.segs : []), ...segments])];
-    const all = [...new Set([...(keep ? old.pairs : []), ...pairs])];
+    // what the layer already held stays, under the same norms; each resolution keeps its own CCGs
+    const keep = old?.norms === `${norms}` ? old : undefined;
+    const had = keep?.ccgs[res];
+    const segs = [...new Set([...(had?.segs ?? []), ...segments])];
+    const all = [...new Set([...(had?.pairs ?? []), ...pairs])];
     const d = await api.stack(session, segs, all, res, norms);
     const layer: StackLayer = {
-      session, neurons: d.neurons, links: d.links.map((l, i) => ({ ...l, i })), shanks: d.shanks, hours: d.hours,
-      segLinks: d.seg_links, lags: d.lags ?? [], traces: d.traces, res, norms: `${norms}`, segs, pairs: all,
+      session, neurons: d.neurons, links: d.links.map((l, i) => ({ ...l, i })), shanks: d.shanks, hours: d.hours, segLinks: { ...keep?.segLinks, ...d.seg_links },
+      ccgs: { ...keep?.ccgs, [res]: { lags: d.lags ?? [], traces: d.traces, segs, pairs: all } }, norms: `${norms}`,
     };
     store.set({ stack: { ...store.get().stack, [session]: layer } });
   }).catch(fail);
@@ -168,7 +171,7 @@ export async function loadPickCard(board: string, session: string, ref: number, 
   try {
     const d = await api.stack(session, segments, [`${ref}-${tgt}`], st.result.resolution, [], true);
     if (store.get().stats.pick.pair !== `${session}|${ref}|${tgt}`) return;
-    store.set({ pickCard: { session, neurons: d.neurons, links: [], shanks: [], hours: d.hours, segLinks: {}, lags: d.lags ?? [], traces: d.traces, res: st.result.resolution, norms: "", segs: segments, pairs: [`${ref}-${tgt}`], want } });
+    store.set({ pickCard: { session, neurons: d.neurons, links: [], shanks: [], hours: d.hours, segLinks: {}, ccgs: { [st.result.resolution]: { lags: d.lags ?? [], traces: d.traces, segs: segments, pairs: [`${ref}-${tgt}`] } }, norms: "", want } });
   } catch (error) {
     fail(error);
   }

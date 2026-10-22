@@ -75,5 +75,10 @@ test("stats 1 → tray → stats 2 keeps every pair's own values", async () => {
   const rest = await gridKeys(g1);
   const s1 = await series(g1, rest);
   for (const seg of SEGMENTS) for (const k of rest) assert.equal(s1[seg][k], expected(k, [seg]), `first tray card ${k}, curve ${seg}`);
+
+  // the CCG panel's resolution reaches the cards of a board-fed grid
+  await app.call("wireActions.ts", "connect", "panel:ccg", `grid:${g1}`);
+  await app.call("actions.ts", "setCcgOptions", { res: "lowres" });
+  await app.page.waitForFunction(() => Object.values(window.neuromapStore.get().stack).every((l) => l.ccgs.lowres && l.ccgs.highres), null, { timeout: 30000 });
   assert.deepEqual(app.errors, []);
 });
