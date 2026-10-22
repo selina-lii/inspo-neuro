@@ -56,7 +56,7 @@ store.subscribe(() => {
   refs = now;
   doc = {
     session: s.session, tests: s.stats.tests.map((t) => ({ id: t.id, name: t.name, config: t.config })), boards: s.stats.boards,
-    grids: s.grids, pairNodes: s.pairNodes, styleNodes: s.styleNodes, ties: s.ties, wires: s.wires, panels: s.panels,
+    grids: s.grids.map(({ xlim: _, ...g }) => g), pairNodes: s.pairNodes, styleNodes: s.styleNodes, ties: s.ties, wires: s.wires, panels: s.panels,
     networks: { ...doc.networks, [s.session]: s.networks }, mainHidden: { ...doc.mainHidden, [s.session]: s.mainHidden },
     mainAt: { ...doc.mainAt, [s.session]: s.mainAt },
   };

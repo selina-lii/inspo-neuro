@@ -59,6 +59,8 @@ test("a grid's lag window keeps only the lags inside it; clearing both ends show
     return windowed(t, [-5, null]).ccg;
   });
   assert.deepEqual(lags, [2, 3, 4, 5]);
+  await app.settle(900);
+  assert.ok(app.api.workspaces.main.grids.every((g) => !("xlim" in g)), "the window is not saved");
   await lag(0).fill("");
   await lag(1).fill("");
   assert.equal(await app.state((s) => s.grids.at(-1).xlim), undefined);

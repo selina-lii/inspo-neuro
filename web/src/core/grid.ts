@@ -18,7 +18,7 @@ export type CcgGrid = {
   view?: "ccg" | "stats";   // stats: each card plots the pair's value per curve, as its linked test measures it
   metric?: string;   // the stats metric that view plots
   sameScale?: boolean;   // every card on one y range, the grid's whole
-  xlim?: [number | null, number | null];   // the lag window (ms) its CCG cards show, null an open end; their y range fits it
+  xlim?: [number | null, number | null];   // a one-off lag window (ms) for its CCG cards, null an open end; never saved
   layoutOpen?: boolean;   // its bar shows the layout settings
 };
 
