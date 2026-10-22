@@ -14,3 +14,7 @@ that part around one model before adding more, and delete what the rewrite repla
 `npm run typecheck` and `npm run test:e2e` (Playwright on surrogate data, `web/e2e/`) must pass. A change to a
 flow the harness does not cover gets a test there first. The harness drives Chromium through `playwright-core`:
 set `BROWSER` to a Chrome/Chromium binary if `npx playwright install chromium` has not been run.
+
+## Spelling
+
+American spelling in code, comments and UI text: normalize, not normalise.

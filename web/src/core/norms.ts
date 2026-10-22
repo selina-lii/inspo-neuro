@@ -1,4 +1,4 @@
-// CCG normalisations, as NeuroPy's CCGNorm.apply does them and in its order: each divides CCG and baseline alike,
+// CCG normalizations, as NeuroPy's CCGNorm.apply does them and in its order: each divides CCG and baseline alike,
 // BASELINE then subtracts the baseline.
 import type { State } from "./store";
 import type { Trace } from "./types";

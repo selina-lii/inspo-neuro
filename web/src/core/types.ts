@@ -37,7 +37,9 @@ export type Link = {
   fit: FitSummary | null;
 };
 
-export type Trace = { lags: number[]; ccg: number[]; baseline: number[]; p?: number[]; pc?: number[] };
+export type Acgs = { ref: number[] | null; tgt: number[] | null };
+
+export type Trace = { lags: number[]; ccg: number[]; baseline: number[]; p?: number[]; pc?: number[]; acgs?: Acgs };
 
 export type FitPeak = { center: number; fwhm: number; edges: [number, number]; confident: boolean; called: boolean; mono: boolean };
 

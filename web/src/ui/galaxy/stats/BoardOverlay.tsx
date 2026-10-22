@@ -76,7 +76,7 @@ function BoardColumns({ board, names }: { board: Board; names: string[] }) {
 const foldKey = (id: string) => `neuromap:fold:${id}`;
 
 /** An object's toolbar, standing on its top edge in 3D and turning with it; ◂ folds it down to that one button. */
-export function FloatBar({ id, children }: { id: string; children: ReactNode }) {
+export function FloatBar({ id, vertical = false, children }: { id: string; vertical?: boolean; children: ReactNode }) {
   const [folded, setFolded] = useState(() => {
     try {
       return window.localStorage.getItem(foldKey(id)) === "1";
@@ -94,7 +94,7 @@ export function FloatBar({ id, children }: { id: string; children: ReactNode }) 
   };
   useEffect(() => (bars.add(id), () => void bars.delete(id)), [id]);
   return createPortal(
-    <div className="board-tools">
+    <div className={`board-tools${vertical ? " vertical" : ""}`}>
       <button title={folded ? "open the bar" : "fold the bar"} onClick={fold}>{folded ? "▸" : "◂"}</button>
       {!folded && children}
     </div>,

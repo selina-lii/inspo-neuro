@@ -21,6 +21,7 @@ class Range(BaseModel):
 class Pick(BaseModel):
     sessions: list[str] = []
     conn_types: list[str] = []
+    segments: list[str] = []   # kept only when connected in each
     rules: list[dict] = []
     states: list[str] = []
     ranges: list[Range] = []
@@ -39,12 +40,13 @@ def _session(p, session: str, cfg: Pick, rules: list) -> list:
     links = views.pair_links(p.cd, p.sd, session)
     keep = p.sd.groups.derived.rule_based_filter(rules, session) if rules else None
     cs = {r.segment: views.segment_links(p.cd, p.sd, session, r.segment, [])['cs'] for r in cfg.ranges if r.field == 'cs'}
+    on = [views.segment_links(p.cd, p.sd, session, s, [])['on'] for s in cfg.segments]
     rates = views.firing_rates(p.nd, p.cd, session) if any(r.field == 'rate' for r in cfg.ranges) else {}
     out = []
     for i, l in enumerate(links):
         ref, tgt = l['ref'], l['tgt']
         if keep is not None and (ref, tgt) not in keep or cfg.states and l['state'] not in cfg.states \
-                or cfg.conn_types and l['type'] not in cfg.conn_types:
+                or cfg.conn_types and l['type'] not in cfg.conn_types or not all(o[i] for o in on):
             continue
         if all(_inside(l['strength'], r) if r.field == 'strength' else _inside(cs[r.segment][i], r) if r.field == 'cs'
                else _rate_ok(rates[r.segment], ref, tgt, r) for r in cfg.ranges):

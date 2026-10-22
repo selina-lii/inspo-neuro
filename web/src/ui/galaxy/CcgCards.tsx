@@ -10,7 +10,7 @@ import { normalize, segmentHours } from "../../core/norms";
 import type { Quat, Vec3 } from "../../core/stats";
 import { activeSegment, store, type CcgOptions } from "../../core/store";
 import { linkKey, type Link, type Point3, type Trace } from "../../core/types";
-import { acgOf, tracesKey, traceOf } from "../../io/traces";
+import { tracesKey, traceOf } from "../../io/traces";
 import { useStore } from "../useStore";
 import { ccgTexture } from "./ccgTexture";
 import { curve, SEGMENTS } from "./curve";
@@ -20,12 +20,12 @@ import { useNear } from "./useNear";
 
 const SIZE = { w: 2.4, h: 1.4 };   // 3D units at objectScale 1
 
-/** What the CCG panel's options make of a card: its baseline in the segment's colour, the ACGs when they are held. */
-export type CardLook = { options: CcgOptions; base: string; acgs?: { ref: number[] | null; tgt: number[] | null }; width?: number; alpha?: number; ylim?: [number, number] };
+/** What the CCG panel's options make of a card: its baseline in the segment's colour. */
+export type CardLook = { options: CcgOptions; base: string; width?: number; alpha?: number; ylim?: [number, number] };
 
 /** One CCG card: the CCG panel's plot of it. */
 const drawCcg = (trace: Trace, title: string, color: string, focused: boolean, look: CardLook, near = 0): CanvasTexture =>
-  ccgTexture({ curves: [{ trace, color, base: look.base, width: look.width, alpha: look.alpha }], fitScale: null, options: look.options, acgs: look.acgs, title, ylim: look.ylim }, focused, near);
+  ccgTexture({ curves: [{ trace, color, base: look.base, width: look.width, alpha: look.alpha }], fitScale: null, options: look.options, title, ylim: look.ylim }, focused, near);
 
 
 function Card({ link, at, side, focused, dark, scale }: { link: Link; at: Vector3; side: Vector3; focused: boolean; dark: boolean; scale: number }) {
@@ -40,8 +40,7 @@ function Card({ link, at, side, focused, dark, scale }: { link: Link; at: Vector
     const raw = held ? traceOf(s.session!, segment, link.ref, link.tgt, s.ccg.res) : null;
     if (!raw) return null;
     const trace = normalize(raw, s.ccg.norms, { refRate: a?.rate ?? 1, tgtRate: b?.rate ?? 1, hours: segmentHours(s, segment) }).trace;
-    const acgs = { ref: acgOf(s.session!, segment, link.ref, s.ccg.res), tgt: acgOf(s.session!, segment, link.tgt, s.ccg.res) };
-    return drawCcg(trace, `#${a?.id} → #${b?.id}`, TYPE_COLORS[link.type] ?? "#888", focused, { options: s.ccg, base: paletteColor(segment), acgs }, near);
+    return drawCcg(trace, `#${a?.id} → #${b?.id}`, TYPE_COLORS[link.type] ?? "#888", focused, { options: s.ccg, base: paletteColor(segment) }, near);
   }, [held, s.session, segment, link, s.ccg, focused, dark, a, b, near]);
   useEffect(() => () => texture?.dispose(), [texture]);
   const [w, h] = [SIZE.w * scale, SIZE.h * scale];

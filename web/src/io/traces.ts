@@ -48,6 +48,7 @@ export function traceOf(session: string, segment: string, ref: number, tgt: numb
   return {
     lags, ccg: Array.from(rows.subarray(start, start + bins)), baseline: Array.from(rows.subarray(start + bins, start + 2 * bins)),
     p: Array.from(p.subarray(row * bins, (row + 1) * bins)), pc: Array.from(pc.subarray(row * bins, (row + 1) * bins)),
+    acgs: { ref: acgOf(session, segment, ref, res), tgt: acgOf(session, segment, tgt, res) },
   };
 }
 

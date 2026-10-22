@@ -28,7 +28,7 @@ def layer(session: str, segments: str = '', pairs: str = '', res: str = 'lowres'
                 rows = {}
                 for ref, tgt in wanted:
                     d, i = views._seg_data(p.cd, views.key_for_pair(p.cd, session, ref, tgt), res, s)
-                    rows[f'{ref}-{tgt}'] = [np.round(d.ccg[i][ref, tgt], 3).tolist(), np.round(d.ccg_null[i][ref, tgt], 3).tolist()]
+                    rows[f'{ref}-{tgt}'] = [np.round(x, 3).tolist() for x in (d.ccg[i][ref, tgt], d.ccg_null[i][ref, tgt], d.ccg[i][ref, ref], d.ccg[i][tgt, tgt])]
                     out['lags'] = np.linspace(-d.conf.duration * 500, d.conf.duration * 500, d.ccg.shape[-1]).round(4).tolist()
                 out['traces'][s] = rows
             return out

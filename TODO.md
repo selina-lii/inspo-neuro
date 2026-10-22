@@ -40,7 +40,7 @@ Status: [x] done and tested · [ ] open
 - [x] link encodings chosen by the user: what a dash means (uncertain fit / off in segment / unselected / nothing), what width means (strength / constant)
 - [x] spacing visibly spreads neurons (stretch the layout, not only the within-shank fan)
 - [x] top bar: few controls per line, more lines instead of a crowded row
-- [x] CCG options added from the Qt panel: p and corrected p (−log10, own scale), normalisations (÷ ref rate, ÷ tgt rate, ÷ hours, ÷ seconds, ÷ area, − baseline; NeuroPy's order), ref waveform overlay, jitter (whole session, own process, one job at a time)
+- [x] CCG options added from the Qt panel: p and corrected p (−log10, own scale), normalizations (÷ ref rate, ÷ tgt rate, ÷ hours, ÷ seconds, ÷ area, − baseline; NeuroPy's order), ref waveform overlay, jitter (whole session, own process, one job at a time)
 - [x] neuron detail: peak-channel waveform
 - [x] panels in the space collapse; spread control moved to the top left so it never covers a panel
 - [x] memory: opening a session releases the others' CCG arrays and traces; test servers stopped after each test

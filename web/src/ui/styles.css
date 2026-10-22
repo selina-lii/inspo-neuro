@@ -274,7 +274,7 @@ button.primary { background: var(--accent); color: #fff; border-color: transpare
 .num-input { width: 64px; }
 .rules-pop { width: 380px; display: flex; flex-direction: column; gap: 6px; }
 .rule { border: 1px solid var(--line); border-radius: 6px; padding: 4px; }
-.rule-values { display: flex; flex-wrap: wrap; gap: 2px 10px; max-height: 120px; overflow-y: auto; margin-top: 4px; }
+.rule-values { display: flex; flex-direction: column; gap: 2px; max-height: 120px; overflow-y: auto; margin-top: 4px; }
 input.bad { border-color: #d9342b; }
 .stats-error { color: #d9342b; }
 .stats-warning { color: #b07a00; }
@@ -287,6 +287,8 @@ input.bad { border-color: #d9342b; }
 .board-tools select, .board-tools input { padding: 0 4px; font-size: 11px; }
 .board-tools button.on { background: var(--accent); color: #fff; border-color: transparent; }
 .board-tools .sep { height: 14px; }
+.board-tools.vertical { flex-direction: column; align-items: flex-start; gap: 3px; }
+.board-tools.vertical > .row { gap: 2px; flex-wrap: nowrap; }
 .view-buttons { position: absolute; left: 50%; transform: translateX(-50%); top: 8px; z-index: 15; display: flex; gap: 2px; background: var(--panel); border: 2px solid var(--accent); border-radius: 10px; padding: 3px; }
 .view-buttons button { padding: 1px 8px; font-size: 12px; }
 .view-buttons .grip { cursor: move; user-select: none; touch-action: none; padding: 1px 6px; font-size: 12px; font-weight: 600; color: var(--accent); align-self: center; }

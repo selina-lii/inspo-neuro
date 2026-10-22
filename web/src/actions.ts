@@ -131,7 +131,7 @@ export function ensureSegLinks(session: string, segment: string): void {
   }, fail).finally(() => segLinksPending.delete(ask));
 }
 
-/** The CCG panel's options; new normalisations re-measure every segment's CS, the old one drawn until the new arrives. */
+/** The CCG panel's options; new normalizations re-measure every segment's CS, the old one drawn until the new arrives. */
 export function setCcgOptions(patch: Partial<CcgOptions>): void {
   const s = store.get();
   const ccg = { ...s.ccg, ...patch };

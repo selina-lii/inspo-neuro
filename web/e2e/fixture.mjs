@@ -84,7 +84,7 @@ const segLinks = (session, segment) => {
   const links = DATA[session].links;
   return { segment, strength: links.map((l) => l.strength), cs: links.map((l) => valueOf(session, l.ref, l.tgt, segment)), on: links.map(() => true) };
 };
-const trace = (session, ref, tgt, segment) => [LAGS.map((lag) => 10 + 20 * valueOf(session, ref, tgt, segment) * Math.exp(-(lag ** 2) / 8)), LAGS.map(() => 10)];
+const trace = (session, ref, tgt, segment) => [LAGS.map((lag) => 10 + 20 * valueOf(session, ref, tgt, segment) * Math.exp(-(lag ** 2) / 8)), LAGS.map(() => 10), LAGS.map(() => 5), LAGS.map(() => 5)];
 
 /** The API as the server answers it, kept in memory: workspaces persist across reloads of one browser context. */
 export function makeApi() {

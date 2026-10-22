@@ -77,6 +77,8 @@ test("picked cards export a PNG each, named by session, pair and segment alone",
     const keys = drawn.get(id).items.slice(0, 2).map((x) => x.key);
     await exportCards(window.neuromapStore.get().grids.find((g) => g.id === id), keys);
   }, grid);
+  const acgs = await app.page.evaluate(async (id) => (await import("/src/ui/galaxy/grid/gridCards.ts")).drawn.get(id).items.find((x) => x.curves.length).curves[0].trace.acgs, grid);
+  assert.ok(acgs?.ref?.length && acgs.tgt?.length, "cards carry their pair's ACGs");
   const names = Object.keys(app.api.images);
   assert.equal(names.length, 2);
   for (const n of names) assert.match(n, /^day\d_\d+-\d+_\w+(\+\w+)*$/);
@@ -109,7 +111,9 @@ test("a pair node's rule stays open while edited, and its values pick as a list 
   // the bar lies on the node in 3D, wherever the camera is: press it as a click event would
   await app.page.locator(".board-tools button", { hasText: "all pairs" }).dispatchEvent("click");
   await app.page.locator(".rules-pop button", { hasText: "+ rule" }).click();
-  const value = (v) => app.page.locator(".rules-pop .rule-values label", { hasText: v });
+  const label = (v) => app.page.locator(".rules-pop .rule-values label", { hasText: v });
+  // the row's text, not its checkbox
+  const value = (v) => ({ click: (o) => label(v).click({ ...o, position: { x: 40, y: 6 } }), locator: (q) => label(v).locator(q) });
   const picked = () => app.page.evaluate((id) => window.neuromapStore.get().pairNodes.find((n) => n.id === id).rules[0].values, node);
   await value("a").click();
   await value("c").click({ modifiers: ["Shift"] });
@@ -118,6 +122,14 @@ test("a pair node's rule stays open while edited, and its values pick as a list 
   assert.deepEqual(await picked(), ["a", "c"]);
   await value("d").click();
   assert.deepEqual(await picked(), ["d"]);
+  await value("b").locator("input").click();
+  assert.deepEqual(await picked(), ["d", "b"], "a checkbox adds its value");
+  await value("d").locator("input").click();
+  assert.deepEqual(await picked(), ["b"], "and takes it out again");
+  await app.page.keyboard.press("Escape");
+  await app.page.locator(".board-tools button", { hasText: "on in any segment" }).dispatchEvent("click");
+  await app.page.locator(".picker-pop label", { hasText: /^on in all$/ }).click();
+  assert.deepEqual(await app.page.evaluate((id) => window.neuromapStore.get().pairNodes.find((n) => n.id === id).segments, node), ["all"], "a segment keeps the pairs on in it");
 });
 
 test("no page errors", () => assert.deepEqual(app.errors, []));

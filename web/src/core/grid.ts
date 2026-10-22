@@ -45,13 +45,13 @@ export type PairRange = { field: "strength" | "cs" | "rate"; segment: string; si
 /** A pair source: the server resolves its sessions, rules, states and ranges; pairs added by hand join them. */
 export type PairNode = {
   id: string; p: Vec3; q: Quat; summon?: boolean; label?: string;
-  sessions: string[]; conn_types: string[]; rules: Rule[]; states: string[]; ranges: PairRange[]; added: string[];
+  sessions: string[]; conn_types: string[]; segments: string[]; rules: Rule[]; states: string[]; ranges: PairRange[]; added: string[];
 };
 
-export const PICK_DEFAULTS = { sessions: [], conn_types: [], rules: [], states: [], ranges: [], added: [] };
+export const PICK_DEFAULTS = { sessions: [], conn_types: [], segments: [], rules: [], states: [], ranges: [], added: [] };
 
 /** What the server resolves a node's pick from. */
-export const pickQuery = (n: PairNode) => ({ sessions: n.sessions, conn_types: n.conn_types, rules: n.rules, states: n.states, ranges: n.ranges });
+export const pickQuery = (n: PairNode) => ({ sessions: n.sessions, conn_types: n.conn_types, segments: n.segments, rules: n.rules, states: n.states, ranges: n.ranges });
 
 /** A node's pairs: its pick's, then the ones added by hand. */
 export const nodePairs = (s: State, n: PairNode): string[] => [...new Set([...(s.picks[n.id] ?? []), ...n.added])];
@@ -77,8 +77,9 @@ export type GridItem = { key: string; session: string; ref: number; tgt: number;
 /** *trace* cut to the lags inside *xlim*. */
 export function windowed(trace: Trace, [lo, hi]: [number | null, number | null]): Trace {
   const keep = trace.lags.flatMap((x, i) => (x >= (lo ?? -Infinity) && x <= (hi ?? Infinity) ? [i] : []));
-  const cut = (ys?: number[]) => ys && keep.map((i) => ys[i]!);
-  return { lags: cut(trace.lags)!, ccg: cut(trace.ccg)!, baseline: cut(trace.baseline)!, p: cut(trace.p), pc: cut(trace.pc) };
+  const cut = <T extends number[] | null | undefined>(ys: T) => (ys && keep.map((i) => ys[i]!)) as T;
+  const acgs = trace.acgs && { ref: cut(trace.acgs.ref), tgt: cut(trace.acgs.tgt) };
+  return { lags: cut(trace.lags), ccg: cut(trace.ccg), baseline: cut(trace.baseline), p: cut(trace.p), pc: cut(trace.pc), acgs };
 }
 
 export const CELL = { w: 2.4, h: 1.4, depth: 1.2, info: 4 };   // cells sit edge to edge

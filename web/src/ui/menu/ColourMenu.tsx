@@ -97,7 +97,7 @@ export function ColourMenu() {
             <option value="none">nothing (all solid)</option>
           </select>
         </label>
-        <label className="pair" title="excess: counts over baseline in 1–6 ms, in Poisson SDs · CS: the Qt GUI's connection strength (STG, lo-res test window, no normalisation)">strength =
+        <label className="pair" title="excess: counts over baseline in 1–6 ms, in Poisson SDs · CS: the Qt GUI's connection strength (STG, lo-res test window, no normalization)">strength =
           <select value={s.encoding.measure} onChange={(e) => setEncoding({ measure: e.target.value as LinkEncoding["measure"] })}>
             <option value="excess">excess over baseline (SDs)</option>
             <option value="cs">CS as in the Qt GUI (STG)</option>

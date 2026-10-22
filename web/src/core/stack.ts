@@ -10,9 +10,12 @@ export type Tie = { board: string; network: string; fresh?: boolean; at?: [numbe
 export type Playback = { board: string; row: number; playing: boolean; ms: number };
 
 /** One session's layer as fetched: the segments and pairs asked for, at a resolution and norms; `want` names a pick card's one pair. */
+/** A pair's CCG, baseline, then the ref's and target's ACGs, on the layer's lags. */
+export type PairRow = [number[], number[], number[], number[]];
+
 export type StackLayer = {
   session: string; neurons: Neuron[]; links: Link[]; shanks: Shank[]; hours: Record<string, number>; segLinks: Record<string, SegLinks>;
-  lags: number[]; traces: Record<string, Record<string, [number[], number[]]>>; res: string; norms: string; segs: string[]; pairs: string[]; want?: string;
+  lags: number[]; traces: Record<string, Record<string, PairRow>>; res: string; norms: string; segs: string[]; pairs: string[]; want?: string;
 };
 
 export type StackRow = { name: string; color: string; segments: string[] };
@@ -46,8 +49,8 @@ export const rowsWithPair = (result: StatsResult, values: Record<string, StatsVa
 export function rowTrace(layer: StackLayer, row: StackRow, ref: number, tgt: number, norms: string[]): Trace | null {
   const parts = row.segments.map((s) => ({ t: layer.traces[s]?.[`${ref}-${tgt}`], h: layer.hours[s] ?? 0 })).filter((x) => x.t);
   if (!parts.length) return null;
-  const sum = (k: 0 | 1) => parts[0]!.t![k].map((_, i) => parts.reduce((a, x) => a + x.t![k][i]!, 0));
-  const raw: Trace = { lags: layer.lags, ccg: sum(0), baseline: sum(1) };
+  const sum = (k: 0 | 1 | 2 | 3) => parts[0]!.t![k].map((_, i) => parts.reduce((a, x) => a + x.t![k][i]!, 0));
+  const raw: Trace = { lags: layer.lags, ccg: sum(0), baseline: sum(1), acgs: { ref: sum(2), tgt: sum(3) } };
   const [a, b] = [layer.neurons[ref], layer.neurons[tgt]];
   return normalize(raw, norms, { refRate: a?.rate ?? 1, tgtRate: b?.rate ?? 1, hours: parts.reduce((x, p) => x + p.h, 0) }).trace;
 }

@@ -23,7 +23,7 @@ cd web && npm install && npm run dev   # http://localhost:5174
 - Colour neurons by region, firing rate, rate ratio, tag or place cell; colour links by connection type, strength,
   strength change between two segments, or whether the connection is present in each.
 - A CCG plot with low and high resolution, baseline, autocorrelograms of both neurons, waveform, peak fit
-  (click a peak to call it), test window, p-values, normalisations and jitter.
+  (click a peak to call it), test window, p-values, normalizations and jitter.
 - 3D: probes per shank (hover to fan a shank's neurons out, click to keep them out), an axis gizmo, and camera views.
 - Stats tests as boards: one dot per value, bars with error bars or violins, significance brackets. Click a dot to open
   its CCG, double-click for the same pair in every group. A board can bring in its other sessions as layers behind the network.

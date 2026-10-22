@@ -1,6 +1,7 @@
 // The only module that knows the API's URLs.
 import type { WorkspaceDoc } from "../workspaceActions";
 import type { Area, ExtendUnit, GroupMeta, Link, Neuron, NeuronValues, PairDetail, Point, SegLinks, Segment, Shank } from "../core/types";
+import type { PairRow } from "../core/stack";
 
 export async function call<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`/api${path}`, { headers: { "Content-Type": "application/json" }, ...init });
@@ -19,7 +20,7 @@ export type FitProgress = { done: number; total: number; running: boolean; fits:
 
 export type StackPayload = {
   neurons: Neuron[]; links: Link[]; shanks: Shank[]; hours: Record<string, number>; seg_links: Record<string, SegLinks>;
-  lags?: number[]; traces: Record<string, Record<string, [number[], number[]]>>;
+  lags?: number[]; traces: Record<string, Record<string, PairRow>>;
 };
 
 export const api = {

@@ -4,14 +4,13 @@ import { useState } from "react";
 import { NORMS } from "../../core/norms";
 import type { JitterResult } from "../../io/api";
 import type { CcgOptions } from "../../core/store";
-import type { FitPeak, PairDetail, Trace } from "../../core/types";
+import type { Acgs, FitPeak, PairDetail, Trace } from "../../core/types";
 
 export const W = 380;
 export const H = 220;
 const BASE_PAD = { l: 40, r: 8, t: 18, b: 32 };
 const MONO_WINDOW: [number, number] = [1, 6];
 
-export type Acgs = { ref: number[] | null; tgt: number[] | null };
 export type Waveform = { t_ms: number[] | null; amp: number[] | null } | null;
 /** One curve on the plot; *base* colours its baseline, *faint* dims it beside a bold one; *width* and *alpha* override both. */
 export type Curve = { trace: Trace; color: string; name?: string; base?: string; faint?: boolean; bold?: boolean; width?: number; alpha?: number };
@@ -30,7 +29,7 @@ function niceTicks(lo: number, hi: number, n: number): number[] {
 const fmt = (v: number) => (Math.abs(v) >= 100 ? v.toFixed(0) : +v.toPrecision(3)).toString();
 
 /** `ylim`: a y range shared with other plots, else the plot's own. */
-export function CcgPlot({ curves, fitScale, rawFit, options, acgs, wave, jitter, onPeak, title, stroke = 1, card = false, ylim }: {
+export function CcgPlot({ curves, fitScale, rawFit, options, acgs = curves[0]!.trace.acgs, wave, jitter, onPeak, title, stroke = 1, card = false, ylim }: {
   stroke?: number; card?: boolean; ylim?: [number, number]; curves: Curve[]; fitScale: number | null; rawFit?: PairDetail["fit"] | null; options: CcgOptions; acgs?: Acgs; wave?: Waveform; jitter?: JitterResult | null; onPeak?: (peak: FitPeak) => void; title: string;
 }) {
   // the lag under the pointer, or the one a click pinned
@@ -38,14 +37,14 @@ export function CcgPlot({ curves, fitScale, rawFit, options, acgs, wave, jitter,
   const trace = curves[0]!.trace;
   const legend = curves.some((c) => c.name);
   const PAD = { ...BASE_PAD, t: BASE_PAD.t + (legend ? 11 : 0) };
-  // the fit is in raw counts: it follows scalar normalisations and hides when the baseline is subtracted
+  // the fit is in raw counts: it follows scalar normalizations and hides when the baseline is subtracted
   const fit = options.res === "highres" && options.fit && rawFit && fitScale !== null ? { ...rawFit, curve: rawFit.curve?.map((v) => v / fitScale) } : null;
   const lags = trace.lags;
   const x0 = lags[0]!;
   const x1 = lags[lags.length - 1]!;
   const ys = curves.flatMap((c) => [...c.trace.ccg, ...(options.baseline ? c.trace.baseline : [])]);
   const [ymin, ymax] = ylim ?? [Math.min(0, ...ys) * 1.08, Math.max(...ys, ...(fit?.curve ?? [])) * 1.08 || 1];
-  // jitter traces are raw counts on this resolution's bins: they follow scalar normalisations like the fit
+  // jitter traces are raw counts on this resolution's bins: they follow scalar normalizations like the fit
   const jit = options.jitter && jitter && fitScale !== null && jitter.j_avg.length === lags.length
     ? { avg: jitter.j_avg.map((v) => v / fitScale), lo: (jitter.bands?.["2.5"] ?? jitter.j_lo).map((v) => v / fitScale), hi: (jitter.bands?.["97.5"] ?? jitter.j_hi).map((v) => v / fitScale) }
     : null;

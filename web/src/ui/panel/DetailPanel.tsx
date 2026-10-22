@@ -58,7 +58,7 @@ export function CcgOptionsBar() {
           </select>
         </>
       )}
-      <span className="muted">normalise</span>
+      <span className="muted">normalize</span>
       {NORMS.map(([k, label]) => (
         <button key={k} className={`chip plain${o.norms.includes(k) ? " on" : ""}`}
           onClick={() => set({ norms: o.norms.includes(k) ? o.norms.filter((n) => n !== k) : [...o.norms, k] })}>{label}</button>
@@ -117,7 +117,7 @@ function SegmentTable({ link }: { link: Link }) {
     if (s.session) for (const x of main) ensureSegLinks(s.session, x.name);
   }, [s.session, main.map((x) => x.name).join(), s.segLinks]);
   if (!main.length) return null;
-  // the Qt GUI's CS under the CCG panel's normalisations; on/off is the GUI's verdict
+  // the Qt GUI's CS under the CCG panel's normalizations; on/off is the GUI's verdict
   const values = main.map((x) => ({ on: s.segLinks[x.name]?.on[link.i] ?? null, raw: s.segLinks[x.name]?.cs[link.i] ?? null }));
   const top = Math.max(1e-9, ...values.map((v) => Math.abs(v.raw ?? 0)));
   const norms = NORMS.filter(([k]) => s.ccg.norms.includes(k)).map(([, label]) => label);

@@ -27,7 +27,8 @@ export function useListClick(items: string[], selected: string[], onChange: (nex
     const [a, b] = [items.indexOf(anchor.current ?? item), items.indexOf(item)];
     if (e.shiftKey && a >= 0) return onChange([...new Set([...(e.metaKey || e.ctrlKey ? selected : []), ...items.slice(Math.min(a, b), Math.max(a, b) + 1)])]);
     anchor.current = item;
-    onChange(e.metaKey || e.ctrlKey ? (selected.includes(item) ? selected.filter((x) => x !== item) : [...selected, item]) : [item]);
+    // a checkbox toggles its own item, as ⌘ does on the row
+    onChange(e.metaKey || e.ctrlKey || (e.target as HTMLElement).tagName === "INPUT" ? (selected.includes(item) ? selected.filter((x) => x !== item) : [...selected, item]) : [item]);
   };
 }
 

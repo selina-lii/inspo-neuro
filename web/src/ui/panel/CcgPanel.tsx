@@ -143,7 +143,7 @@ function PairCcg({ ref_, tgt }: { ref_: number; tgt: number }) {
         <div className="loading">{ccg.extend ? (extData && !extData.computed ? "this pair is not in the extend unit" : "loading the extend window…") : `loading ${segment} CCGs…`}</div>
       )}
       <div className="fit">{!pairFit ? "fitting peaks…" : pairFit.fitted ? pairFit.label : "no peak fits here"}</div>
-      {s.segLinks[segment] && <div className="fit">CS {s.segLinks[segment].cs[link.i]?.toFixed(2) ?? "–"} in {segment}{ccg.norms.length ? " (normalised)" : ""}</div>}
+      {s.segLinks[segment] && <div className="fit">CS {s.segLinks[segment].cs[link.i]?.toFixed(2) ?? "–"} in {segment}{ccg.norms.length ? " (normalized)" : ""}</div>}
       {ccg.jitter && (
         <div className="fit">
           {!jit || jit.status === "running" ? `jitter running on the whole session (${ccg.res === "lowres" ? "lo" : "hi"}-res, about a minute)…`
