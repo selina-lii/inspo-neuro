@@ -175,7 +175,9 @@ function Cell({ item, grid, n, at, dark, group, order, look }: { item: GridItem;
   // a list's info line names the pair once, so its cards carry only their segment
   const title = grid.list ? "" : item.title;
   const style = s.styleNodes.find((n) => n.id === gridStyle(s, grid.id));
-  const textures = useDrawn(useMemo(() => cardsOf(s, grid, item, look, title).map((c) => c.draw(focused, near)), [item, grid.segMode, focused, dark, o, near, title, style, look, grid.view]));
+  // by content, not identity: items rebuilt with the same curves (another link's fit landing) draw nothing new
+  const drawnAs = JSON.stringify([item.title, item.strength, item.curves]);
+  const textures = useDrawn(useMemo(() => cardsOf(s, grid, item, look, title).map((c) => c.draw(focused, near)), [drawnAs, grid.segMode, focused, dark, o, near, title, style, look, grid.view]));
   const c = cellSize(grid, n);
   const step = grid.axis === "x" ? [CELL.w, 0] : [0, -CELL.h];
   const first = grid.segMode === "series" ? [at[0] - c.w / 2 + CELL.w / 2, at[1] + c.h / 2 - CELL.h / 2] : at;

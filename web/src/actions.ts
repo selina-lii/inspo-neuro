@@ -241,7 +241,8 @@ export function resetPanels(): void {
 
 function mergeFits(progress: FitProgress): void {
   const byKey = new Map(progress.fits.map((f) => [linkKey(f.ref, f.tgt), f]));
-  const links = store.get().links.map((l) => ({ ...l, fit: byKey.get(linkKey(l.ref, l.tgt)) ?? l.fit }));
+  // only the links a fit landed on change: every other link, and the list when none did, keeps its identity
+  const links = byKey.size ? store.get().links.map((l) => (byKey.has(linkKey(l.ref, l.tgt)) ? { ...l, fit: byKey.get(linkKey(l.ref, l.tgt))! } : l)) : store.get().links;
   store.set({ links, fitProgress: { done: progress.done, total: progress.total, running: progress.running } });
 }
 

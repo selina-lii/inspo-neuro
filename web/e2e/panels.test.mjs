@@ -168,4 +168,23 @@ test("flipping one grid's page redraws its own cards alone; the View menu hides 
   assert.ok(hidden < shown, `hiding cables draws less: ${shown} → ${hidden}`);
 });
 
+test("cards sit still while peak fits land in the background", async () => {
+  app.api.fitting.polls = 3;
+  await app.call("actions.ts", "openSession", "day1");
+  await app.call("gridActions.ts", "addGrid");
+  const g = await app.state((s) => s.grids.at(-1).id);
+  await app.call("wireActions.ts", "connect", "net:main", `grid:${g}`);
+  await app.settle(2500);
+  await app.page.evaluate(() => {
+    window.__canvases = 0;
+    const make = document.createElement.bind(document);
+    document.createElement = (tag, ...a) => (tag === "canvas" && new Error().stack.includes("ccgTexture") && window.__canvases++, make(tag, ...a));
+  });
+  await app.page.waitForFunction(() => window.neuromapStore.get().links.filter((l) => l.fit).length >= 3, null, { timeout: 20000 });
+  await app.settle(500);
+  const drawn = await app.page.evaluate(() => window.__canvases);
+  await app.call("gridActions.ts", "removeGrid", g);
+  assert.equal(drawn, 0, "no card redraws");
+});
+
 test("no page errors", () => assert.deepEqual(app.errors, []));

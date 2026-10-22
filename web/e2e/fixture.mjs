@@ -89,6 +89,7 @@ const trace = (session, ref, tgt, segment, res = "lowres") => [LAGS.map((lag) =>
 
 /** The API as the server answers it, kept in memory: workspaces persist across reloads of one browser context. */
 export function makeApi() {
+  const fitting = { polls: 0 };
   const workspaces = { main: { tests: [], boards: [], session: SESSIONS[0] } };
   const jobs = [];
   const images = {};
@@ -108,7 +109,11 @@ export function makeApi() {
     if (path.startsWith("/neuron_values/")) return { rates: {}, specs: [], place: {} };
     if (path.startsWith("/themes/")) return {};
     if (path.startsWith("/extends/")) return { units: [] };
-    if (path.startsWith("/fits/")) return { done: 0, total: 0, running: false, fits: [] };
+    if (path.startsWith("/fits/")) {
+      // `fitting.polls` > 0: peak fits run in the background, one landing per poll
+      const l = DATA[path.split("/")[2]].links[fitting.polls];
+      return fitting.polls-- > 0 ? { done: 1, total: 9, running: true, fits: [{ ref: l.ref, tgt: l.tgt, fitted: false, confident: false }] } : { done: 0, total: 0, running: false, fits: [] };
+    }
     if (path.startsWith("/traces/")) {
       const s = path.split("/")[2];
       return { pairs: DATA[s].links.map((l) => [l.ref, l.tgt]), lowres_lags: LAGS, highres_lags: HILAGS, n_neurons: DATA[s].neurons.length };
@@ -162,5 +167,5 @@ export function makeApi() {
     });
     return out;
   };
-  return { json, stack, bin, workspaces, images };
+  return { json, stack, bin, workspaces, images, fitting };
 }
