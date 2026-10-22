@@ -121,16 +121,27 @@ export function TiePorts() {
 
 /** A port: drag from it to a port of another kind. */
 function Port({ id, lit, ...handlers }: { id: string; lit: boolean } & Record<string, unknown>) {
-  const mesh = useRef<Mesh>(null);
+  const group = useRef<Group>(null);
+  const grab = useRef<Mesh>(null);
+  const camera = useThree((t) => t.camera);
   useFrame(() => {
     const at = ports.get(id);
-    if (mesh.current && at) mesh.current.position.copy(at);
+    if (!group.current || !at) return;
+    group.current.position.copy(at);
+    // an unseen ball as wide on screen at any distance: the dot is grabbed from a little way off
+    grab.current!.scale.setScalar(Math.max(0.3, camera.position.distanceTo(at) * GRAB * 1.5));
   });
   return (
-    <mesh ref={mesh} {...handlers}>
-      <sphereGeometry args={[0.18, 16, 12]} />
-      <meshBasicMaterial color={lit ? "#ff1dce" : "#3a6df0"} />
-    </mesh>
+    <group ref={group} {...handlers}>
+      <mesh>
+        <sphereGeometry args={[0.18, 16, 12]} />
+        <meshBasicMaterial color={lit ? "#ff1dce" : "#3a6df0"} />
+      </mesh>
+      <mesh ref={grab}>
+        <sphereGeometry args={[1, 8, 6]} />
+        <meshBasicMaterial visible={false} />
+      </mesh>
+    </group>
   );
 }
 
