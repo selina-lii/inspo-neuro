@@ -1,7 +1,7 @@
 // A CCG grid's float bar: sort, rows × cols, segments overlaid or in series (along x or y), which pairs, pages.
 import { movePairs, targetPairs, toggleGroup } from "../../../actions";
 import { realGroups } from "../../../core/colors";
-import { sourceOf, type CcgGrid, type GridSort } from "../../../core/grid";
+import { colsOf, type CcgGrid, type GridSort } from "../../../core/grid";
 import { store } from "../../../core/store";
 import { patchGrid } from "../../../gridActions";
 import { useGridItems } from "./gridItems";
@@ -15,7 +15,8 @@ export function GridBar({ grid }: { grid: CcgGrid }) {
   const s = useStore();
   const { segments } = s;
   const set = (patch: Partial<CcgGrid>) => patchGrid(grid.id, patch);
-  const onNetwork = sourceOf(s, grid)?.startsWith("net:");
+  const onNetwork = grid.source?.startsWith("net:");
+  const bySegment = onNetwork || grid.source?.startsWith("node:");
   const flip = (seg: string) => {
     const next = grid.segments.includes(seg) ? grid.segments.filter((x) => x !== seg) : [...grid.segments, seg];
     if (next.length) set({ segments: next });
@@ -30,7 +31,8 @@ export function GridBar({ grid }: { grid: CcgGrid }) {
         {SORTS.map(([k, label]) => <option key={k} value={k}>{label}</option>)}
       </select>
       <span className="sep" />
-      {count("rows")}×{count("cols")}
+      {count("rows")}{!grid.list && <>×{count("cols")}</>}
+      <button className={grid.list ? "on" : ""} title="one column, an info line beside each pair" onClick={() => set({ list: !grid.list, page: 0 })}>list</button>
       <span className="sep" />
       <button className={grid.segMode === "overlay" ? "on" : ""} title="one image per pair, a curve per segment or row" onClick={() => set({ segMode: "overlay" })}>overlay</button>
       <button className={grid.segMode === "series" ? "on" : ""} title="one image per segment or row, side by side" onClick={() => set({ segMode: "series" })}>series</button>
@@ -38,13 +40,15 @@ export function GridBar({ grid }: { grid: CcgGrid }) {
         <button key={a} className={grid.axis === a ? "on" : ""} title={`series along ${a}`} onClick={() => set({ axis: a })}>{a}</button>
       ))}
       <button className={grid.compact ? "on" : ""} title="cells edge to edge, no margins" onClick={() => set({ compact: !grid.compact })}>compact</button>
-      {onNetwork && (
+      {bySegment && (
         <>
           <span className="sep" />
-          <select value={grid.pairs} onChange={(e) => set({ pairs: e.target.value as CcgGrid["pairs"], page: 0 })}>
-            <option value="shown">shown pairs</option>
-            <option value="selected">selected pairs</option>
-          </select>
+          {onNetwork && (
+            <select value={grid.pairs} onChange={(e) => set({ pairs: e.target.value as CcgGrid["pairs"], page: 0 })}>
+              <option value="shown">shown pairs</option>
+              <option value="selected">selected pairs</option>
+            </select>
+          )}
           {["all", ...segments.map((x) => x.name).filter((x) => MAIN_SEGMENT.test(x))].map((seg) => (
             <button key={seg} className={grid.segments.includes(seg) ? "on" : ""} onClick={() => flip(seg)}>{seg}</button>
           ))}
@@ -64,9 +68,8 @@ export function GridBar({ grid }: { grid: CcgGrid }) {
 function Picked({ grid }: { grid: CcgGrid }) {
   const s = useStore();
   const keys = useGridItems(grid).map((x) => x.key);
-  const n = keys.filter((k) => s.cells.has(k)).length;
-  if (!n && !grid.picking) return null;
-  const per = grid.cols * grid.rows;
+  if (!keys.some((k) => s.cells.has(k)) && !grid.picking) return null;
+  const per = colsOf(grid) * grid.rows;
   const add = (more: string[]) => store.set({ cells: new Set([...s.cells, ...more]) });
   const states = [["S", "sel", "selected"], ["U", "unsel", "unselected"], ["D", "del", "deleted"]] as const;
   return (

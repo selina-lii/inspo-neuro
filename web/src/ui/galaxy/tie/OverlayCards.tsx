@@ -91,7 +91,7 @@ export function PickCard({ dark }: { dark: boolean }) {
   const group = useRef<Group>(null);
   const camera = useThree((t) => t.camera);
   const layer = s.pickCard;
-  const board = layer?.want.split("|")[1] ?? "";
+  const board = layer?.want?.split("|")[1] ?? "";
   const st = layer ? stackOf(board) : null;
   const [, r, t] = (s.stats.pick.pair ?? "").split("|");
   const curves = useMemo(() => (layer && st && s.stats.pick.pair ? rowsWithPair(st.result, s.stats.values, s.stats.pick.pair).flatMap((i) => {

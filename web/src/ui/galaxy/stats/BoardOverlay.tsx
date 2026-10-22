@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { GridBar } from "../grid/GridBar";
+import { NodeBar } from "../grid/NodeBar";
 import { Quaternion, Vector3 } from "three";
 import type { Board } from "../../../core/stats";
 import { setActiveTest, setBoardLines, setBoardRes } from "../../../statsActions";
@@ -52,6 +53,7 @@ export function BoardToolbars({ onNormalTo }: { onNormalTo(board: Board, size: n
         );
       })}
       {s.grids.map((g) => <GridBar key={g.id} grid={g} />)}
+      {s.pairNodes.map((n) => <NodeBar key={n.id} node={n} />)}
       {hover && hv && r && (
         <div className="tip board-tip" style={{ left: hover.x - r.left, top: hover.y - r.top }}>
           {hv.session} #{hv.ref}→#{hv.tgt} · {hv.row} · {hv.raw === null ? "–" : Number(hv.raw.toPrecision(4))}

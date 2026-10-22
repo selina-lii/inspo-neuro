@@ -243,18 +243,27 @@ def segment_links(cd, sd, session: str, segment: str, norms: list) -> dict:
     return dict(segment=segment, strength=strength, cs=cs, on=on)
 
 
-def neuron_values(nd, cd, sd, tags, session: str) -> dict:
-    """Everything a neuron can be coloured or labelled by: firing rate per segment, tag specs (values and labels), place fields."""
+def _clean(a) -> list:
+    return [None if a is None or not np.isfinite(v) else round(float(v), 4) for v in a]
+
+
+def firing_rates(nd, cd, session: str) -> dict:
+    """Per segment, each neuron's firing rate in neuron position order; 'all' for the whole session."""
     k = session_keys(cd, session)[0]
-    n = nd.neurons_for(k.nd())
-    ids = np.asarray(n.neuron_ids)
-    clean = lambda a: [None if a is None or not np.isfinite(v) else round(float(v), 4) for v in a]
     rates = {}
     for seg in cd.available_segments(k):
         src = cd.source_config(k.change(segment=seg), seg)
         if src is not None and src.firing_rates:
-            rates[seg] = clean(np.asarray(src.firing_rates, dtype=float))
-    rates['all'] = clean(np.asarray(n.firing_rate, dtype=float))
+            rates[seg] = _clean(np.asarray(src.firing_rates, dtype=float))
+    rates['all'] = _clean(np.asarray(nd.neurons_for(k.nd()).firing_rate, dtype=float))
+    return rates
+
+
+def neuron_values(nd, cd, sd, tags, session: str) -> dict:
+    """Everything a neuron can be coloured or labelled by: firing rate per segment, tag specs (values and labels), place fields."""
+    k = session_keys(cd, session)[0]
+    ids = np.asarray(nd.neurons_for(k.nd()).neuron_ids)
+    rates = firing_rates(nd, cd, session)
     specs = []
     for spec in tags.specs.values():
         values = tags.values_for(spec, k)
@@ -262,14 +271,14 @@ def neuron_values(nd, cd, sd, tags, session: str) -> dict:
             continue
         labels = tags.assign_array(spec, k)
         colors = spec.colors()
-        specs.append(dict(name=spec.prefix, source=spec.source, values=clean(values),
+        specs.append(dict(name=spec.prefix, source=spec.source, values=_clean(values),
                           labels=None if labels is None else [None if not isinstance(l, str) or l not in colors else l for l in labels],
                           colors={l: '#%02x%02x%02x' % tuple(int(c) for c in rgb) for l, rgb in colors.items()}))
     pf = cd.placefields
     place = {}
     for seg in pf.segments():
         if pf.has_session(session):
-            place[seg] = dict(frmax=clean([pf.neuron_stat(session, int(i), 'FRmax', seg) for i in ids]),
+            place[seg] = dict(frmax=_clean([pf.neuron_stat(session, int(i), 'FRmax', seg) for i in ids]),
                               is_place=[bool(x) for x in pf.place_cell_mask(session, [seg], ids)])
     return dict(rates=rates, specs=specs, place=place)
 

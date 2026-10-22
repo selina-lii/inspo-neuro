@@ -23,6 +23,7 @@ export type StackPayload = {
 };
 
 export const api = {
+  pick: (query: object) => call<{ pairs: string[] }>("/pick", { method: "POST", body: JSON.stringify(query) }),
   stack: (s: string, segments: string[], pairs: string[], res: string, norms: string[], light = false) =>
     call<StackPayload>(`/stack/${encodeURIComponent(s)}?segments=${encodeURIComponent(segments.join(","))}&pairs=${pairs.join(",")}&res=${res}&norms=${norms.join(",")}&light=${light}`),
   projects: () => call<{ projects: string[]; open: string | null }>("/projects"),

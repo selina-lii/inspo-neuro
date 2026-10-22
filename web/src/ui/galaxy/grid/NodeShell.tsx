@@ -12,9 +12,9 @@ import { anchors, centers, ports } from "../tie/portAt";
 export const NODE_W = 3.2;
 export const NODE_BAR = 0.44;
 
-type Props = { target: Target; title: string; height: number; pose: { p: Vec3; q: Quat; summon?: boolean }; place(patch: { p: Vec3; q: Quat; summon?: false }): void; input?: string; output: string; dark: boolean; children?: ReactNode };
+type Props = { target: Target; title: string; height: number; pose: { p: Vec3; q: Quat; summon?: boolean }; place(patch: { p: Vec3; q: Quat; summon?: false }): void; output: string; dark: boolean; children?: ReactNode };
 
-export function NodeShell({ target, title, height, pose, place, input, output, dark, children }: Props) {
+export function NodeShell({ target, title, height, pose, place, output, dark, children }: Props) {
   const { objectScale } = useStore();
   const group = useRef<Group>(null);
   const camera = useThree((t) => t.camera);
@@ -30,7 +30,6 @@ export function NodeShell({ target, title, height, pose, place, input, output, d
   useFrame(() => {
     const g = group.current;
     if (!g) return;
-    if (input) ports.set(input, g.localToWorld(new Vector3(-0.25, -height / 2, 0)));
     ports.set(output, g.localToWorld(new Vector3(NODE_W + 0.25, -height / 2, 0)));
     centers.set(key, { at: g.localToWorld(new Vector3(NODE_W / 2, -height / 2, 0)), size: NODE_W * g.scale.x });
     anchors.set(key, { at: g.localToWorld(new Vector3(0, NODE_BAR, 0)), q: g.getWorldQuaternion(new Quaternion()), scale: g.getWorldScale(new Vector3()).x, size: NODE_W, width: NODE_W });
