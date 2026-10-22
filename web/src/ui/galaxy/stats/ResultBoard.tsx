@@ -4,6 +4,9 @@ import { useMemo, useRef } from "react";
 import { BufferGeometry, Float32BufferAttribute, Vector3, type Group, Quaternion } from "three";
 import type { Board, StatsPick, StatsTest, StatsValue } from "../../../core/stats";
 import { slideBoard } from "../../../stackActions";
+import { selected3 } from "../../../core/select";
+import { PICK_COLOR } from "../../../core/colors";
+import { useStore } from "../../useStore";
 import { useBody } from "../select3";
 import { resizeBoard, setActiveTest } from "../../../statsActions";
 import { claimMenu } from "../SpaceMenu";
@@ -26,6 +29,7 @@ export function ResultBoard({ board, test, values, grayed, pick, dark, active, o
   const group = useRef<Group>(null);
   const drag = useBoardDrag(board.id, group, (p, q) => slideBoard(board.id, p, q));
   const body = useBody("board", board.id, group);
+  const bar = selected3(useStore(), "board", board.id) ? PICK_COLOR : "#3a6df0";
   const [fg, muted, panel] = dark ? ["#e6e7ea", "#8b919c", "#1c1f24"] : ["#23252a", "#7a7f88", "#ffffff"];
   const { w, h } = layout;
   const bracketRoom = (Math.max(0, ...layout.brackets.map((b) => b.level + 1))) * BRACKET_STEP + 0.2;
@@ -53,9 +57,9 @@ export function ResultBoard({ board, test, values, grayed, pick, dark, active, o
       </mesh>
       <mesh position={[(x0 + x1) / 2, yTop + 0.22, -0.01]} {...drag} onClick={(e) => e.delta <= 4 && setActiveTest(test.id)}>
         <planeGeometry args={[x1 - x0, 0.44]} />
-        <meshBasicMaterial color="#3a6df0" transparent opacity={0.85} side={2} />
+        <meshBasicMaterial color={bar} transparent opacity={0.85} side={2} />
       </mesh>
-      <lineSegments geometry={border}><lineBasicMaterial color="#3a6df0" /></lineSegments>
+      <lineSegments geometry={border}><lineBasicMaterial color={bar} /></lineSegments>
       <Label3D text={title} position={[x0 + 0.12, yTop + 0.22, 0]} height={0.24} color="#ffffff" anchor="left" bold />
       <BoardPlot layout={layout} result={result} fg={fg} muted={muted} fade={layout.dots.some((d) => pick.ids.has(d.id)) ? 0.2 : 1} />
       {playRow !== null && layout.rows[playRow] && (
