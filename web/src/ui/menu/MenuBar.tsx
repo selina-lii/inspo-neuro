@@ -2,7 +2,7 @@
 import { openProject, resetPanels, saveEdits, setView } from "../../actions";
 import { store } from "../../core/store";
 import { useEffect } from "react";
-import { deleteWorkspace, newWorkspace, openWorkspace, refreshWorkspaces, renameWorkspace } from "../../workspaceActions";
+import { deleteWorkspace, duplicateWorkspace, newWorkspace, openWorkspace, refreshWorkspaces, renameWorkspace } from "../../workspaceActions";
 import { useStore } from "../useStore";
 import { AddMenu } from "./AddMenu";
 import { ColourMenu } from "./ColourMenu";
@@ -28,6 +28,7 @@ export function MenuBar() {
                 close();
               }}>rename workspace…</button>
               <button disabled={!s.workspace} onClick={() => (window.confirm(`delete workspace ${s.workspace}?`) && deleteWorkspace(s.workspace!), close())}>delete workspace</button>
+              <button disabled={!s.workspace} onClick={() => (void duplicateWorkspace(), close())}>duplicate workspace</button>
               <button onClick={() => (store.set({ picker: true }), close())}>switch project…</button>
               <button disabled={!s.unsaved} onClick={() => (saveEdits(), close())}>save edits <kbd>⌘S</kbd></button>
               <button title="read tags, pair states and peak calls from disk again, as another program (the Qt GUI) left them" disabled={!s.project}

@@ -66,4 +66,12 @@ test("a grid's lag window keeps only the lags inside it; clearing both ends show
   assert.equal(await app.state((s) => s.grids.at(-1).xlim), undefined);
 });
 
+test("duplicating a workspace saves its copy and opens it", async () => {
+  const grids = await app.state((s) => s.grids.length);
+  await app.call("workspaceActions.ts", "duplicateWorkspace");
+  assert.equal(await app.state((s) => s.workspace), "main copy");
+  assert.equal(app.api.workspaces["main copy"].grids.length, grids);
+  assert.equal(await app.state((s) => s.grids.length), grids);
+});
+
 test("no page errors", () => assert.deepEqual(app.errors, []));

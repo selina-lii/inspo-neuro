@@ -93,14 +93,23 @@ export async function openWorkspace(name: string): Promise<void> {
 }
 
 /** An empty workspace, "untitled N", opened on the project's first session. */
-export async function newWorkspace(): Promise<void> {
+export const newWorkspace = () => openNew((n) => `untitled ${n}`, { tests: [], boards: [], grids: [], pairNodes: [], ties: [], networks: {}, mainHidden: {} });
+
+/** The open workspace as it is now, under "<name> copy", opened. */
+export function duplicateWorkspace(): Promise<void> {
+  const from = store.get().workspace!;
+  flush();
+  return openNew((n) => `${from} copy${n > 1 ? ` ${n}` : ""}`, doc);
+}
+
+/** Save *body* under the first free name *names* gives, and open it. */
+async function openNew(names: (n: number) => string, body: WorkspaceDoc): Promise<void> {
   const taken = new Set(store.get().workspaces);
   let n = 1;
-  while (taken.has(`untitled ${n}`)) n++;
-  const name = `untitled ${n}`;
-  await api.saveWorkspace(name, { tests: [], boards: [], grids: [], pairNodes: [], ties: [], networks: {}, mainHidden: {} });
-  store.set({ workspaces: [name, ...store.get().workspaces] });
-  await openWorkspace(name);
+  while (taken.has(names(n))) n++;
+  await api.saveWorkspace(names(n), body);
+  store.set({ workspaces: [names(n), ...store.get().workspaces] });
+  await openWorkspace(names(n));
 }
 
 /** The names on disk now: another tab or a cleanup may have changed them. */
