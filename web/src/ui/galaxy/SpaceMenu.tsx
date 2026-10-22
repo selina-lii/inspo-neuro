@@ -6,12 +6,12 @@ import { PANEL_TITLES } from "../map/SpacePanelNode";
 import { facePanel } from "./Panels3D";
 import { untie } from "../../stackActions";
 import { addToNode, dropFromNode, removeGrid, removeNode, removeStyle } from "../../gridActions";
-import { closeTest } from "../../statsActions";
-import { AddMenu } from "../menu/AddMenu";
+import { closeTest, newTest, openSaved, replaceTest } from "../../statsActions";
+import { AddMenu, TestSource } from "../menu/AddMenu";
 import { TrayMenu } from "./grid/TrayMenu";
 import { store } from "../../core/store";
 import { useStore } from "../useStore";
-import { cut, replace } from "../../wireActions";
+import { cut } from "../../wireActions";
 import { wiresOf, type Role } from "../../core/wires";
 import { begin, objectGesture, pointerAt } from "./gesture";
 import { rename } from "./titleTip";
@@ -55,9 +55,11 @@ export function SpaceMenu({ at, onClose, onCenter }: { at: { x: number; y: numbe
     begin({ ...g, end: () => (g.end(), setMoving(false)) });
   };
   const [target, setTarget] = useState<Target | null>(null);
+  const [replacing, setReplacing] = useState(false);
   useEffect(() => {
     if (at) {
       setTarget(pending);
+      setReplacing(false);
       pending = null;
     }
   }, [at]);
@@ -101,11 +103,10 @@ export function SpaceMenu({ at, onClose, onCenter }: { at: { x: number; y: numbe
               <button onClick={act(() => onCenter(target!, true))}>face me</button>
               <button onClick={act(() => carry(target!))}>move</button>
               <Many target={target!} act={act} />
-              {s.tests.length > 1 && (
-                <select value="" title="another open test takes this one's cables" onChange={(e) => (replace(`board:${board.id}`, `board:${e.target.value}`), onClose())}>
-                  <option value="" disabled>replace with…</option>
-                  {s.tests.filter((t) => t.id !== board.id).map((t) => <option key={t.id} value={t.id}>{s.boards.find((b) => b.id === t.id)?.label || t.name || "unsaved test"}</option>)}
-                </select>
+              <button title="a new or saved test takes this one's place and cables" onClick={() => setReplacing(!replacing)}>replace with {replacing ? "▾" : "▸"}</button>
+              {replacing && (
+                <TestSource label="replace with" single onDone={onClose}
+                  onNew={() => void replaceTest(board.id, (id) => newTest(id))} onSaved={([name], tied) => void replaceTest(board.id, (id) => openSaved(name!, tied, id))} />
               )}
               <button onClick={act(() => closeTest(board.id))}>close</button>
             </>

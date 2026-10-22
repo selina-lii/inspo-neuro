@@ -19,7 +19,7 @@ export function StatsPanel() {
             <button className="linkish" title="close this test" onClick={() => closeTest(test.id)}>✕</button>
           </span>
         )}
-        <button onClick={newTest}>+ new test</button>
+        <button onClick={() => newTest()}>+ new test</button>
         <select value="" onChange={(e) => e.target.value && openSaved(e.target.value)}>
           <option value="">open saved…</option>
           {saved.map((x) => <option key={x.name} value={x.name}>{x.name}</option>)}

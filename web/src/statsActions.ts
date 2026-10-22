@@ -7,7 +7,7 @@ import {
 import { store } from "./core/store";
 import { statsApi, type RunStatus } from "./io/stats";
 import { loadPickCard, tie, untie } from "./stackActions";
-import { dropPort } from "./wireActions";
+import { dropPort, replace } from "./wireActions";
 import { FRAME_H, MARGIN, ROW_W } from "./ui/galaxy/stats/boardGeometry";
 import type { WorkspaceDoc } from "./workspaceActions";
 
@@ -56,10 +56,14 @@ function pruneValues(tests: StatsTest[], values = stats().values) {
   return Object.fromEntries(Object.entries(values).filter(([id]) => used.has(id)));
 }
 
+/** Where a test that replaced another puts its board, once it has one. */
+const heirs = new Map<string, Board["pose"]>();
+
 function ensureBoard(id: string, res: string): void {
   const { boards } = stats();
   if (boards.some((b) => b.id === id)) return;
-  store.setStats({ boards: [...boards, { id, res, pose: newPose(boards, rowsOf(id)), ...(measured ? {} : { unplaced: true }) }] });
+  const pose = heirs.get(id);
+  store.setStats({ boards: [...boards, pose ? { id, res, pose } : { id, res, pose: newPose(boards, rowsOf(id)), ...(measured ? {} : { unplaced: true }) }] });
 }
 
 function withPayload(id: string, payload: StatsPayload, patch: Partial<StatsTest>): void {
@@ -94,19 +98,17 @@ export async function loadStats(ws: WorkspaceDoc): Promise<void> {
 const blank = (id: string, name: string, config: StatsConfig): StatsTest =>
   ({ id, name, config, job: null, status: "idle", error: "", text: "", results: [], warnings: [] });
 
-export function newTest(): void {
+export function newTest(id = newId()): void {
   const { options, tests } = stats();
   if (!options) return;
   const session = store.get().session;
   let rows: RowConfig[] = [];
   for (let i = 0; i < 2; i++) rows = [...rows, { ...newRow(rows, options), sessions: session ? [session] : [] }];
-  const id = newId();
   store.setStats({ tests: [...tests, blank(id, "", { rows, test: options.defaults.test, view: options.defaults.view, display: null })], active: id });
 }
 
 /** `withNetworks`: only the Add menu's "bring in its networks" ties a test to the main network. */
-export async function openSaved(name: string, withNetworks = false): Promise<void> {
-  const id = newId();
+export async function openSaved(name: string, withNetworks = false, id = newId()): Promise<void> {
   try {
     const loaded = await statsApi.load(name);
     store.setStats({ tests: [...stats().tests, blank(id, stats().tests.some((t) => t.name === name) ? "" : name, loaded.config)], active: id });
@@ -115,6 +117,18 @@ export async function openSaved(name: string, withNetworks = false): Promise<voi
   } catch (error) {
     fail(error);
   }
+}
+
+/** Like replacing an image: a new or saved test takes over a test's board place and cables, and the old one closes. */
+export async function replaceTest(old: string, open: (id: string) => unknown): Promise<void> {
+  const id = newId();
+  const pose = stats().boards.find((b) => b.id === old)?.pose;
+  if (pose) heirs.set(id, pose);
+  await open(id);
+  if (!stats().tests.some((t) => t.id === id)) return;
+  replace(`board:${old}`, `board:${id}`);
+  closeTest(old);
+  setActiveTest(id);
 }
 
 /** An independent copy of a test, unsaved, with its result; its board a little to the right of the original's. */

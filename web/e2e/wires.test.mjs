@@ -84,6 +84,26 @@ test("replacing a test hands its cables to the other test", async () => {
   assert.ok(w.some((x) => x.startsWith(`board:${t2}>net:`) && x.endsWith(":tie")), "and the tie moved");
   assert.ok(!w.some((x) => x.includes(`board:${t1}`)), "the old test keeps none");
   await app.call("wireActions.ts", "replace", `board:${t2}`, `board:${t1}`);
+  await app.call("stackActions.ts", "untie", t1);
+});
+
+test("replacing a test with a new one hands it the old one's cables and place", async () => {
+  const pose = await app.page.evaluate((id) => window.neuromapStore.get().stats.boards.find((b) => b.id === id)?.pose, t1);
+  await app.page.evaluate(async (id) => {
+    const { replaceTest, newTest } = await import("/src/statsActions.ts");
+    await replaceTest(id, (x) => newTest(x));
+  }, t1);
+  const t2 = await app.state((s) => s.stats.active);
+  const w = await wires();
+  assert.ok(w.includes(`board:${t2}>grid:${g}:pairs`), "the grid now draws from the new test");
+  assert.ok(!w.some((x) => x.includes(`board:${t1}`)), "the old test keeps none");
+  assert.ok(!(await app.state((s) => s.stats.tests.map((t) => t.id))).includes(t1), "and closes");
+  await app.call("statsActions.ts", "setRows", t2, SEGMENTS.map((seg, i) => row(i + 1, seg, [seg])));
+  await app.call("statsActions.ts", "runTest", t2);
+  await app.settle(800);
+  const now = await app.page.evaluate((id) => window.neuromapStore.get().stats.boards.find((b) => b.id === id)?.pose, t2);
+  assert.deepEqual(now, pose, "its board lands where the old one stood");
+  t1 = t2;
 });
 
 test("a workspace saved with sources on the grids opens with them as wires", async () => {
