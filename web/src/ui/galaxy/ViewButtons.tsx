@@ -45,7 +45,8 @@ export function ViewButtons({ controls }: { controls: RefObject<CadHandle | null
     window.addEventListener("pointerup", up);
   };
   return (
-    <div className="view-buttons" style={at ? { left: at.x, top: at.y, transform: "none" } : undefined}>
+    // kept inside the view, however far it was dragged or the window has shrunk since
+    <div className="view-buttons" style={at ? { left: `clamp(0px, ${at.x}px, calc(100% - 240px))`, top: `clamp(0px, ${at.y}px, calc(100% - 32px))`, transform: "none" } : undefined}>
       <span className="grip" title="drag to move this bar" onPointerDown={grab}>⠿ camera</span>
       {VIEWS.map(([name, dir, up, tip]) => (
         <button key={name} title={tip} onClick={() => controls.current?.view(dir, up)}>{name}</button>
