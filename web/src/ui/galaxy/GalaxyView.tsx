@@ -188,7 +188,10 @@ export function GalaxyView({ dark }: { dark: boolean }) {
         {!mainOff && <group position={s.mainAt}><CcgCards links={drawn} pts={pts} dark={dark} /></group>}
         <NetworkCopies links={shown} pts={pts} center={[center.x, center.y, center.z]} extent={extent} dark={dark} />
         <CarrySync />
-        <StatsBoards center={[center.x, center.y, center.z]} extent={extent} height={box.y1 - box.y0} dark={dark} onAdded={() => controls.current?.fit()} />
+        <StatsBoards center={[center.x, center.y, center.z]} extent={extent} height={box.y1 - box.y0} dark={dark} onAdded={(board) => {
+          const spot = centers.get(`board:${board}`);
+          if (spot) controls.current?.center(spot.at, spot.size * 1.6);
+        }} />
         <PanelLayer host={panelHost} box={box} />
         <PickCard dark={dark} />
         {s.grids.map((g) => <GridObject key={g.id} grid={g} dark={dark} />)}

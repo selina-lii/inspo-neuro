@@ -2,7 +2,7 @@
 // Shift+middle and the wheel zoom at the cursor. On a trackpad: drag pans, ⌘/ctrl+drag rotates, pinch zooms.
 import { useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useImperativeHandle, useMemo, useRef, type Ref } from "react";
-import { Box3, Matrix4, Object3D, PerspectiveCamera, Plane, Quaternion, Raycaster, Sphere, Vector2, Vector3 } from "three";
+import { Matrix4, Object3D, PerspectiveCamera, Plane, Quaternion, Raycaster, Vector2, Vector3 } from "three";
 import { carryPanels } from "./Panels3D";
 import { modKey, pointer, secondary } from "./pointer";
 import { carried, commit, commitGroup, groupOf, pickAt, placeOf, preview, previewGroup, rayPick, startOf, transformed, type Group3, type Placement } from "./select3";
@@ -15,8 +15,6 @@ export type CadHandle = {
   update(): void;
   /** Look along `-dir` at the target (dir points from target to camera), with `up` on screen. */
   view(dir: Vector3, up: Vector3): void;
-  /** Frame the whole scene. */
-  fit(): void;
   /** Bring `at` to the middle of the view from where the camera looks now, near enough to see `size`. */
   center(at: Vector3, size: number): void;
   /** Look straight at `center` from `normal`'s side, far enough to see `size`. */
@@ -49,11 +47,6 @@ export function CadControls({ ref }: { ref?: Ref<CadHandle> }) {
       target,
       update: () => camera.lookAt(target),
       view: (dir, up) => goTo(target.clone().addScaledVector(dir.clone().normalize(), camera.position.distanceTo(target)), target, up),
-      fit: () => {
-        const sphere = new Box3().setFromObject(scene).getBoundingSphere(new Sphere());
-        const back = camera.position.clone().sub(target).normalize();
-        goTo(sphere.center.clone().addScaledVector(back, distFor(sphere.radius) * 1.05), sphere.center, camera.up.clone());
-      },
       center: (at, size) => goTo(at.clone().addScaledVector(camera.position.clone().sub(target).normalize(), distFor(size / 2) * 1.2), at, camera.up.clone(), false),
       look: (center, normal, up, size) => goTo(center.clone().addScaledVector(normal.clone().normalize(), distFor(size / 2) * 1.1), center, up, false),
     };

@@ -6,7 +6,7 @@ import { noteScene } from "../../../statsActions";
 import { useStore } from "../../useStore";
 import { ResultBoard } from "./ResultBoard";
 
-export function StatsBoards({ center, extent, height, dark, onAdded }: { center: Vec3; extent: number; height: number; dark: boolean; onAdded(): void }) {
+export function StatsBoards({ center, extent, height, dark, onAdded }: { center: Vec3; extent: number; height: number; dark: boolean; onAdded(board: string): void }) {
   const s = useStore();
   const { boards, tests, values, pick, active } = s.stats;
   useEffect(() => noteScene(center, extent, height), [center, extent, height]);
@@ -16,9 +16,10 @@ export function StatsBoards({ center, extent, height, dark, onAdded }: { center:
     return neurons && pairHidden(s.filters, neurons, v.ref, v.tgt);
   }).map(([id]) => id)), [values, s.filters, s.session, s.neurons, s.stack]);
   const count = useRef(boards.length);
-  // a new board opens beside the network: bring both into view
+  // a new board opens beside the network: bring it into view, and only it, however far anything else lies
   useEffect(() => {
-    if (boards.length > count.current) window.setTimeout(onAdded, 100);
+    const added = boards[boards.length - 1];
+    if (boards.length > count.current && added) window.setTimeout(() => onAdded(added.id), 100);
     count.current = boards.length;
   }, [boards.length]);
   return (
