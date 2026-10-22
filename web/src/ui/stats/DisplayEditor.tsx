@@ -10,6 +10,11 @@ type Interval = [number | null, number | null];
 const NORMS: [string, string][] = [["REF_FRATE", "Ref f-rate"], ["TARGET_FRATE", "Tgt f-rate"], ["TIME_SPAN", "Time (hr)"], ["TIME_SECOND", "Time (sec)"], ["TOTAL_AREA", "CCG total area"]];
 const SCALES: [string, string][] = [["pair", "Same scale (pair)"], ["session", "Same scale (session)"], ["visible", "Same scale (visible)"]];
 const BASELINES: [string, string][] = [["conv", "Conv"], ["tailed", "Tailed"], ["global", "Global"], ["jitter", "Jitter"]];
+const OVER: [string, string, string][] = [
+  ["fwhm", "peak FWHM", "The data's excess over the fitted peak's half-maximum width"],
+  ["fitted area", "peak area (fit)", "The fitted curve's area over the baseline, across the whole peak (out to the flat cutoff)"],
+  ["signed", "peak, signed", "The data's excess across the whole peak, below-baseline bins counted negative; every pair counts as connected: no off → 0, no uncertain → 0"],
+];
 const EXPLAIN: Record<string, string> = {
   conv: "Conv: Convolution smoothed null baseline",
   tailed: "Tailed: ACG deconvolution, tail-bin baseline",
@@ -42,6 +47,7 @@ export function DisplayEditor({ display, defaults, onChange }: { display: Displa
   const toggleNorm = (n: string) => set({ norms: norms.includes(n) ? norms.filter((x) => x !== n) : [...norms, n].sort() });
   const method = d.baseline_method as string;
   const win = d.test_window as [number, number];
+  const mono = d.peak_mono_window as [number, number];
   const tails = (d.tail_window as Interval[]).length ? (d.tail_window as Interval[]) : [[null, null] as Interval];
   const setTail = (i: number, k: 0 | 1, text: string) => set({ tail_window: tails.map((t, j) => (j === i ? (k ? [t[0], sec(text)] : [sec(text), t[1]]) : t)) });
   const session = useStore().session;
@@ -61,9 +67,36 @@ export function DisplayEditor({ display, defaults, onChange }: { display: Displa
         <div className="qrow wrap">
           <span>Measure:</span>
           {["STG", "JBSI"].map((m) => <label key={m}><input type="radio" checked={d.cs_metric === m} onChange={() => set({ cs_metric: m })} />{m}</label>)}
-          <span className="grow" />
+        </div>
+        <div className="qrow wrap">
+          <span>Over:</span>
+          <input type="radio" checked={d.cs_peak_mode === "off"} onChange={() => set({ cs_peak_mode: "off" })} />
           <span>Window:</span><input className="qms" defaultValue={ms(win[0])} key={`w0${win[0]}`} onBlur={(e) => set({ test_window: [sec(e.target.value) ?? 0, win[1]] })} />
           <span>–</span><input className="qms" defaultValue={ms(win[1])} key={`w1${win[1]}`} onBlur={(e) => set({ test_window: [win[0], sec(e.target.value) ?? 0] })} /><span>ms</span>
+          {OVER.map(([k, label, tip]) => (
+            <label key={k} title={`${tip}. A pair with no mono peak uses the window.`}><input type="radio" checked={d.cs_peak_mode === k} onChange={() => set({ cs_peak_mode: k })} />{label}</label>
+          ))}
+          <Chip on={flag("cs_uncertain_zero")} label="uncertain → 0" title="Over the peak fit, an uncertain fit or no fit counts as 0" onClick={() => set({ cs_uncertain_zero: !flag("cs_uncertain_zero") })} />
+        </div>
+        <div className="qrow wrap">
+          <span>Peak window from:</span>
+          <select value={d.cs_fit_source as string} title="Which fit sets each pair's peak window: one fit of the whole recording, so the window stays put across segments, or each segment's own fit"
+            onChange={(e) => set({ cs_fit_source: e.target.value })}>
+            {["whole recording", "per segment"].map((x) => <option key={x}>{x}</option>)}
+          </select>
+          <input type="number" min={0.1} max={50} step={0.1} style={{ width: 56 }} value={+((d.cs_flat as number) * 100).toPrecision(4)} title="The whole peak ends where the fit falls below this share of its height"
+            onChange={(e) => e.target.value && set({ cs_flat: Number(e.target.value) / 100 })} /><span>% flat</span>
+        </div>
+        <div className="qrow wrap">
+          <span>Peak fit: mono</span><input className="qms" defaultValue={ms(mono[0])} key={`m0${mono[0]}`} onBlur={(e) => set({ peak_mono_window: [sec(e.target.value) ?? 0, mono[1]] })} />
+          <span>–</span><input className="qms" defaultValue={ms(mono[1])} key={`m1${mono[1]}`} onBlur={(e) => set({ peak_mono_window: [mono[0], sec(e.target.value) ?? 0] })} /><span>ms</span>
+          <span>max peaks:</span><input type="number" min={1} max={3} style={{ width: 40 }} value={d.peak_max as number} onChange={(e) => e.target.value && set({ peak_max: Number(e.target.value) })} />
+          <span>tolerance:</span><input type="number" min={0.25} max={4} step={0.25} style={{ width: 52 }} value={d.peak_tolerance as number} title="Above 1 loosens what counts as a confident peak and admits extra peaks more easily"
+            onChange={(e) => e.target.value && set({ peak_tolerance: Number(e.target.value) })} />
+          <span>fit:</span>
+          <select value={d.peak_loss as string} title="gaussian: least squares on the excess, weighted by the baseline; poisson: likelihood of the raw counts under baseline + peaks" onChange={(e) => set({ peak_loss: e.target.value })}>
+            {["gaussian", "poisson"].map((x) => <option key={x}>{x}</option>)}
+          </select>
         </div>
         <div className="qrow wrap">
           <Chip on={flag("cs_nonneg")} label="non-negative" onClick={() => set({ cs_nonneg: !flag("cs_nonneg") })} />
