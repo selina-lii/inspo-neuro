@@ -271,9 +271,6 @@ button.primary { background: var(--accent); color: #fff; border-color: transpare
 .rules-pop { width: 380px; display: flex; flex-direction: column; gap: 6px; }
 .rule { border: 1px solid var(--line); border-radius: 6px; padding: 4px; }
 .rule-values { display: flex; flex-wrap: wrap; gap: 2px 10px; max-height: 120px; overflow-y: auto; margin-top: 4px; }
-.display-editor { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 4px 12px; border: 1px solid var(--line); border-radius: 6px; padding: 6px; }
-.dfield { justify-content: space-between; }
-.dfield input:not([type="checkbox"]) { width: 120px; }
 input.bad { border-color: #d9342b; }
 .stats-error { color: #d9342b; }
 .stats-warning { color: #b07a00; }
@@ -326,3 +323,15 @@ input.bad { border-color: #d9342b; }
 .panel-tick.tr { right: -6px; top: -6px; border-width: 4px 4px 0 0; cursor: nesw-resize; }
 .panel-tick.bl { left: -6px; bottom: -6px; border-width: 0 0 4px 4px; cursor: nesw-resize; }
 .panel-tick.br { right: -6px; bottom: -6px; border-width: 0 4px 4px 0; cursor: nwse-resize; }
+/* NeuroPy's collapsible sections and chips, for the CS settings */
+.qsections { display: flex; flex-wrap: wrap; gap: 6px; align-items: flex-start; }
+.qsection { border: 1px solid var(--line); border-radius: 4px; padding: 2px; min-width: 260px; }
+.qsection-head { all: unset; cursor: pointer; font-weight: 600; padding: 2px 4px; display: block; }
+.qsection-body { display: flex; flex-direction: column; gap: 3px; padding: 2px 4px 4px; }
+.qrow { display: flex; align-items: center; gap: 4px; }
+.qrow.wrap { flex-wrap: wrap; }
+.qchip { border: 1px solid #aaa; border-radius: 3px; padding: 1px 6px; background: transparent; color: inherit; }
+.qchip:hover { background: color-mix(in srgb, var(--accent) 15%, transparent); }
+.qchip.on { background: #4a7fd4; color: #fff; border-color: #3366cc; }
+.qms { width: 44px; }
+.qexplain { color: var(--muted); font-size: 0.9em; }
