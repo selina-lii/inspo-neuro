@@ -24,7 +24,7 @@ import { anchors, ports } from "./tie/portAt";
 import { PANEL_PX, TITLE_FONT } from "../../core/store";
 import { selected3 } from "../../core/select";
 import { pick3 } from "../../stackActions";
-import { pointer } from "./pointer";
+import { onStopMoves, pointer } from "./pointer";
 import { dockedOn } from "../../core/grid";
 import { commit, commitGroup, groupOf, placeOf, preview, previewGroup, startOf, transformed, type Group3, type Placement } from "./select3";
 
@@ -293,6 +293,9 @@ function Panel3D({ panel, picked, onPick }: { panel: SpacePanel; picked: boolean
       commitGroup(d.group, d.shift, new Quaternion());
     },
   };
+  const ended = useRef(head.onPointerUp);
+  ended.current = head.onPointerUp;
+  useEffect(() => onStopMoves(() => drag.current && ended.current()), []);
   return (
     <div ref={root} className={`space-panel panel3d${picked ? " picked" : ""}`} style={{ width: panel.w, height: panel.collapsed ? "auto" : panel.h, zoom: RASTER }}
       onPointerDown={onPick}

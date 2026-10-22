@@ -4,7 +4,7 @@ import { useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useImperativeHandle, useMemo, useRef, type Ref } from "react";
 import { Matrix4, Object3D, PerspectiveCamera, Plane, Quaternion, Raycaster, Vector2, Vector3 } from "three";
 import { carryPanels } from "./Panels3D";
-import { modKey, pointer, secondary } from "./pointer";
+import { modKey, onStopMoves, pointer, secondary } from "./pointer";
 import { carried, commit, commitGroup, groupOf, pickAt, placeOf, preview, previewGroup, rayPick, startOf, transformed, type Group3, type Placement } from "./select3";
 import { selected3 } from "../../core/select";
 import { store, type Picked3 } from "../../core/store";
@@ -171,19 +171,19 @@ export function CadControls({ ref }: { ref?: Ref<CadHandle> }) {
     const onUp = (e: PointerEvent) => {
       if (drag?.mode && el.hasPointerCapture(e.pointerId)) el.releasePointerCapture(e.pointerId);
       // a press and release in place on the canvas is a click: it selects the nearest object
-      if (carry) {
+      // the release ends the move before anything is written: a write that fails must not leave the object on the cursor
+      const [c, d] = [carry, drag];
+      [carry, drag] = [null, null];
+      // an object's drag holds the pointer for one press: a release it missed must not lock the camera
+      pointer.busy = false;
+      if (c) {
         if (el.hasPointerCapture(e.pointerId)) el.releasePointerCapture(e.pointerId);
-        if (carry.pose) commit(carry.pick, carry.pose);
-        commitGroup(carry.group, carry.shift, new Quaternion());
-        if (!selected3(store.get(), carry.pick.kind, carry.pick.id)) pick3(carry.pick.kind, carry.pick.id);
-        carry = null;
-      } else if (drag && !drag.moved && e.button === 0) {
+        setDown(c);
+        if (!selected3(store.get(), c.pick.kind, c.pick.id)) pick3(c.pick.kind, c.pick.id);
+      } else if (d && !d.moved && e.button === 0) {
         ray.setFromCamera(ndc(e.clientX, e.clientY), camera);
         pickAt(ray, scene);
       }
-      drag = null;
-      // an object's drag holds the pointer for one press: a release it missed must not lock the camera
-      pointer.busy = false;
     };
     const onWheel = (e: WheelEvent) => {
       e.preventDefault();
@@ -200,12 +200,22 @@ export function CadControls({ ref }: { ref?: Ref<CadHandle> }) {
       target.add(step);
     };
     const onMenu = (e: Event) => e.preventDefault();
+    const setDown = (c: NonNullable<typeof carry>) => {
+      if (c.pose) commit(c.pick, c.pose);
+      commitGroup(c.group, c.shift, new Quaternion());
+    };
+    const stop = onStopMoves(() => {
+      const c = carry;
+      [carry, drag] = [null, null];
+      if (c) setDown(c);
+    });
     el.addEventListener("pointerdown", onDown);
     window.addEventListener("pointermove", onMove);
     window.addEventListener("pointerup", onUp);
     el.addEventListener("wheel", onWheel, { passive: false });
     el.addEventListener("contextmenu", onMenu);
     return () => {
+      stop();
       el.removeEventListener("pointerdown", onDown);
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerup", onUp);

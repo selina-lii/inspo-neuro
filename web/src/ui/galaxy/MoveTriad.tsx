@@ -1,10 +1,10 @@
 // The selected object's transform gizmo, on the object's own axes: press an arrow and drag to move along it, a square to
 // move in its plane, a ring to turn about its axis. The move is relative to where the handle was grabbed.
 import { useFrame, useThree, type ThreeEvent } from "@react-three/fiber";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { type Group, type Intersection, Mesh, Plane, Quaternion, type Raycaster, Vector3 } from "three";
 import { useStore } from "../useStore";
-import { pointer } from "./pointer";
+import { onStopMoves, pointer } from "./pointer";
 import { commit, commitGroup, groupOf, movable, placeOf, preview, previewGroup, startOf, TRIAD, transformed, type Group3, type Placement } from "./select3";
 
 const AXES = [
@@ -53,6 +53,8 @@ export function MoveTriad() {
     g.scale.setScalar(Math.min(camera.position.distanceTo(g.position) * SCREEN, place.size * 0.33));
   });
 
+  const ended = useRef<() => void>(() => {});
+  useEffect(() => onStopMoves(() => ended.current()), []);
   if (!picked || !gizmo || !movable(picked)) return null;
   const turns = picked.kind !== "network";
 
@@ -95,15 +97,20 @@ export function MoveTriad() {
     preview(picked, d.from, d.start, shift, turn);
     previewGroup(d.group, shift, turn);
   };
-  const end = (e: ThreeEvent<PointerEvent>) => {
+  const finish = () => {
     const d = drag.current;
     if (!d) return;
-    e.stopPropagation();
     drag.current = null;
     pointer.busy = false;
     setLit(null);
     if (d.pose) commit(picked, d.pose);
     commitGroup(d.group, d.shift, d.turn);
+  };
+  ended.current = finish;
+  const end = (e: ThreeEvent<PointerEvent>) => {
+    if (!drag.current) return;
+    e.stopPropagation();
+    finish();
   };
   const handlers = (handle: Handle) => ({
     onPointerDown: start(handle), onPointerMove: move, onPointerUp: end,

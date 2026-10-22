@@ -1,12 +1,12 @@
 // Moving a board by its title bar: drag slides it in the view plane, Alt-drag along the view depth, Shift-drag turns it.
 import { useThree, type ThreeEvent } from "@react-three/fiber";
-import { useRef, type RefObject } from "react";
+import { useEffect, useRef, type RefObject } from "react";
 import { Plane, Quaternion, Vector3, type Group } from "three";
 import type { Quat, Vec3 } from "../../../core/stats";
 import { moveBoard } from "../../../statsActions";
 import { selected3 } from "../../../core/select";
 import { store, type Picked3 } from "../../../core/store";
-import { pointer } from "../pointer";
+import { onStopMoves, pointer } from "../pointer";
 import { commitGroup, groupOf, previewGroup, type Group3 } from "../select3";
 
 type Drag = { mode: "move" | "depth" | "turn"; x: number; y: number; p: Vector3; q: Quaternion; plane: Plane; hit: Vector3; rest: Group3 };
@@ -17,6 +17,18 @@ export function useBoardDrag(id: string, group: RefObject<Group | null>, onDone:
   const moved = (d: Drag, g: Group) => [g.position.clone().sub(d.p), g.quaternion.clone().multiply(d.q.clone().invert())] as const;
   const camera = useThree((t) => t.camera);
   const drag = useRef<Drag | null>(null);
+  const finish = () => {
+    const d = drag.current;
+    if (!d) return;
+    drag.current = null;
+    pointer.busy = false;
+    const g = group.current!;
+    commitGroup(d.rest, ...moved(d, g));
+    onDone(g.position.toArray() as Vec3, g.quaternion.toArray() as Quat);
+  };
+  const ended = useRef(finish);
+  ended.current = finish;
+  useEffect(() => onStopMoves(() => ended.current()), []);
   return {
     onPointerDown(e: ThreeEvent<PointerEvent>) {
       if (e.button !== 0) return;
@@ -49,14 +61,9 @@ export function useBoardDrag(id: string, group: RefObject<Group | null>, onDone:
       previewGroup(d.rest, ...moved(d, g));
     },
     onPointerUp(e: ThreeEvent<PointerEvent>) {
-      const d = drag.current;
-      if (!d) return;
+      if (!drag.current) return;
       e.stopPropagation();
-      drag.current = null;
-      pointer.busy = false;
-      const g = group.current!;
-      commitGroup(d.rest, ...moved(d, g));
-      onDone(g.position.toArray() as Vec3, g.quaternion.toArray() as Quat);
+      finish();
     },
   };
 }

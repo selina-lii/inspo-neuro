@@ -1,7 +1,7 @@
 // Cable ports on every board, network, CCG grid and pair node: drag from one to a port of another kind to cable them (board–network
 // ties them; a grid takes its pairs from what it is cabled to); click a cable to select it (Delete cuts it) or right-click it.
 import { useFrame, useThree, type ThreeEvent } from "@react-three/fiber";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { BufferGeometry, Float32BufferAttribute, type Mesh, Plane, Quaternion, Vector3 } from "three";
 import { patchGrid } from "../../../gridActions";
 import { feedTest } from "../../../feedActions";
@@ -10,7 +10,7 @@ import { tie } from "../../../stackActions";
 import { selected3 } from "../../../core/select";
 import type { Picked3 } from "../../../core/store";
 import { useStore } from "../../useStore";
-import { pointer } from "../pointer";
+import { onStopMoves, pointer } from "../pointer";
 import { claimMenu } from "../SpaceMenu";
 import { ports } from "./portAt";
 
@@ -26,6 +26,7 @@ export function TiePorts() {
   const { camera, size } = useThree();
   const [drag, setDrag] = useState<{ from: string; plane: Plane } | null>(null);
   const end = useRef(new Vector3());
+  useEffect(() => onStopMoves(() => setDrag(null)), []);
   const line = useMemo(() => new BufferGeometry().setAttribute("position", new Float32BufferAttribute(new Float32Array(6), 3)), []);
 
   const screen = (v: Vector3) => {

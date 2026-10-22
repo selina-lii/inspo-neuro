@@ -14,6 +14,7 @@ import { AddMenu } from "../menu/AddMenu";
 import { TrayMenu } from "./grid/TrayMenu";
 import { store } from "../../core/store";
 import { useStore } from "../useStore";
+import { onStopMoves } from "./pointer";
 import { actsOn, align3, duplicate3, snapTo3 } from "./select3";
 
 export type Target = { kind: "board" | "network" | "panel" | "tie" | "grid" | "node" | "style"; id: string };
@@ -28,6 +29,7 @@ export const resetClaim = () => void (pending = null);
 // the construct being carried; Esc or a click sets it down where it is
 let carrying: Target | null = null;
 const carryListeners = new Set<(t: Target | null) => void>();
+onStopMoves(() => carrying && carry(null));
 function carry(t: Target | null) {
   if (t?.kind === "board") settleTies(t.id);
   carrying = t;
