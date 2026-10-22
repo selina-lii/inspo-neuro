@@ -8,7 +8,7 @@ import { closePanel, moveNetwork, openSession, patchPanel, removeNetwork, setMai
 import { PANEL_TITLES } from "../map/SpacePanelNode";
 import { facePanel } from "./Panels3D";
 import { untie } from "../../stackActions";
-import { addToNode, dropFromNode, patchGrid, patchNode, removeGrid, removeNode } from "../../gridActions";
+import { addToNode, dropFromNode, patchGrid, patchNode, patchStyle, removeGrid, removeNode, removeStyle } from "../../gridActions";
 import { closeTest, moveBoard } from "../../statsActions";
 import { AddMenu } from "../menu/AddMenu";
 import { TrayMenu } from "./grid/TrayMenu";
@@ -16,7 +16,7 @@ import { store } from "../../core/store";
 import { useStore } from "../useStore";
 import { actsOn, align3, duplicate3 } from "./select3";
 
-export type Target = { kind: "board" | "network" | "panel" | "tie" | "grid" | "node"; id: string };
+export type Target = { kind: "board" | "network" | "panel" | "tie" | "grid" | "node" | "style"; id: string };
 let pending: Target | null = null;
 
 /** A construct under the right-click claims it, before the menu opens; the nearest claims first, so the first claim stands. */
@@ -38,7 +38,7 @@ export function CarrySync() {
   const ray = useMemo(() => new Raycaster(), []);
   const plane = useMemo(() => new Plane(), []);
   const hit = useMemo(() => new Vector3(), []);
-  const { stats, networks, panels, grids, pairNodes } = useStore();
+  const { stats, networks, panels, grids, pairNodes, styleNodes } = useStore();
   useFrame(({ camera, pointer }) => {
     if (!carrying) return;
     const board = carrying.kind === "board" ? stats.boards.find((b) => b.id === carrying!.id) : undefined;
@@ -46,7 +46,8 @@ export function CarrySync() {
     const panel = carrying.kind === "panel" ? panels.find((q) => q.id === carrying!.id) : undefined;
     const grid = carrying.kind === "grid" ? grids.find((g) => g.id === carrying!.id) : undefined;
     const node = carrying.kind === "node" ? pairNodes.find((n) => n.id === carrying!.id) : undefined;
-    const p = board?.pose.p ?? net?.p ?? panel?.pose?.p ?? grid?.p ?? node?.p;
+    const style = carrying.kind === "style" ? styleNodes.find((n) => n.id === carrying!.id) : undefined;
+    const p = board?.pose.p ?? net?.p ?? panel?.pose?.p ?? grid?.p ?? node?.p ?? style?.p;
     if (!p) return;
     const at = new Vector3(...p);
     plane.setFromNormalAndCoplanarPoint(camera.getWorldDirection(new Vector3()).negate(), at);
@@ -55,6 +56,7 @@ export function CarrySync() {
     if (board) moveBoard(board.id, { ...board.pose, p: hit.toArray() as Vec3 });
     else if (grid) patchGrid(grid.id, { p: hit.toArray() as Vec3 });
     else if (node) patchNode(node.id, { p: hit.toArray() as Vec3 });
+    else if (style) patchStyle(style.id, { p: hit.toArray() as Vec3 });
     else if (panel) patchPanel(panel.id, { pose: { ...panel.pose!, p: hit.toArray() as Vec3 } });
     else moveNetwork(net!.id, hit.toArray() as Vec3);
   });
@@ -64,7 +66,7 @@ export function CarrySync() {
 /** Duplicate and align: on the whole selection when the menu's object is in it. */
 function Many({ target, act }: { target: Target; act: (f: () => void) => () => void }) {
   const kind = target.kind;
-  if (kind === "node" || kind === "tie") return null;
+  if (kind === "node" || kind === "style" || kind === "tie") return null;
   const lead = { kind, id: target.id };
   const all = actsOn(lead);
   const n = all.length > 1 ? ` (${all.length})` : "";
@@ -77,7 +79,7 @@ function Many({ target, act }: { target: Target; act: (f: () => void) => () => v
 }
 
 export function SpaceMenu({ at, onClose, onCenter }: { at: { x: number; y: number } | null; onClose(): void; onCenter(t: Target, face: boolean): void }) {
-  const { stats: s, networks, panels, grids, pairNodes } = useStore();
+  const { stats: s, networks, panels, grids, pairNodes, styleNodes } = useStore();
   const [moving, setMoving] = useState<Target | null>(carrying);
   const [target, setTarget] = useState<Target | null>(null);
   useEffect(() => {
@@ -173,6 +175,14 @@ export function SpaceMenu({ at, onClose, onCenter }: { at: { x: number; y: numbe
               <button onClick={act(() => addToNode(node.id))}>add the picked or selected pairs</button>
               {node.added.length > 0 && <button onClick={act(() => dropFromNode(node.id))}>drop the picked or selected pairs</button>}
               <button onClick={act(() => removeNode(node.id))}>close</button>
+            </>
+          ) : target?.kind === "style" && styleNodes.some((n) => n.id === target.id) ? (
+            <>
+              <div className="space-menu-title">curve style</div>
+              <button onClick={act(() => onCenter(target!, false))}>center on this item</button>
+              <button onClick={act(() => onCenter(target!, true))}>face me</button>
+              <button onClick={act(() => carry(target))}>move</button>
+              <button onClick={act(() => removeStyle(target.id))}>close</button>
             </>
           ) : panel ? (
             <>

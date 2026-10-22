@@ -15,7 +15,23 @@ export type CcgGrid = {
   tray?: string;   // the set of trays it shares its source's pairs with; each pair lives in one tray
   keys?: string[];   // the pairs this tray holds; without keys, every pair no other tray in its set holds
   list?: boolean;   // one column, an info line beside each pair
+  style?: string | null;   // the style node cabled to it
 };
+
+/** How one segment's curves draw on the grids cabled to a style node. */
+export type CurveStyle = { label: string; color: string; width: number; alpha: number };
+
+/** Its curves' order is the draw order: later ones lie on top. */
+export type StyleNode = { id: string; p: Vec3; q: Quat; summon?: boolean; curves: CurveStyle[] };
+
+export const CURVE_DEFAULT = { width: 1.4, alpha: 1 };
+
+/** A curve as the grid's style node draws it, and its layer: unstyled curves lie under the styled ones. */
+export function styledCurve<C extends { label: string; color: string }>(s: State, grid: CcgGrid, c: C): C & { width?: number; alpha?: number; layer: number } {
+  const curves = s.styleNodes.find((n) => n.id === grid.style)?.curves ?? [];
+  const i = curves.findIndex((x) => x.label === c.label);
+  return i < 0 ? { ...c, layer: -1 } : { ...c, color: curves[i]!.color, width: curves[i]!.width, alpha: curves[i]!.alpha, layer: i };
+}
 
 /** A value a pick keeps between `lo` and `hi`: a pair's strength or CS, or a neuron's firing rate, in one segment. */
 export type PairRange = { field: "strength" | "cs" | "rate"; segment: string; side: string; lo: number | null; hi: number | null };

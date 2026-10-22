@@ -2,7 +2,7 @@
 import type { Playback, StackLayer, Tie } from "./stack";
 import { EMPTY_STATS, type Pose, type StatsState } from "./stats";
 import type { Area, ExtendUnit, GroupMeta, LayoutKind, Link, Neuron, NeuronValues, Point, Point3, SegLinks, Segment, Selection, Shank } from "./types";
-import type { CcgGrid, PairNode } from "./grid";
+import type { CcgGrid, PairNode, StyleNode } from "./grid";
 
 export type Filters = {
   types: Set<string>;
@@ -83,6 +83,7 @@ export type State = {
   grids: CcgGrid[];   // CCG grids placed in 3D
   pairNodes: PairNode[];   // pair sources cabled to grids
   picks: Record<string, string[]>;   // per pair node, the pairs its pick resolved to
+  styleNodes: StyleNode[];   // curve styles cabled to grids
   tieOnAdd: boolean;   // a stats test added to the space brings in its sessions' networks: its board is tied to the main network
   thumbs: "focused" | "selected" | "shown";   // which pairs carry a CCG card in 3D
   unsaved: number;   // edits the server holds in memory, not yet written
@@ -175,6 +176,7 @@ const initial: State = {
   grids: [],
   pairNodes: [],
   picks: {},
+  styleNodes: [],
   mainHidden: false,
   mainAt: [0, 0, 0],
   tieOnAdd: true,

@@ -1,6 +1,6 @@
 // Named workspaces: a project's space as arranged (open tests, boards, grids, ties, panels, network copies), a file each on the server, saved as it changes.
 import { fail, openSession, panelsFrom } from "./actions";
-import { PICK_DEFAULTS, type CcgGrid, type PairNode } from "./core/grid";
+import { PICK_DEFAULTS, type CcgGrid, type PairNode, type StyleNode } from "./core/grid";
 import type { Tie } from "./core/stack";
 import type { Board, StatsConfig } from "./core/stats";
 import { store, type NetworkCopy, type SpacePanel } from "./core/store";
@@ -10,7 +10,7 @@ import { loadStats } from "./statsActions";
 
 export type WorkspaceDoc = {
   tests: { id: string; name: string; config: StatsConfig }[]; boards: Board[]; session?: string;
-  grids?: CcgGrid[]; pairNodes?: PairNode[]; ties?: Tie[]; panels?: SpacePanel[];
+  grids?: CcgGrid[]; pairNodes?: PairNode[]; styleNodes?: StyleNode[]; ties?: Tie[]; panels?: SpacePanel[];
   networks?: Record<string, NetworkCopy[]>; mainHidden?: Record<string, boolean>;
   mainAt?: Record<string, [number, number, number]>;
 };
@@ -37,7 +37,7 @@ export const mainHiddenOf = (session: string): boolean => doc.mainHidden?.[sessi
 
 const watched = () => {
   const s = store.get();
-  return [s.workspace, s.session, s.stats.tests, s.stats.boards, s.grids, s.pairNodes, s.ties, s.panels, s.networks, s.mainHidden, s.mainAt];
+  return [s.workspace, s.session, s.stats.tests, s.stats.boards, s.grids, s.pairNodes, s.styleNodes, s.ties, s.panels, s.networks, s.mainHidden, s.mainAt];
 };
 
 function flush(): void {
@@ -53,7 +53,7 @@ store.subscribe(() => {
   refs = now;
   doc = {
     session: s.session, tests: s.stats.tests.map((t) => ({ id: t.id, name: t.name, config: t.config })), boards: s.stats.boards,
-    grids: s.grids, pairNodes: s.pairNodes, ties: s.ties, panels: s.panels,
+    grids: s.grids, pairNodes: s.pairNodes, styleNodes: s.styleNodes, ties: s.ties, panels: s.panels,
     networks: { ...doc.networks, [s.session]: s.networks }, mainHidden: { ...doc.mainHidden, [s.session]: s.mainHidden },
     mainAt: { ...doc.mainAt, [s.session]: s.mainAt },
   };
@@ -73,7 +73,7 @@ export async function openWorkspace(name: string): Promise<void> {
       workspace: name, picked3: null, panels: panelsFrom(doc.panels ?? legacy("panels", undefined)),
       grids: doc.grids ?? legacy(`grids:${project}`, []),
       // nodes saved as filters of another source take a pick's fields
-      pairNodes: (doc.pairNodes ?? legacy(`pairNodes:${project}`, [])).map((n) => ({ ...PICK_DEFAULTS, ...n })), picks: {},
+      pairNodes: (doc.pairNodes ?? legacy(`pairNodes:${project}`, [])).map((n) => ({ ...PICK_DEFAULTS, ...n })), picks: {}, styleNodes: doc.styleNodes ?? [],
     });
     await openSession(doc.session && sessions.includes(doc.session) ? doc.session : sessions[0]!);
     await loadStats(doc);

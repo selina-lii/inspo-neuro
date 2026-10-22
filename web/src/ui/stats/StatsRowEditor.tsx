@@ -26,6 +26,10 @@ export function StatsRowEditor({ rows, resolved, index, options, onRows, onFamil
   const display = (v: string) => options.display[v] ?? v;
 
   const cell = (k: PickerKey) => {
+    // a grid sets a fed row's pairs: its sessions, types, segment and rules
+    if (row.fed && k !== "res" && k !== "data") {
+      return <div className="cell muted" key={k} title="set by the CCG grid feeding this row">{k === "seg" ? row.segments.join(", ") : k === "sess" ? `${row.pairs?.length ?? 0} grid pairs` : "from grid"}</div>;
+    }
     const locked = follows.has(k);
     // a locked column draws as one block down every row, as the Qt panel does: the rows below show no picker of their own
     if (lockedCols.has(k) && index > 0) {

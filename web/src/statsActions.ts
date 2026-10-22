@@ -67,7 +67,7 @@ function withPayload(id: string, payload: StatsPayload, patch: Partial<StatsTest
     ...Object.entries(payload.missing).map(([seg, ss]) => `${seg}: no CCG for ${ss.join(", ")}, left out`),
     ...payload.tail_fallbacks.map((r) => `${r[2]} ${r[0]} ${r[1]}: tail baseline fell back to the native window for ${r[3]} of ${r[4]} pairs`),
   ];
-  const tests = stats().tests.map((t) => (t.id === id ? { ...t, ...patch, status: "done" as const, error: "", text: payload.text, results: payload.results, warnings } : t));
+  const tests = stats().tests.map((t) => (t.id === id ? { ...t, ...patch, status: "done" as const, stale: false, error: "", text: payload.text, results: payload.results, warnings } : t));
   store.setStats({ tests, values: pruneValues(tests, { ...stats().values, ...payload.values }) });
   ensureBoard(id, payload.results[0]?.resolution ?? "lowres");
 }

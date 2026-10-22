@@ -1,12 +1,40 @@
 // CCG grids and pair-filter nodes: add one, change its settings, cable it to a source, remove it.
 import { fail, targetPairs } from "./actions";
-import { PICK_DEFAULTS, pickQuery, type CcgGrid, type PairNode } from "./core/grid";
+import { CURVE_DEFAULT, PICK_DEFAULTS, pickQuery, type CcgGrid, type CurveStyle, type PairNode, type StyleNode } from "./core/grid";
 import { activeSegment, store } from "./core/store";
 import { api } from "./io/api";
 
 export const setGrids = (grids: CcgGrid[]) => store.set({ grids });
 
 export const setNodes = (pairNodes: PairNode[]) => store.set({ pairNodes });
+
+export const setStyles = (styleNodes: StyleNode[]) => store.set({ styleNodes });
+
+export const addStyle = () => setStyles([...store.get().styleNodes, { id: `st${Date.now().toString(36)}`, p: [0, 0, 0], q: [0, 0, 0, 1], summon: true, curves: [] }]);
+
+export const patchStyle = (id: string, patch: Partial<StyleNode>) => setStyles(store.get().styleNodes.map((n) => (n.id === id ? { ...n, ...patch } : n)));
+
+export function removeStyle(id: string): void {
+  setStyles(store.get().styleNodes.filter((n) => n.id !== id));
+  setGrids(store.get().grids.map((g) => (g.style === id ? { ...g, style: null } : g)));
+}
+
+/** Restyle one segment's curves; a segment not styled yet joins on top, from its colour now. */
+export function setCurveStyle(id: string, label: string, color: string, patch: Partial<CurveStyle>): void {
+  const { curves } = store.get().styleNodes.find((n) => n.id === id)!;
+  const has = curves.some((c) => c.label === label);
+  patchStyle(id, { curves: has ? curves.map((c) => (c.label === label ? { ...c, ...patch } : c)) : [...curves, { label, color, ...CURVE_DEFAULT, ...patch }] });
+}
+
+/** Move a segment's curves a layer up (+1, over the next) or down (−1); unstyled segments join first, under the styled ones. */
+export function layerCurve(id: string, labels: [string, string][], label: string, d: 1 | -1): void {
+  const { curves } = store.get().styleNodes.find((n) => n.id === id)!;
+  const all = [...labels.filter(([l]) => !curves.some((c) => c.label === l)).map(([l, color]) => ({ label: l, color, ...CURVE_DEFAULT })), ...curves];
+  const i = all.findIndex((c) => c.label === label), j = i + d;
+  if (j < 0 || j >= all.length) return;
+  [all[i], all[j]] = [all[j]!, all[i]!];
+  patchStyle(id, { curves: all });
+}
 
 /** A new grid on the main network's pairs, brought in front of the camera. */
 export function addGrid(): void {
@@ -72,6 +100,14 @@ export function moveToTray(id: string, keys: string[], to: string | null): void 
 export const patchGrid = (id: string, patch: Partial<CcgGrid>) => setGrids(store.get().grids.map((g) => (g.id === id ? { ...g, ...patch } : g)));
 
 export const patchNode = (id: string, patch: Partial<PairNode>) => setNodes(store.get().pairNodes.map((n) => (n.id === id ? { ...n, ...patch } : n)));
+
+/** Every pair of tray `from` moves into tray `into`, and `from` closes; into the first tray, or from it, the result is the first tray. */
+export function mergeTray(from: string, into: string): void {
+  const grids = store.get().grids;
+  const [a, b] = [grids.find((g) => g.id === from)!, grids.find((g) => g.id === into)!];
+  const keys = a.keys && b.keys ? [...new Set([...b.keys, ...a.keys])] : undefined;
+  setGrids(grids.filter((g) => g.id !== from).map((g) => (g.id === into ? { ...g, keys } : g)));
+}
 
 export function removeGrid(id: string): void {
   const gone = store.get().grids.find((g) => g.id === id)!;

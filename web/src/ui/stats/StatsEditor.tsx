@@ -79,6 +79,7 @@ export function StatsEditor({ test, options }: { test: StatsTest; options: Stats
         ))}
         <span className="grow" />
         <button className="primary" disabled={test.status === "running"} onClick={() => runTest(test.id)}>{test.status === "running" ? "running…" : "run"}</button>
+        {test.stale && <span className="muted" title="a grid feeding this test changed since the result shown">grid changed: run again</span>}
         <input placeholder="name to save as" value={name} onChange={(e) => setName(e.target.value)} />
         <button disabled={!test.job || !name.trim()} title={test.job ? "" : "run first: a save stores this run's result"} onClick={() => saveTest(test.id, name.trim())}>save</button>
       </div>

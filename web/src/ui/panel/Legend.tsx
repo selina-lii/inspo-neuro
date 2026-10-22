@@ -1,16 +1,18 @@
 // What the colours, dashes and widths mean.
 import { useContext } from "react";
 import { linkLegend, neuronColors, paletteColor, type Legend as LegendSpec } from "../../core/colors";
+import { styledCurve } from "../../core/grid";
 import type { State } from "../../core/store";
 import { stackOf } from "../../stackActions";
 import { useStore } from "../useStore";
 import { PanelId } from "./panelCcg";
 
-/** What a grid's curves stand for: its segments off a network, the test's rows off a board. */
-function gridKey(s: State, grid: State["grids"][number]): [string, string][] {
+/** What a grid's curves stand for, in their style node's colours: its segments, or the test's rows off a board. */
+export function gridKey(s: State, grid: State["grids"][number]): [string, string][] {
   const [kind, id] = (grid.source ?? ":").split(":");
   const st = kind === "board" ? stackOf(id!) : undefined;
-  return st ? st.rows.map((r) => [r.name, r.color]) : grid.segments.map((seg) => [seg, paletteColor(seg)]);
+  const raw: [string, string][] = st ? st.rows.map((r) => [r.name, r.color]) : grid.segments.map((seg) => [seg, paletteColor(seg)]);
+  return raw.map(([label, color]) => [label, styledCurve(s, grid, { label, color }).color]);
 }
 
 function LegendBlock({ spec }: { spec: LegendSpec }) {
