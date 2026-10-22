@@ -14,7 +14,7 @@ function gridLabel(grid: CcgGrid): string {
 }
 
 /** The grid's curves and the segments each is measured in: a board's rows off a board, else one per grid segment. */
-function gridCurves(grid: CcgGrid): { label: string; segments: string[] }[] {
+export function gridCurves(grid: CcgGrid): { label: string; segments: string[] }[] {
   const [kind, id] = (grid.source ?? ":").split(":");
   const st = kind === "board" ? stackOf(id!) : null;
   return st ? st.rows.map((r) => ({ label: r.name, segments: r.segments })) : grid.segments.map((seg) => ({ label: seg, segments: [seg] }));

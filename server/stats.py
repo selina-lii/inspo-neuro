@@ -11,7 +11,7 @@ from pydantic import BaseModel
 from neuropy.analyses.pair_selection_data import DerivedRule
 from neuropy.analyses.utils import _SPECIAL_PREFIX
 from neuropy.ui.app_state import DisplayConfig
-from neuropy.ui.stats_tests_backend import StatsTestBackend
+from neuropy.ui.stats_tests_backend import METRICS, RowConfig, StatsTestBackend
 
 from server import stats_views
 from server.project import STATE_DIR, project, writable
@@ -27,6 +27,14 @@ class StatsConfig(BaseModel):
     test: dict
     view: dict = {}
     display: dict | None = None   # the CS settings a loaded test ran under; None = defaults
+
+
+class SeriesRequest(BaseModel):
+    curves: list   # [{label, segments}]: one value per pair each, measured as a stats row would
+    pairs: list
+    metric: str
+    resolution: str
+    display: dict | None = None   # the linked test's CS settings; None = defaults
 
 
 class SaveRequest(BaseModel):
@@ -153,6 +161,31 @@ def run_status(job_id: int):
     if job['payload'] is None:
         return dict(status='running')
     return dict(status='done', config=_config(job['backend']), **job['payload'])
+
+
+@router.post('/series')
+def series(req: SeriesRequest):
+    """``{curve label: {"session|ref|tgt": value}}``: each pair's value per curve, for a grid's stats view."""
+    p = project()
+    b = _backend(p, req.display)
+    keys = _pair_keys(req.pairs)
+    sessions = sorted({sess for sess, _, _ in keys})
+    # a firing-rate metric keys each neuron by its self-pair
+    side = {'ref_firing_rate': 0, 'tgt_firing_rate': 1}.get(METRICS[req.metric].source)
+    b.row_pairs = {1: keys}
+    out = {}
+    for c in req.curves:
+        row = RowConfig(id=1, name=c['label'], sessions=sessions, conn_types=list(b.available_conn_types()),
+                        segments=list(c['segments']), resolution=[req.resolution], data_type=req.metric)
+        with p.lock:
+            try:
+                g = b.collect_row(row, req.resolution)
+            finally:
+                p.release_others()
+        got = {(str(k.session), int(k.ref), int(k.tgt)): v for k, v in zip(g['pairs'], g['vals'])}
+        out[c['label']] = {f'{sess}|{r}|{t}': got.get((sess, r, t) if side is None else (sess, (r, t)[side], (r, t)[side]))
+                           for sess, r, t in keys}
+    return stats_views._clean(out)
 
 
 @router.post('/save')

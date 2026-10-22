@@ -43,6 +43,14 @@ export function GridBar({ grid }: { grid: CcgGrid }) {
       {grid.segMode === "series" && (["x", "y"] as const).map((a) => (
         <button key={a} className={grid.axis === a ? "on" : ""} title={`series along ${a}`} onClick={() => set({ axis: a })}>{a}</button>
       ))}
+      <button className={grid.view !== "stats" ? "on" : ""} title="each card: the pair's CCGs" onClick={() => set({ view: "ccg" })}>CCG</button>
+      <button className={grid.view === "stats" ? "on" : ""} title="each card: the pair's value per curve, measured as its linked test measures it" onClick={() => set({ view: "stats" })}>stats</button>
+      {grid.view === "stats" && options && (
+        <select value={grid.metric ?? "Conn Strength"} title="the metric each card plots" onChange={(e) => set({ metric: e.target.value })}>
+          {options.pickers.data.items.map((m) => <option key={m} disabled={options.disabled_metrics.includes(m)}>{m}</option>)}
+        </select>
+      )}
+      <span className="sep" />
       <button className={grid.compact ? "on" : ""} title="cells edge to edge, no margins" onClick={() => set({ compact: !grid.compact })}>compact</button>
       {bySegment && (
         <>

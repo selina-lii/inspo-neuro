@@ -10,5 +10,7 @@ export const statsApi = {
   load: (name: string) => call<{ name: string; config: StatsConfig } & StatsPayload>(`/stats/saved/${encodeURIComponent(name)}`),
   run: (config: StatsConfig) => call<{ job: number }>("/stats/run", { method: "POST", body: JSON.stringify(config) }),
   status: (job: number) => call<RunStatus>(`/stats/run/${job}`),
+  series: (req: { curves: { label: string; segments: string[] }[]; pairs: string[]; metric: string; resolution: string; display: Record<string, unknown> | null }) =>
+    call<Record<string, Record<string, number | null>>>("/stats/series", { method: "POST", body: JSON.stringify(req) }),
   save: (name: string, job: number) => call<{ ok: boolean; name: string }>("/stats/save", { method: "POST", body: JSON.stringify({ name, job }) }),
 };

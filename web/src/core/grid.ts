@@ -16,6 +16,14 @@ export type CcgGrid = {
   keys?: string[];   // the pairs this tray holds; without keys, every pair no other tray in its set holds
   list?: boolean;   // one column, an info line beside each pair
   style?: string | null;   // the style node cabled to it
+  view?: "ccg" | "stats";   // stats: each card plots the pair's value per curve, as its linked test measures it
+  metric?: string;   // the stats metric that view plots
+};
+
+/** The test a grid's stats view measures under: the board feeding it, else a test it feeds. */
+export const linkedTest = (s: State, grid: CcgGrid) => {
+  const [kind, id] = (grid.source ?? ":").split(":");
+  return kind === "board" ? s.stats.tests.find((t) => t.id === id) : s.stats.tests.find((t) => t.config.rows.some((r) => r.fed === grid.id));
 };
 
 /** How one segment's curves draw on the grids cabled to a style node. */
