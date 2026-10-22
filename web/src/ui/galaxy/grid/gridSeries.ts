@@ -12,11 +12,10 @@ export type Series = Record<string, Record<string, number | null>>;
 
 /** The test's plotted values by curve: a row it feeds is keyed by the grid's curve, any other by the row's name. */
 function fromResult(grid: CcgGrid, test: StatsTest, result: StatsResult, values: Record<string, StatsValue>): Series {
-  const curves = gridCurves(grid);
   const out: Series = {};
   for (const row of result.rows) {
     const cfg = test.config.rows.find((r) => r.name === row.name);
-    const label = cfg?.fed === grid.id ? curves.find((c) => c.segments.join() === cfg.segments.join())?.label ?? row.name : row.name;
+    const label = cfg?.fed === grid.id && cfg.curve ? cfg.curve : row.name;
     const byPair = (out[label] ??= {});
     row.ids.forEach((id, i) => {
       const v = values[id];

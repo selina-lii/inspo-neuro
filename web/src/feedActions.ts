@@ -26,9 +26,9 @@ function withGrid(rows: RowConfig[], grid: CcgGrid, keys: string[]): RowConfig[]
   const sessions = [...new Set(keys.map((k) => k.split("|")[0]!))];
   const mine: RowConfig[] = [];
   for (const c of gridCurves(grid)) {
-    const old = rows.find((r) => r.fed === grid.id && r.segments.join() === c.segments.join());
+    const old = rows.find((r) => r.fed === grid.id && (r.curve ? r.curve === c.label : r.segments.join() === c.segments.join()));
     const base = old ?? { ...newRow([...rows, ...mine], options), name: `${gridLabel(grid)} ${c.label}` };
-    mine.push({ ...base, sessions, conn_types: options.pickers.ct.items, segments: c.segments, rules: [], follow: null, follow_pickers: [], fed: grid.id, pairs: [...keys].sort() });
+    mine.push({ ...base, sessions, conn_types: options.pickers.ct.items, segments: c.segments, rules: [], follow: null, follow_pickers: [], fed: grid.id, curve: c.label, pairs: [...keys].sort() });
   }
   const at = rows.findIndex((r) => r.fed === grid.id);
   const rest = rows.filter((r) => r.fed !== grid.id);

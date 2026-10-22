@@ -8,7 +8,7 @@ export type RowConfig = {
   sessions: string[]; conn_types: string[]; segments: string[]; resolution: string[];
   rules: Rule[]; data_type: string;
   follow: number | null; follow_pickers: string[]; follow_exclude: boolean;
-  fed?: string; pairs?: string[];   // a row a CCG grid feeds: its pairs ("session|ref|tgt") alone, kept in step with the grid
+  fed?: string; pairs?: string[]; curve?: string;   // a row a CCG grid feeds: its pairs ("session|ref|tgt") alone, kept in step with the grid; curve: the grid curve it measures
 };
 
 export type TestConfig = {

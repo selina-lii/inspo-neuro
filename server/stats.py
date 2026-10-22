@@ -137,7 +137,7 @@ def _run(p, job: dict):
 def run(cfg: StatsConfig):
     p = project()
     b = _backend(p, cfg.display)
-    b.from_dict(dict(rows=[{k: v for k, v in r.items() if k not in ('pairs', 'fed')} for r in cfg.rows], test=cfg.test, view=cfg.view))
+    b.from_dict(dict(rows=[{k: v for k, v in r.items() if k not in ('pairs', 'fed', 'curve')} for r in cfg.rows], test=cfg.test, view=cfg.view))
     b.row_pairs = {r['id']: _pair_keys(r['pairs']) for r in cfg.rows if 'pairs' in r}
     b.test_config.thin_seed = int(np.random.default_rng().integers(1 << 31))   # each run draws a new sample
     if (err := b.validate()):
