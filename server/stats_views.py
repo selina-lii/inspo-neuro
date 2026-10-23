@@ -16,7 +16,8 @@ def rule_choices(cd, sd) -> dict:
     # no conn-type rule: rows and pair nodes pick conn types on their own
     return {
         DerivedRule.PAIR_TAG: {'': sd.groups.groups + sd.groups.special_groups()},
-        DerivedRule.PAIR_LOCATION: {n: ['yes', 'no'] for n in DerivedRule.NAMED[DerivedRule.PAIR_LOCATION]},
+        # distance takes a number, not a pick from a list
+        DerivedRule.PAIR_LOCATION: {**{n: ['yes', 'no'] for n in DerivedRule.NAMED[DerivedRule.PAIR_LOCATION]}, DerivedRule.DISTANCE: []},
         DerivedRule.PAIR_SIGNIFICANCE: {r.name: list(DerivedRule.VERDICTS) for r in cd.rule_book.later_sets()},
         DerivedRule.NEURON_TAG: {n: list(cd.nd.tag_labels(n)) for n in cd.nd.tag_names},
         DerivedRule.NEURON_GROUP: {'': list(sd.neuron_groups.groups)},
