@@ -35,9 +35,25 @@ def read(name: str):
     return json.loads(path.read_text())
 
 
+KEEP_DAYS = 3
+
+
+def _daily_backup(name: str):
+    """Before the day's first overwrite, keep the workspace as it was; the latest few days stay."""
+    path = _path(name)
+    folder = STATE_DIR / project().name / 'backups' / 'workspaces' / 'daily' / name
+    today = folder / f'{time.strftime("%Y%m%d")}.json'
+    if not path.exists() or today.exists():
+        return
+    folder.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(path, today)
+    for old in sorted(folder.glob('*.json'))[:-KEEP_DAYS]:
+        old.unlink()
+
+
 @router.put('/{name}')
 def write(name: str, doc: dict = Body(...)):
-    _path(name)
+    _daily_backup(name)
     update_state_json(project(), f'workspaces/{name}', lambda _: doc)
     return dict(ok=True)
 
