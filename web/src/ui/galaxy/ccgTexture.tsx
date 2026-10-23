@@ -39,10 +39,13 @@ function canvasOf(plot: Plot, near: number): { c: HTMLCanvasElement; g: CanvasRe
   return { c, g, img };
 }
 
+// onload, not decode(): Chrome's decode() rejects some large SVGs that load and draw fine
+const loaded = (img: HTMLImageElement): Promise<void> => new Promise((done, fail) => ((img.onload = () => done()), (img.onerror = fail)));
+
 /** The plot as a PNG, drawn as the CCG panel draws it at *scale*. */
 export function plotPng(plot: Plot, scale = 4): Promise<string> {
   const { c, g, img } = canvasOf(plot, scale);
-  return img.decode().then(() => (g.drawImage(img, 0, 0), c.toDataURL("image/png")));
+  return loaded(img).then(() => (g.drawImage(img, 0, 0), c.toDataURL("image/png")));
 }
 
 /** `near`: 0 for a small card, else the texture scale that matches its pixels on screen. */
@@ -53,7 +56,7 @@ export function ccgTexture(plot: Plot, picked: boolean, near = 0): CanvasTexture
   t.anisotropy = 8;
   // up close the texture is drawn at screen resolution: mipmaps would only blur its detail
   if (near) [t.generateMipmaps, t.minFilter] = [false, LinearFilter];
-  t.userData.drawn = img.decode().then(() => {
+  t.userData.drawn = loaded(img).then(() => {
     g.drawImage(img, 0, 0);
     g.strokeStyle = picked ? PICK_COLOR : root.getPropertyValue("--line");
     g.lineWidth = picked ? 10 : 3;
@@ -69,7 +72,8 @@ export function useDrawn(fresh: CanvasTexture[]): CanvasTexture[] {
   const now = useRef(shown);
   useEffect(() => {
     let live = true;
-    Promise.all(fresh.map((t) => t.userData.drawn)).then(() => live && setShown((now.current = fresh)));
+    // settled, not all: one card that fails to draw holds back none of the others
+    Promise.allSettled(fresh.map((t) => t.userData.drawn)).then(() => live && setShown((now.current = fresh)));
     return () => {
       live = false;
       if (now.current !== fresh) fresh.forEach((t) => t.dispose());
