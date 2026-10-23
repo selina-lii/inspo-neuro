@@ -4,7 +4,6 @@ import shutil
 import threading
 import traceback
 import time
-from pathlib import Path
 
 import numpy as np
 from fastapi import APIRouter, HTTPException
@@ -47,18 +46,10 @@ class SaveRequest(BaseModel):
 class PairsBackend(StatsTestBackend):
     """Rows fed by a CCG grid draw from its pairs alone."""
 
-    def __init__(self, *args, home: Path, **kw):
+    def __init__(self, *args, **kw):
         super().__init__(*args, **kw)
-        self.home = home
         self.row_pairs: dict = {}   # row id -> {(session, ref, tgt)}
         self._only = None
-
-    @property
-    def save_dir(self) -> Path:
-        # the web's saves stay out of the Qt GUI's stats results
-        d = self.home / 'stats_results'
-        d.mkdir(parents=True, exist_ok=True)
-        return d
 
     def collect_row(self, cfg, resolution: str) -> dict:
         self._only = self.row_pairs.get(cfg.id)
@@ -79,7 +70,7 @@ def _backend(p, display: dict | None) -> PairsBackend:
     dc = DisplayConfig()
     if display:
         dc.__setstate__(display)
-    return PairsBackend(p.cd, p.sd, display=dc, home=STATE_DIR / p.name)
+    return PairsBackend(p.cd, p.sd, display=dc)
 
 
 def _pair_keys(keys: list) -> set:
