@@ -219,4 +219,20 @@ test("slow data shows as loading at the bottom, and the notice clears when it la
   await app.call("actions.ts", "openSession", "day1");
 });
 
+test("a board's axis breaks above a lone far outlier, and only then", async () => {
+  const shape = (y) => app.page.evaluate(async (y) => {
+    const { layoutBoard } = await import("/src/ui/galaxy/stats/boardGeometry.ts");
+    const ids = y.map((_, i) => `p${i}`);
+    const l = layoutBoard({ rows: [{ name: "a", color: "#000", ids, y }], outliers: [], brackets: [], one_sample: false, log_shift: null, zscored: false }, {}, { violin: false, outliers: true, sig_brackets: false, show_n: true, wh_ratio: "1" });
+    const ys = l.dots.map((d) => d.y);
+    return { gap: l.gap, bulk: Math.max(...ys.slice(0, -1)) - Math.min(...ys.slice(0, -1)), top: ys.at(-1), h: l.h };
+  }, y);
+  const bulk = Array.from({ length: 40 }, (_, i) => 50 + ((i * 37) % 450));
+  const far = await shape([...bulk, 6000]);
+  assert.ok(far.gap && far.top > far.gap[1], "the outlier sits above the break");
+  assert.ok(far.bulk > far.h * 0.5, `the bulk keeps most of the height: ${far.bulk}`);
+  assert.equal((await shape(bulk)).gap, null, "no outlier, no break");
+  assert.equal((await shape([...bulk, 1200])).gap, null, "an outlier within reach of the bulk keeps the axis whole");
+});
+
 test("no page errors", () => assert.deepEqual(app.errors, []));

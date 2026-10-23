@@ -48,12 +48,14 @@ function Rod({ x0, y0, x1, y1, color, fade }: { x0: number; y0: number; x1: numb
 
 /** `fade`: below 1 while a picked value on this board takes the eye. */
 export function BoardPlot({ layout, result, fg, muted, fade }: { layout: BoardLayout; result: StatsResult; fg: string; muted: string; fade: number }) {
-  const { w, h, toY, rows, ticks, brackets, zeroY } = layout;
+  const { w, h, toY, rows, ticks, brackets, zeroY, gap } = layout;
   const [left, bottom, top] = [-w / 2, -h / 2, h / 2];
   const half = (w / rows.length) * 0.4;
   const clampY = (y: number) => Math.min(Math.max(y, bottom), top);
   const lines = useMemo(() => ({
-    frame: [left, bottom, left, top, left, bottom, w / 2, bottom],
+    // a broken axis: the left edge stops either side of the gap, two slashes mark it
+    frame: [...(gap ? [left, bottom, left, gap[0], left, gap[1], left, top, left - 0.1, gap[0] - 0.05, left + 0.1, gap[0] + 0.05, left - 0.1, gap[1] - 0.05, left + 0.1, gap[1] + 0.05]
+      : [left, bottom, left, top]), left, bottom, w / 2, bottom],
     grid: ticks.flatMap((t) => [left, t.y, w / 2, t.y]),
     brackets: brackets.flatMap((b) => {
       const y = top + 0.18 + b.level * BRACKET_STEP;

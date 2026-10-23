@@ -29,6 +29,7 @@ export type BoardLayout = {
   pairLines: [number, number][];   // dot indices: a pair's value in one row to the next row it appears in
   brackets: BoardBracket[];
   zeroY: number | null;
+  gap: [number, number] | null;   // the y band where the axis breaks
 };
 
 const star = (p: number) => (p < 0.001 ? "***" : p < 0.01 ? "**" : p < 0.05 ? "*" : null);
@@ -76,6 +77,22 @@ function widthAt(profile: { y: number; half: number }[], v: number): number {
   return a.half + ((v - a.y) / (b.y - a.y || 1)) * (b.half - a.half);
 }
 
+const BREAK_RATIO = 3;
+
+/** The axis break [a, b] when at most 5% of the values sit above a gap three times wider than the span of all below. */
+function breakOf(sorted: number[]): [number, number] | null {
+  const n = sorted.length;
+  let best: [number, number] | null = null;
+  let most = BREAK_RATIO;
+  for (let k = 1; k <= Math.max(1, Math.floor(n * 0.05)) && k < n - 1; k++) {
+    const [a, b] = [sorted[n - k - 1]!, sorted[n - k]!];
+    const ratio = (b - a) / (a - sorted[0]!);
+    // a zero-span bulk has no scale to break against
+    if (a > sorted[0]! && ratio > most) [best, most] = [[a, b], ratio];
+  }
+  return best;
+}
+
 const median = (xs: number[]) => {
   const s = [...xs].sort((a, b) => a - b);
   return s.length % 2 ? s[(s.length - 1) / 2]! : (s[s.length / 2 - 1]! + s[s.length / 2]!) / 2;
@@ -96,14 +113,28 @@ export function layoutBoard(result: StatsResult, values: Record<string, StatsVal
     };
   });
 
-  const all = result.rows.flatMap((r) => r.y.filter((v): v is number => v !== null));
+  const hidden = (id: string) => !view.outliers && outliers.has(id);
+  const all = result.rows.flatMap((r) => r.y.filter((v, j): v is number => v !== null && !hidden(r.ids[j]!))).sort((a, b) => a - b);
   const extra = rows.flatMap((r) => (r.bar ? [0, r.bar.mean - r.bar.sem, r.bar.mean + r.bar.sem] : []));
   let [lo, hi] = [Math.min(...all, ...extra), Math.max(...all, ...extra)];
   if (!Number.isFinite(lo)) [lo, hi] = [0, 1];
   if (hi === lo) [lo, hi] = [lo - 1, hi + 1];
-  const pad = (hi - lo) * 0.05;
-  [lo, hi] = [lo - pad, hi + pad];
-  const toY = (v: number) => -h / 2 + ((v - lo) / (hi - lo)) * h;
+  const cut = breakOf(all);
+  // a break gives the bulk most of the height, the few values above it a strip at the top
+  const [a, b] = cut ?? [hi, hi];
+  const low = Math.max(a, ...extra.filter((v) => v < b));
+  const pad = (low - lo) * 0.05;
+  const up = Math.max((hi - b) * 0.1, pad);
+  const knots: [number, number][] = cut
+    ? [[lo - pad, -h / 2], [low + pad, h * 0.28], [b - up, h * 0.34], [hi + up, h / 2]]
+    : [[lo - pad, -h / 2], [hi + pad, h / 2]];
+  const toY = (v: number) => {
+    const i = Math.min(Math.max(knots.findIndex(([k]) => k >= v), 1), knots.length - 1);
+    const [[v0, y0], [v1, y1]] = [knots[i - 1]!, knots[i]!];
+    return y0 + ((v - v0) / (v1 - v0)) * (y1 - y0);
+  };
+  const ticks = cut ? [...niceTicks(lo - pad, low + pad), ...new Set(all.filter((v) => v >= b).map((v) => Number(v.toPrecision(3))))]
+    : niceTicks(lo - pad, hi + pad);
 
   // dots fill their row's body: spread over a disc as wide as the density at their value, so dense parts look dense
   const profiles = result.rows.map((r) => {
@@ -113,7 +144,7 @@ export function layoutBoard(result: StatsResult, values: Record<string, StatsVal
   const dots: BoardDot[] = [];
   result.rows.forEach((r, ri) => r.ids.forEach((id, j) => {
     const v = r.y[j];
-    if (v === null || v === undefined || (!view.outliers && outliers.has(id))) return;
+    if (v === null || v === undefined || hidden(id)) return;
     const [u, a] = hash2(id);
     const radius = (profiles[ri] ? widthAt(profiles[ri]!, v) : 0.06 * ROW_W) * 0.9 * Math.sqrt(u);
     dots.push({ id, x: rows[ri]!.x + radius * Math.cos(2 * Math.PI * a), y: toY(v), z: radius * Math.sin(2 * Math.PI * a), row: ri, outlier: outliers.has(id) });
@@ -147,7 +178,8 @@ export function layoutBoard(result: StatsResult, values: Record<string, StatsVal
 
   return {
     w, h, toY, rows, dots, pairLines, brackets,
-    ticks: niceTicks(lo, hi).map((v) => ({ v, y: toY(v) })),
+    ticks: ticks.map((v) => ({ v, y: toY(v) })),
     zeroY: (result.one_sample || (lo < 0 && hi > 0)) ? toY(0) : null,
+    gap: cut ? [h * 0.28, h * 0.34] : null,
   };
 }
