@@ -68,6 +68,7 @@ export type StatsTest = {
   results: StatsResult[];
   warnings: string[];
   stale?: boolean;   // a grid feeding it changed since this result
+  savedAt?: string;   // the saved file's time when this test read it
 };
 
 export type Vec3 = [number, number, number];

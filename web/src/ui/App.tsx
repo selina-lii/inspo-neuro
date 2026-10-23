@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect, useState } from "react";
-import { boot, clearHighlight, movePairs, saveEdits, stepFocus, targetPairs, toggleGroup } from "../actions";
+import { boot, clearHighlight, fail, movePairs, saveEdits, stepFocus, targetPairs, toggleGroup } from "../actions";
+import { refreshSaved } from "../statsActions";
 import { store } from "../core/store";
 import { deletePicked, settleTies } from "../stackActions";
 import { redo, undo } from "../history";
@@ -23,6 +24,12 @@ export function App() {
     const onChange = (e: MediaQueryListEvent) => setDark(e.matches);
     darkQuery.addEventListener("change", onChange);
     return () => darkQuery.removeEventListener("change", onChange);
+  }, []);
+  useEffect(() => {
+    // back from the Qt viewer: saved tests it rewrote read again
+    const onFocus = () => void refreshSaved().catch(fail);
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
   }, []);
   useEffect(() => {
     // edits live on the server until saved; leaving the page does not lose them, but the reminder is cheap

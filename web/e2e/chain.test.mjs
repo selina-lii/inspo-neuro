@@ -2,7 +2,7 @@
 import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
 import { launch } from "./harness.mjs";
-import { row, SEGMENTS, valueOf } from "./fixture.mjs";
+import { OPTIONS, row, SEGMENTS, valueOf } from "./fixture.mjs";
 
 let app;
 before(async () => void (app = await launch()));
@@ -89,4 +89,19 @@ test("stats 1 → tray → stats 2 keeps every pair's own values", async () => {
   });
   assert.ok(peaks[1] > peaks[0], `highres cards draw highres traces: ${peaks}`);
   assert.deepEqual(app.errors, []);
+});
+
+test("a workspace reads its saved tests by name: a bad file fails alone, a rewritten one reads again on focus", async () => {
+  const config = (offset) => ({ rows: ROWS.slice(0, 2), test: OPTIONS.defaults.test, view: OPTIONS.defaults.view, display: { offset } });
+  Object.assign(app.api.saved, { good: { at: "1", config: config(0) }, broken: { at: "1" } });
+  app.api.workspaces.ws = { tests: [{ id: "a", name: "good", config: config(0) }, { id: "b", name: "broken", config: config(0) }], boards: [], session: "day1" };
+  await app.call("workspaceActions.ts", "openWorkspace", "ws");
+  const tests = () => app.state((s) => Object.fromEntries(s.stats.tests.map((t) => [t.id, { status: t.status, y: t.results[0]?.rows[0]?.y[0] }])));
+  const first = await tests();
+  assert.equal(first.a.status, "done", "the good file loads");
+  assert.equal(first.b.status, "error", "the bad file fails its own test");
+  Object.assign(app.api.saved.good, { at: "2", config: config(10) });
+  await app.page.evaluate(() => window.dispatchEvent(new Event("focus")));
+  await app.settle(500);
+  assert.equal((await tests()).a.y, first.a.y + 10, "the rewritten file is read again");
 });

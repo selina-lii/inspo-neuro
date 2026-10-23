@@ -76,15 +76,27 @@ function withPayload(id: string, payload: StatsPayload, patch: Partial<StatsTest
   ensureBoard(id, payload.results[0]?.resolution ?? "lowres");
 }
 
+/** Read *name*'s file into test *id*: its config, with the grid feeds only the workspace knows; a bad file fails this test alone. */
+async function readSaved(id: string, name: string, savedAt: string | undefined): Promise<void> {
+  try {
+    const loaded = await statsApi.load(name);
+    const own = new Map(testOf(id).config.rows.map((r) => [r.id, r]));
+    const rows = loaded.config.rows.map((r) => ({ ...r, fed: own.get(r.id)?.fed, pairs: own.get(r.id)?.pairs, curve: own.get(r.id)?.curve }));
+    withPayload(id, loaded, { config: { ...loaded.config, rows }, savedAt });
+  } catch (error) {
+    patchTest(id, { status: "error", error: `${name}: ${error instanceof Error ? error.message : String(error)}`, text: "" });
+  }
+}
+
 export async function loadStats(ws: WorkspaceDoc): Promise<void> {
   restoring = true;
   try {
     const [options, { saved }] = await Promise.all([statsApi.options(), statsApi.saved()]);
     // a test whose file was deleted elsewhere reopens as an unsaved draft of its config
-    const onDisk = new Set(saved.map((x) => x.name));
-    const tests = ws.tests.map((t) => blank(t.id, onDisk.has(t.name) ? t.name : "", t.config));
+    const at = new Map(saved.map((x) => [x.name, x.saved_at]));
+    const tests = ws.tests.map((t) => blank(t.id, at.has(t.name) ? t.name : "", t.config));
     store.setStats({ ...EMPTY_STATS, options, saved, tests, active: tests[0]?.id ?? null });
-    await Promise.all(tests.filter((t) => t.name).map(async (t) => withPayload(t.id, await statsApi.load(t.name), {})));
+    await Promise.all(tests.filter((t) => t.name).map((t) => readSaved(t.id, t.name, at.get(t.name))));
     const ids = new Set(stats().tests.map((t) => t.id));
     const fresh = stats().boards.filter((b) => !ws.boards.some((w) => w.id === b.id));
     store.setStats({ boards: [...ws.boards.filter((b) => ids.has(b.id)), ...fresh] });
@@ -93,6 +105,15 @@ export async function loadStats(ws: WorkspaceDoc): Promise<void> {
   } finally {
     restoring = false;
   }
+}
+
+/** Saved tests rewritten elsewhere (the Qt viewer) since they were read: read them again, by name. */
+export async function refreshSaved(): Promise<void> {
+  const { saved } = await statsApi.saved();
+  store.setStats({ saved });
+  const at = new Map(saved.map((x) => [x.name, x.saved_at]));
+  const changed = stats().tests.filter((t) => t.name && at.has(t.name) && t.status !== "running" && at.get(t.name) !== t.savedAt);
+  await Promise.all(changed.map((t) => readSaved(t.id, t.name, at.get(t.name))));
 }
 
 const blank = (id: string, name: string, config: StatsConfig): StatsTest =>
@@ -112,7 +133,7 @@ export async function openSaved(name: string, withNetworks = false, id = newId()
   try {
     const loaded = await statsApi.load(name);
     store.setStats({ tests: [...stats().tests, blank(id, stats().tests.some((t) => t.name === name) ? "" : name, loaded.config)], active: id });
-    withPayload(id, loaded, {});
+    withPayload(id, loaded, { savedAt: stats().saved.find((x) => x.name === name)?.saved_at });
     if (withNetworks && loaded.results.length) tie(id, "main");
   } catch (error) {
     fail(error);
@@ -184,8 +205,9 @@ export async function saveTest(id: string, name: string): Promise<void> {
   const t = testOf(id);
   try {
     await statsApi.save(name, t.job!);
-    patchTest(id, { name });
-    store.setStats({ saved: (await statsApi.saved()).saved });
+    const { saved } = await statsApi.saved();
+    patchTest(id, { name, savedAt: saved.find((x) => x.name === name)?.saved_at });
+    store.setStats({ saved });
     store.set({ toast: { text: `Saved stats result ${name}` } });
   } catch (error) {
     fail(error);

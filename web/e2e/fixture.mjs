@@ -90,6 +90,8 @@ const trace = (session, ref, tgt, segment, res = "lowres") => [LAGS.map((lag) =>
 /** The API as the server answers it, kept in memory: workspaces persist across reloads of one browser context. */
 export function makeApi() {
   const fitting = { polls: 0 };
+  // saved stats tests by name: { at, config } read as the server would; { at, broken } lists but fails to load
+  const saved = {};
   // `slow.ms` > 0: every answer takes that long, as a big session's would
   const slow = { ms: 0 };
   const workspaces = { main: { tests: [], boards: [], session: SESSIONS[0] } };
@@ -122,7 +124,11 @@ export function makeApi() {
     }
     if (path === "/unsaved") return { unsaved: 0 };
     if (path === "/stats/options") return OPTIONS;
-    if (path === "/stats/saved") return { saved: [] };
+    if (path === "/stats/saved") return { saved: Object.entries(saved).map(([name, f]) => ({ name, saved_at: f.at })) };
+    if (path.startsWith("/stats/saved/")) {
+      const f = saved[path.split("/")[3]];
+      return f?.config && { name: path.split("/")[3], config: f.config, ...runStats(f.config) };
+    }
     if (path === "/stats/run") return { job: jobs.push(body) - 1 };
     if (path.startsWith("/stats/run/")) return { status: "done", config: jobs[Number(path.split("/")[3])], ...runStats(jobs[Number(path.split("/")[3])]) };
     if (path === "/stats/series") {
@@ -169,5 +175,5 @@ export function makeApi() {
     });
     return out;
   };
-  return { json, stack, bin, workspaces, images, fitting, slow };
+  return { json, stack, bin, workspaces, images, fitting, slow, saved };
 }

@@ -116,10 +116,16 @@ def options():
         return stats_views.options(_backend(p, None))
 
 
+def _saved_files(b: PairsBackend) -> dict:
+    # by name: the Qt viewer's saves too, the web's own shadowing one of the same name
+    qt = Path(b.cd.stats_results_dir)
+    return {f.stem: f for d in (qt, b.save_dir) if d.is_dir() for f in sorted(d.glob('*.json'))}
+
+
 @router.get('/saved')
 def saved():
-    p = project()
-    return dict(saved=[dict(name=name, saved_at=at) for name, _, at, *_ in _backend(p, None).saved_results()])
+    files = _saved_files(_backend(project(), None))
+    return dict(saved=[dict(name=name, saved_at=str(f.stat().st_mtime_ns)) for name, f in files.items()])
 
 
 @router.get('/saved/{name}')
@@ -127,7 +133,10 @@ def load(name: str):
     p = project()
     with p.lock:
         b = _backend(p, None)
-        d = b.load(str(b.save_dir / f'{name}.json'))
+        f = _saved_files(b).get(name)
+        if f is None:
+            raise HTTPException(404, f'no saved stats test {name!r}')
+        d = b.load(str(f))
         if d.get('display'):
             b.display.__setstate__(d['display'])
         return dict(name=name, config=_config(b), **stats_views.result_payload(b, b.results))
