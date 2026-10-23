@@ -106,3 +106,33 @@ test("a workspace reopens its saved test, result and all; a test whose file is m
   assert.equal((await gridKeys(g)).length, 80, "a grid fed by the reopened test holds its pairs");
 });
 
+test("a grid cabled to another grid joins its tray set, its pairs kept; the set has one source", async () => {
+  const t1 = await newRunTest(ROWS);
+  await app.call("statsActions.ts", "runTest", t1);
+  const ids = [];
+  for (const _ of [0, 1]) {
+    await app.call("gridActions.ts", "addGrid");
+    ids.push(await app.state((s) => s.grids.at(-1).id));
+    await app.call("wireActions.ts", "connect", `board:${t1}`, `grid:${ids.at(-1)}`);
+  }
+  const [a, b] = ids;
+  await app.settle(1500);
+  const held = (await gridKeys(b)).slice(0, 5);
+  await app.call("gridActions.ts", "patchGrid", b, { keys: held, tray: b });
+  await app.call("wireActions.ts", "connect", `grid:${a}`, `grid:${b}`);
+  await app.settle(500);
+  const [ga, gb] = await app.page.evaluate((ids) => ids.map((id) => window.neuromapStore.get().grids.find((g) => g.id === id)), ids);
+  assert.equal(gb.tray, ga.tray ?? ga.id, "b joined a's set");
+  assert.deepEqual((await gridKeys(b)).sort(), [...held].sort(), "the joining tray keeps its own pairs");
+  // recabling any tray recables the set, and the link between trays cannot be cut
+  const t2 = await newRunTest(ROWS);
+  await app.call("statsActions.ts", "runTest", t2);
+  await app.call("wireActions.ts", "connect", `board:${t2}`, `grid:${b}`);
+  const sources = await app.page.evaluate(async (ids) => {
+    const { gridSource, wiresOf } = await import("/src/core/wires.ts");
+    const s = window.neuromapStore.get();
+    return [ids.map((id) => gridSource(s, id)), wiresOf(s).filter((w) => w.role === "tray").length];
+  }, ids);
+  assert.deepEqual(sources, [[`board:${t2}`, `board:${t2}`], 1]);
+  for (const id of ids) await app.call("gridActions.ts", "removeGrid", id);
+});

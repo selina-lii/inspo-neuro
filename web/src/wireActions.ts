@@ -1,5 +1,6 @@
 // Cabling: a drag from one port to another becomes the wire its ends allow; cutting one undoes what it did.
-import { roleOf, wiresOf, type Port, type Role, type Wire } from "./core/wires";
+import { idOf, roleOf, traySet, wiresOf, type Port, type Role, type Wire } from "./core/wires";
+import { joinTray } from "./gridActions";
 import { store } from "./core/store";
 import { feedTest, unfeedTest } from "./feedActions";
 import { setActiveTest } from "./statsActions";
@@ -18,8 +19,10 @@ export function connect(a: Port, b: Port): void {
   if (role === "tie") return tie(from.slice(6), to.slice(4));
   if (role === "feed") return feedTest(from.slice(5), to.slice(6));
   if (role === "edit") return setActiveTest(to.slice(6));
-  // a legend keys one grid's curves; every other stored role takes one source per target
-  const same = (w: Wire) => roleOf(s, w.from, w.to) === role && (role === "legend" ? w.from === from : w.to === to);
+  if (role === "tray") return joinTray(idOf(from), idOf(to));
+  // a legend keys one grid's curves; a tray set takes one pair source; every other stored role one source per target
+  const set = role === "pairs" ? traySet(s, idOf(to)) : [to];
+  const same = (w: Wire) => roleOf(s, w.from, w.to) === role && (role === "legend" ? w.from === from : set.includes(w.to));
   setWires([...s.wires.filter((w) => !same(w)), { from, to }]);
 }
 
@@ -35,7 +38,7 @@ export function replace(old: Port, by: Port): void {
   const swap = (p: Port) => (p === old ? by : p);
   // a tie moves as it is: untying first would drop the network it owns
   setTies(store.get().ties.filter((t) => `board:${t.board}` !== by).map((t) => (`board:${t.board}` === old ? { ...t, board: by.slice(6) } : t)));
-  for (const w of wiresOf(store.get()).filter((x) => x.role !== "tie" && ends(x).includes(old))) {
+  for (const w of wiresOf(store.get()).filter((x) => x.role !== "tie" && x.role !== "tray" && ends(x).includes(old))) {
     cut(w);
     connect(swap(w.from), swap(w.to));
   }
@@ -45,10 +48,10 @@ export function replace(old: Port, by: Port): void {
 export const dropPort = (port: Port) => setWires(store.get().wires.filter((w) => !ends(w).includes(port)));
 
 /** A new grid takes the stored wires of *grid*: a tray shares its set's source, config, legend and style. */
-export function copyWires(grid: string, to: string): void {
+export function copyWires(grid: string, to: string, roles = SHARED): void {
   const s = store.get();
   const [old, now] = [`grid:${grid}`, `grid:${to}`];
-  const copies = s.wires.filter((w) => ends(w).includes(old) && SHARED.includes(roleOf(s, w.from, w.to)!))
+  const copies = s.wires.filter((w) => ends(w).includes(old) && roles.includes(roleOf(s, w.from, w.to)!))
     .map((w) => ({ from: w.from === old ? now : w.from, to: w.to === old ? now : w.to }));
   setWires([...s.wires, ...copies]);
 }

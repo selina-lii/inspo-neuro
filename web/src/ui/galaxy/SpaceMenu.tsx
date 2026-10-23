@@ -17,7 +17,7 @@ import { begin, objectGesture, pointerAt } from "./gesture";
 import { rename } from "./titleTip";
 import { actsOn, align3, duplicate3, snapTo3 } from "./select3";
 
-const WIRE_NAME: Record<Role, string> = { pairs: "pair source", config: "CCG config", legend: "legend", style: "curve style", input: "network input", tie: "network", feed: "fed test", edit: "editor" };
+const WIRE_NAME: Record<Role, string> = { pairs: "pair source", config: "CCG config", legend: "legend", style: "curve style", input: "network input", tie: "network", feed: "fed test", edit: "editor", tray: "tray set" };
 
 export type Target = { kind: "board" | "network" | "panel" | "tie" | "grid" | "node" | "style"; id: string };
 let pending: Target | null = null;
@@ -127,7 +127,7 @@ export function SpaceMenu({ at, onClose, onCenter }: { at: { x: number; y: numbe
               <button onClick={act(() => carry(target!))}>move</button>
               <Many target={target!} act={act} />
               <TrayMenu grid={grid} act={act} />
-              {wiresOf(store.get()).filter((w) => w.to === `grid:${grid.id}` || w.from === `grid:${grid.id}`).map((w) => (
+              {wiresOf(store.get()).filter((w) => w.role !== "tray" && (w.to === `grid:${grid.id}` || w.from === `grid:${grid.id}`)).map((w) => (
                 <button key={`${w.from}>${w.to}`} onClick={act(() => cut(w))}>disconnect its {WIRE_NAME[w.role]}</button>
               ))}
               <button onClick={act(() => removeGrid(grid.id))}>close</button>

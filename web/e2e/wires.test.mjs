@@ -50,7 +50,8 @@ test("a tray shares its set's source; removing a grid takes its wires", async ()
   }, g);
   await app.call("gridActions.ts", "sendToTray", g, keys, null, false);
   const tray = await app.state((s) => s.grids.at(-1).id);
-  assert.ok((await wires()).includes(`board:${t1}>grid:${tray}:pairs`));
+  assert.equal(await app.page.evaluate(async (id) => (await import("/src/core/wires.ts")).gridSource(window.neuromapStore.get(), id), tray), `board:${t1}`);
+  assert.ok((await wires()).includes(`grid:${g}>grid:${tray}:tray`), "a cable shows the trays' link");
   await app.call("gridActions.ts", "removeGrid", tray);
   assert.ok(!(await wires()).some((w) => w.includes(`grid:${tray}`)));
 });
