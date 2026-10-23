@@ -90,3 +90,19 @@ test("stats 1 → tray → stats 2 keeps every pair's own values", async () => {
   assert.ok(peaks[1] > peaks[0], `highres cards draw highres traces: ${peaks}`);
   assert.deepEqual(app.errors, []);
 });
+
+test("a workspace reopens its saved test, result and all; a test whose file is missing keeps its name", async () => {
+  const config = { rows: ROWS, test: {}, view: {}, display: null };
+  app.api.saved.s1 = config;
+  app.api.workspaces.reopen = { tests: [{ id: "tsaved", name: "s1", config }, { id: "tgone", name: "gone", config }], boards: [], session: "day1" };
+  await app.call("workspaceActions.ts", "openWorkspace", "reopen");
+  await app.settle(1000);
+  const tests = await app.state((s) => s.stats.tests.map((t) => [t.id, t.name, t.results.length]));
+  assert.deepEqual(tests, [["tsaved", "s1", 1], ["tgone", "gone", 0]]);
+  await app.call("gridActions.ts", "addGrid");
+  const g = await app.state((s) => s.grids.at(-1).id);
+  await app.call("wireActions.ts", "connect", "board:tsaved", `grid:${g}`);
+  await app.settle(1500);
+  assert.equal((await gridKeys(g)).length, 80, "a grid fed by the reopened test holds its pairs");
+});
+
