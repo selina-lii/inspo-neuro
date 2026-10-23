@@ -17,6 +17,17 @@ def session_keys(cd, session: str) -> list:
     return [k for k in cd.ptr if str(k.session) == session]
 
 
+def neuron_positions(nd, nd_key, neurons) -> np.ndarray:
+    """Per-unit coordinates when the dataset ships them, else the probe channel's x/y."""
+    xy = (neurons.metadata or {}).get('positions')
+    if xy is not None:
+        return np.asarray(xy, dtype=float)
+    df = nd.probe_info[nd_key].to_dataframe().set_index('channel_id')
+    ch = np.asarray(neurons.peak_channels, dtype=int)
+    return np.stack([df['x'].reindex(ch).fillna(0.0).to_numpy(float),
+                     df['y'].reindex(ch).fillna(0.0).to_numpy(float)], axis=1)
+
+
 def shank_geometry(nd, nd_key, neurons, xy: np.ndarray) -> tuple:
     """``(shank per neuron, [{id, x0, x1, y0, y1, inferred}])``: from the probe's contacts when it has them, else from the neurons."""
     probe = nd.probe_info.get(nd_key)
@@ -39,7 +50,7 @@ def shank_geometry(nd, nd_key, neurons, xy: np.ndarray) -> tuple:
 def neuron_table(nd, cd, sd, session: str) -> list:
     nd_key = session_keys(cd, session)[0].nd()
     n = nd.neurons_for(nd_key)
-    xy = nd.positions(nd_key)
+    xy = neuron_positions(nd, nd_key, n)
     meta = n.metadata or {}
     area = meta.get('cell_area', ['?'] * n.n_neurons)
     shank = getattr(n, 'shank_ids', None)
@@ -55,7 +66,7 @@ def neuron_table(nd, cd, sd, session: str) -> list:
 def shanks(nd, cd, session: str) -> list:
     nd_key = session_keys(cd, session)[0].nd()
     n = nd.neurons_for(nd_key)
-    return shank_geometry(nd, nd_key, n, nd.positions(nd_key))[1]
+    return shank_geometry(nd, nd_key, n, neuron_positions(nd, nd_key, n))[1]
 
 
 def _lag_bins(n_bins: int, duration: float, lo_ms: float, hi_ms: float) -> slice:

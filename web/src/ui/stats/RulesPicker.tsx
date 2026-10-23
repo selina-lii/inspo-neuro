@@ -2,13 +2,8 @@
 import type { Rule, StatsOptions } from "../../core/stats";
 import { float, useListClick, usePopover } from "./ListPicker";
 
-// NeuroPy's DerivedRule.DISTANCE: a location rule whose one value is the µm a pair must be apart by more than
-const DISTANCE = "distance";
-const MAX_UM = 500;
-
 const describe = (r: Rule, display: (v: string) => string) => {
   const subject = r.kind.startsWith("pair") ? "pair" : `${r.side} neuron`;
-  if (r.name === DISTANCE) return `${subject} distance > ${r.values[0] ?? "…"} µm`;
   return `${subject} ${r.name || r.kind.split(" ").slice(1).join(" ")} is ${r.values.map(display).join(" or ") || "…"}`;
 };
 
@@ -38,7 +33,7 @@ export function RulesPicker({ rules, onChange, options, locked = false }: { rule
                     {kinds.map((k) => <option key={k}>{k}</option>)}
                   </select>
                   {names.length > 1 || names[0] ? (
-                    <select value={r.name} onChange={(e) => set(i, { name: e.target.value, values: e.target.value === DISTANCE ? ["0"] : [] })}>
+                    <select value={r.name} onChange={(e) => set(i, { name: e.target.value, values: [] })}>
                       {names.map((n) => <option key={n}>{n}</option>)}
                     </select>
                   ) : null}
@@ -49,9 +44,7 @@ export function RulesPicker({ rules, onChange, options, locked = false }: { rule
                   )}
                   <button className="linkish" onClick={() => onChange(rules.filter((_, k) => k !== i))}>remove</button>
                 </div>
-                {r.name === DISTANCE
-                  ? <Distance um={Number(r.values[0] ?? 0)} onChange={(um) => set(i, { values: [String(um)] })} />
-                  : <RuleValues values={values} picked={r.values} display={display} onChange={(next) => set(i, { values: next })} />}
+                <RuleValues values={values} picked={r.values} display={display} onChange={(next) => set(i, { values: next })} />
               </div>
             );
           })}
@@ -72,18 +65,6 @@ function RuleValues({ values, picked, display, onChange }: { values: string[]; p
           {display(v)}
         </label>
       ))}
-    </div>
-  );
-}
-
-/** Distance > x µm: a slider over the usual range, and a box for any value. */
-function Distance({ um, onChange }: { um: number; onChange(um: number): void }) {
-  return (
-    <div className="row">
-      <span className="muted">distance &gt;</span>
-      <input type="range" min={0} max={MAX_UM} step={5} value={Math.min(um, MAX_UM)} onChange={(e) => onChange(Number(e.target.value))} />
-      <input type="number" min={0} style={{ width: 64 }} value={um} onChange={(e) => onChange(Number(e.target.value))} />
-      <span className="muted">µm</span>
     </div>
   );
 }

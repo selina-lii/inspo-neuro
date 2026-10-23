@@ -135,17 +135,6 @@ test("a pair node's rule stays open while edited, and its values pick as a list 
   assert.deepEqual(await picked(), ["d", "b"], "a checkbox adds its value");
   await value("d").locator("input").click();
   assert.deepEqual(await picked(), ["b"], "and takes it out again");
-  // a distance rule takes a number: the slider and the box both set it
-  await app.page.locator(".rules-pop button", { hasText: "+ rule" }).click();
-  const rule = app.page.locator(".rules-pop .rule").nth(1);
-  await rule.locator("select").first().selectOption("pair location");
-  await rule.locator("select").nth(1).selectOption("distance");
-  const second = () => app.page.evaluate((id) => window.neuromapStore.get().pairNodes.find((n) => n.id === id).rules[1], node);
-  assert.deepEqual(await second(), { kind: "pair location", name: "distance", values: ["0"], side: "either" });
-  await rule.locator("input[type=range]").fill("150");
-  assert.deepEqual((await second()).values, ["150"], "the slider sets it");
-  await rule.locator("input[type=number]").fill("820");
-  assert.deepEqual((await second()).values, ["820"], "the box takes values past the slider's end");
   await app.page.keyboard.press("Escape");
   await app.page.locator(".board-tools button", { hasText: "on in any segment" }).dispatchEvent("click");
   await app.page.locator(".picker-pop label", { hasText: /^on in all$/ }).click();
