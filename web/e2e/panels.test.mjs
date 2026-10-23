@@ -207,16 +207,4 @@ test("a 3D panel's title bar collapses and expands it", async () => {
   assert.equal(await collapsed(), false);
 });
 
-test("slow data shows as loading at the bottom, and the notice clears when it lands", async () => {
-  app.api.slow.ms = 1500;
-  const opening = app.call("actions.ts", "openSession", "day2");
-  const notice = app.page.locator(".toast.loading");
-  await notice.waitFor({ timeout: 5000 });
-  assert.match(await notice.innerText(), /day2/);
-  await opening;
-  app.api.slow.ms = 0;
-  await notice.waitFor({ state: "detached", timeout: 20000 });
-  await app.call("actions.ts", "openSession", "day1");
-});
-
 test("no page errors", () => assert.deepEqual(app.errors, []));

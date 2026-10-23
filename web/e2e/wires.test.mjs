@@ -50,8 +50,7 @@ test("a tray shares its set's source; removing a grid takes its wires", async ()
   }, g);
   await app.call("gridActions.ts", "sendToTray", g, keys, null, false);
   const tray = await app.state((s) => s.grids.at(-1).id);
-  assert.equal(await app.page.evaluate(async (id) => (await import("/src/core/wires.ts")).gridSource(window.neuromapStore.get(), id), tray), `board:${t1}`);
-  assert.ok((await wires()).includes(`grid:${g}>grid:${tray}:tray`), "a cable shows the trays' link");
+  assert.ok((await wires()).includes(`board:${t1}>grid:${tray}:pairs`));
   await app.call("gridActions.ts", "removeGrid", tray);
   assert.ok(!(await wires()).some((w) => w.includes(`grid:${tray}`)));
 });
@@ -121,37 +120,3 @@ test("a workspace saved with sources on the grids opens with them as wires", asy
 });
 
 test("no page errors", () => assert.deepEqual(app.errors, []));
-
-test("a CCG panel cabled to three grids stays on the first; one added shows in view", async () => {
-  await app.call("actions.ts", "openPanel", "ccg");
-  const ids = [];
-  for (const _ of [0, 1, 2]) {
-    await app.call("gridActions.ts", "addGrid");
-    ids.push(await app.state((s) => s.grids.at(-1).id));
-    await app.call("wireActions.ts", "connect", "panel:ccg", `grid:${ids.at(-1)}`);
-  }
-  await app.settle(1000);
-  const on = await app.page.evaluate(async () => (await import("/src/core/grid.ts")).dockedOn(window.neuromapStore.get(), "ccg"));
-  assert.equal(on, ids[0]);
-  await app.call("actions.ts", "addCcgPanel", "ccg");
-  await app.settle(1500);
-  const added = await app.state((s) => s.panels.at(-1).id);
-  // the newest panel's element is the last one placed
-  const box = await app.page.locator(".panel3d").last().boundingBox();
-  assert.ok(box && box.x < 1600 && box.x + box.width > 0 && box.y < 900 && box.y + box.height > 0, `the new panel is on screen: ${JSON.stringify(box)}`);
-  await app.call("actions.ts", "closePanel", added);
-  for (const id of ids) await app.call("gridActions.ts", "removeGrid", id);
-});
-
-test("a CCG panel added while the first sits out of view comes to the camera", async () => {
-  await app.call("actions.ts", "openPanel", "ccg");
-  await app.settle(500);
-  await app.call("actions.ts", "patchPanel", "ccg", { pose: { p: [500, 500, -500], q: [0, 0, 0, 1], s: 1 } });
-  await app.call("actions.ts", "addCcgPanel", "ccg");
-  await app.settle(1500);
-  const added = await app.state((s) => s.panels.at(-1).id);
-  const box = await app.page.locator(".panel3d").last().boundingBox();
-  assert.ok(box && box.x < 1600 && box.x + box.width > 0 && box.y < 900 && box.y + box.height > 0, `the new panel is on screen: ${JSON.stringify(box)}`);
-  await app.call("actions.ts", "closePanel", added);
-});
-

@@ -80,11 +80,11 @@ export async function loadStats(ws: WorkspaceDoc): Promise<void> {
   restoring = true;
   try {
     const [options, { saved }] = await Promise.all([statsApi.options(), statsApi.saved()]);
-    // a test whose file is missing keeps its name, so the workspace finds the file again once it is back
+    // a test whose file was deleted elsewhere reopens as an unsaved draft of its config
     const onDisk = new Set(saved.map((x) => x.name));
-    const tests = ws.tests.map((t) => blank(t.id, t.name, t.config));
+    const tests = ws.tests.map((t) => blank(t.id, onDisk.has(t.name) ? t.name : "", t.config));
     store.setStats({ ...EMPTY_STATS, options, saved, tests, active: tests[0]?.id ?? null });
-    await Promise.all(tests.filter((t) => onDisk.has(t.name)).map(async (t) => withPayload(t.id, await statsApi.load(t.name), {})));
+    await Promise.all(tests.filter((t) => t.name).map(async (t) => withPayload(t.id, await statsApi.load(t.name), {})));
     const ids = new Set(stats().tests.map((t) => t.id));
     const fresh = stats().boards.filter((b) => !ws.boards.some((w) => w.id === b.id));
     store.setStats({ boards: [...ws.boards.filter((b) => ids.has(b.id)), ...fresh] });

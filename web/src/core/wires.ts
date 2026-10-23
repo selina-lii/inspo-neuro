@@ -1,13 +1,12 @@
 // Every cable in the space as one directed wire, source port → target port; what a wire does follows from its two ends.
 // Grids' sources, configs, legends and styles and networks' inputs are stored here; ties, feeds and the stats editor's
-// cable are read from the ties, the fed rows and the active test, which already hold them; a tray set's links, from its trays.
+// cable are read from the ties, the fed rows and the active test, which already hold them.
 import type { State } from "./store";
-import { traysOf } from "./grid";
 
 /** "kind:id": board, grid, net, node, style or panel. */
 export type Port = string;
 export type Wire = { from: Port; to: Port };
-export type Role = "pairs" | "config" | "legend" | "style" | "input" | "tie" | "feed" | "edit" | "tray";
+export type Role = "pairs" | "config" | "legend" | "style" | "input" | "tie" | "feed" | "edit";
 
 const kindOf = (p: Port) => p.slice(0, p.indexOf(":"));
 export const idOf = (p: Port) => p.slice(p.indexOf(":") + 1);
@@ -20,7 +19,6 @@ export function roleOf(s: State, from: Port, to: Port): Role | null {
     if (f === "board" || f === "node" || f === "net") return "pairs";
     if (f === "style") return "style";
     if (panelKind(s, from) === "ccg") return "config";
-    if (f === "grid") return "tray";
   }
   if (f === "grid") {
     if (t === "board") return "feed";
@@ -40,10 +38,6 @@ export function wiresOf(s: State): (Wire & { role: Role })[] {
     ...s.ties.map((t) => ({ from: `board:${t.board}`, to: `net:${t.network}`, role: "tie" as const })),
     ...fed,
     ...(s.stats.active ? [{ from: "panel:stats", to: `board:${s.stats.active}`, role: "edit" as const }] : []),
-    ...s.grids.flatMap((g) => {
-      const first = traysOf(s, g)[0]!;
-      return first === g ? [] : [{ from: `grid:${first.id}`, to: `grid:${g.id}`, role: "tray" as const }];
-    }),
   ];
 }
 
@@ -57,17 +51,8 @@ const endId = (s: State, port: Port, role: Role) => {
   return end && idOf(end);
 };
 
-/** The ports of *grid*'s tray set: itself alone when it is in none. */
-export const traySet = (s: State, grid: string): Port[] => {
-  const g = s.grids.find((x) => x.id === grid);
-  return g ? traysOf(s, g).map((x) => `grid:${x.id}`) : [`grid:${grid}`];
-};
-
-/** A grid's pair source port ("board:…", "node:…" or "net:…"), or null: a tray set has one, the last cabled into any of its trays. */
-export const gridSource = (s: State, grid: string): Port | null => {
-  const set = traySet(s, grid);
-  return [...s.wires].reverse().find((w) => set.includes(w.to) && roleOf(s, w.from, w.to) === "pairs")?.from ?? null;
-};
+/** A grid's pair source port ("board:…", "node:…" or "net:…"), or null. */
+export const gridSource = (s: State, grid: string) => endOf(s, `grid:${grid}`, "pairs");
 export const gridConfig = (s: State, grid: string) => endId(s, `grid:${grid}`, "config");
 export const gridStyle = (s: State, grid: string) => endId(s, `grid:${grid}`, "style");
 export const gridLegend = (s: State, grid: string) => endId(s, `grid:${grid}`, "legend");

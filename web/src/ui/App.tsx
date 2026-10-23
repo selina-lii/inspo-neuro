@@ -8,7 +8,6 @@ import { MapView } from "./map/MapView";
 import { MenuBar } from "./menu/MenuBar";
 import { ProjectPicker } from "./ProjectPicker";
 import { useStore } from "./useStore";
-import { useLoading } from "../io/loading";
 
 const darkQuery = window.matchMedia("(prefers-color-scheme: dark)");
 
@@ -100,26 +99,18 @@ export function App() {
         )}
       </main>
       {s.busy && s.project && <div className="busy">{s.busy}</div>}
-      <div className="toasts">
-        <Loading />
-        {s.error && (
-          <div className="toast error" onClick={() => store.set({ error: null })}>
-            {s.error}
-          </div>
-        )}
-        {s.toast && (
-          <div className="toast">
-            {s.toast.text}
-            {s.toast.undo && <button onClick={s.toast.undo}>undo</button>}
-          </div>
-        )}
-      </div>
+      {s.error && (
+        <div className="toast error" onClick={() => store.set({ error: null })}>
+          {s.error}
+        </div>
+      )}
+      {s.toast && (
+        <div className="toast">
+          {s.toast.text}
+          {s.toast.undo && <button onClick={s.toast.undo}>undo</button>}
+        </div>
+      )}
     </div>
   );
 }
 
-// its own component: a request opening or closing re-renders this line alone
-function Loading() {
-  const open = useLoading();
-  return open.length > 0 ? <div className="toast loading">loading {[...new Set(open)].join(", ")}…</div> : null;
-}

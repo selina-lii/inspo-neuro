@@ -56,10 +56,12 @@ export const pickQuery = (n: PairNode) => ({ sessions: n.sessions, conn_types: n
 /** A node's pairs: its pick's, then the ones added by hand. */
 export const nodePairs = (s: State, n: PairNode): string[] => [...new Set([...(s.picks[n.id] ?? []), ...n.added])];
 
-/** The grid a CCG or legend panel sits on: the first one cabled to it, a tray set's on its first tray. */
+/** The one grid a CCG or legend panel is cabled to, which it then sits on; trays of one set share theirs on the first tray. */
 export const dockedOn = (s: State, panel: string): string | undefined => {
-  const on = s.grids.find((g) => gridConfig(s, g.id) === panel || gridLegend(s, g.id) === panel);
-  return on && traysOf(s, on)[0]!.id;
+  const on = s.grids.filter((g) => gridConfig(s, g.id) === panel || gridLegend(s, g.id) === panel);
+  if (on.length === 1) return on[0]!.id;
+  const set = on[0]?.tray;
+  return set && on.every((g) => g.tray === set) ? traysOf(s, on[0]!)[0]!.id : undefined;
 };
 
 /** A grid draws with the options of the CCG panel cabled to it, the defaults without one. */

@@ -17,7 +17,6 @@ export async function launch() {
   const api = makeApi();
   await page.route("**/api/**", async (r) => {
     const u = new URL(r.request().url());
-    if (api.slow.ms) await new Promise((done) => setTimeout(done, api.slow.ms));
     const path = decodeURIComponent(u.pathname.replace(/^\/api/, ""));
     if (path.endsWith(".bin")) {
       const [, , session, file] = path.split("/");

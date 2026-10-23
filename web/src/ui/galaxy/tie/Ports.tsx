@@ -1,12 +1,12 @@
 // Cable ports on every object, and a cable per wire: a drag from one port to another wires them as their ends allow
-// (core/wires), the dragged cable snapping onto the port it would wire to; a click selects a cable (Delete cuts it), a right-click opens its object's menu.
+// (core/wires); a click selects a cable (Delete cuts it), a right-click opens its object's menu.
 import { useFrame, useThree, type ThreeEvent } from "@react-three/fiber";
 import { useMemo, useRef, useState } from "react";
 import { BufferGeometry, Float32BufferAttribute, type Group, type Mesh, Plane, Quaternion, Vector3 } from "three";
 import { connect } from "../../../wireActions";
-import { idOf, roleOf, wiresOf } from "../../../core/wires";
+import { idOf, wiresOf } from "../../../core/wires";
 import { selected3 } from "../../../core/select";
-import { store, type Picked3 } from "../../../core/store";
+import type { Picked3 } from "../../../core/store";
 import { useStore } from "../../useStore";
 import { begin } from "../gesture";
 import { claimMenu, type Target } from "../SpaceMenu";
@@ -24,7 +24,6 @@ export function TiePorts() {
     ...s.pairNodes.map((n) => `node:${n.id}`), ...s.styleNodes.map((n) => `style:${n.id}`), ...s.panels.filter((p) => (p.kind === "ccg" || p.kind === "legend" || p.kind === "stats") && !p.closed && p.pose).map((p) => `panel:${p.id}`)];
   const { camera, size } = useThree();
   const [drag, setDrag] = useState<string | null>(null);
-  const [over, setOver] = useState<string | null>(null);
   const end = useRef(new Vector3());
   const live = useRef(ids);
   live.current = ids;
@@ -34,16 +33,7 @@ export function TiePorts() {
     const p = v.clone().project(camera);
     return { x: ((p.x + 1) / 2) * size.width, y: ((1 - p.y) / 2) * size.height };
   };
-  // the port a drop at the pointer would wire to: the nearest one on screen the two ends allow
-  const targetOf = (from: string): string | null => {
-    const at = screen(end.current);
-    const s = store.get();
-    const near = live.current.filter((id) => id !== from && ports.get(id) && (roleOf(s, from, id) || roleOf(s, id, from)))
-      .map((id) => ({ id, d: Math.hypot(screen(ports.get(id)!).x - at.x, screen(ports.get(id)!).y - at.y) }))
-      .sort((a, b) => a.d - b.d)[0];
-    return near && near.d <= HIT_PX ? near.id : null;
-  };
-  // a drag from a port draws a cable to the pointer, snapped onto the port it would wire to
+  // a drag from a port draws a cable to the pointer; released near another kind's port, it wires the two
   const start = (from: string) => (e: ThreeEvent<PointerEvent>) => {
     if (e.button !== 0) return;
     e.stopPropagation();
@@ -51,12 +41,15 @@ export function TiePorts() {
     end.current.copy(ports.get(from)!);
     setDrag(from);
     begin({
-      move: (r) => void (r.ray.intersectPlane(plane, end.current), setOver(targetOf(from))),
+      move: (r) => void r.ray.intersectPlane(plane, end.current),
       end() {
-        const to = targetOf(from);
         setDrag(null);
-        setOver(null);
-        if (to) connect(from, to);
+        const at = screen(end.current);
+        const kind = from.split(":")[0];
+        const target = live.current.filter((id) => id.split(":")[0] !== kind && ports.get(id))
+          .map((id) => ({ id, d: Math.hypot(screen(ports.get(id)!).x - at.x, screen(ports.get(id)!).y - at.y) }))
+          .sort((a, b) => a.d - b.d)[0];
+        if (target && target.d <= HIT_PX) connect(from, target.id);
       },
     });
   };
@@ -64,18 +57,18 @@ export function TiePorts() {
     if (!drag) return;
     const a = line.getAttribute("position") as Float32BufferAttribute;
     a.setXYZ(0, ...(ports.get(drag)!.toArray() as [number, number, number]));
-    a.setXYZ(1, ...((over ? ports.get(over)! : end.current).toArray() as [number, number, number]));
+    a.setXYZ(1, ...(end.current.toArray() as [number, number, number]));
     a.needsUpdate = true;
   });
 
   return (
     <>
-      {ids.map((id) => <Port key={id} id={id} lit={drag === id || over === id} onPointerDown={start(id)} />)}
+      {ids.map((id) => <Port key={id} id={id} lit={drag === id} onPointerDown={start(id)} />)}
       {drag && <lineSegments geometry={line}><lineBasicMaterial color="#ff1dce" /></lineSegments>}
       {/* a cable shows while both its ends do */}
       {s.cables && wiresOf(s).filter((w) => ids.includes(w.from) && ids.includes(w.to)).map((w) => {
         const id = `${w.from}>${w.to}`;
-        const pick: Picked3 | undefined = w.role === "tie" ? { kind: "tie", id: idOf(w.from) } : w.role === "edit" || w.role === "tray" ? undefined : { kind: "cable", id };
+        const pick: Picked3 | undefined = w.role === "tie" ? { kind: "tie", id: idOf(w.from) } : w.role === "edit" ? undefined : { kind: "cable", id };
         const grid = [w.from, w.to].find((p) => p.startsWith("grid:"));
         const menu: Target = w.role === "tie" ? { kind: "tie", id: idOf(w.from) } : grid ? { kind: "grid", id: idOf(grid) } : { kind: "panel", id: idOf(w.from) };
         return <Cable key={id} a={w.from} b={w.to} picked={pick ? selected3(s, pick.kind, pick.id) : false} pick={pick} onMenu={() => claimMenu(menu)} />;

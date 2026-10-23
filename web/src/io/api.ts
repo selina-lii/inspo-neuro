@@ -2,10 +2,9 @@
 import type { WorkspaceDoc } from "../workspaceActions";
 import type { Area, ExtendUnit, GroupMeta, Link, Neuron, NeuronValues, PairDetail, Point, SegLinks, Segment, Shank } from "../core/types";
 import type { PairRow } from "../core/stack";
-import { fetchApi } from "./loading";
 
 export async function call<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetchApi(path, { headers: { "Content-Type": "application/json" }, ...init });
+  const response = await fetch(`/api${path}`, { headers: { "Content-Type": "application/json" }, ...init });
   if (!response.ok) {
     const body = await response.json().catch(() => ({ detail: response.statusText }));
     throw new Error(body.detail ?? response.statusText);
@@ -50,7 +49,7 @@ export const api = {
   traces: (s: string, seg: string) =>
     call<{ pairs: [number, number][]; lowres_lags: number[]; highres_lags: number[]; n_neurons: number }>(`/traces/${encodeURIComponent(s)}?segment=${encodeURIComponent(seg)}`),
   tracesBin: async (s: string, res: string, seg: string): Promise<Float32Array> => {
-    const response = await fetchApi(`/traces/${encodeURIComponent(s)}/${res}.bin?segment=${encodeURIComponent(seg)}`);
+    const response = await fetch(`/api/traces/${encodeURIComponent(s)}/${res}.bin?segment=${encodeURIComponent(seg)}`);
     if (!response.ok) throw new Error(response.statusText);
     return new Float32Array(await response.arrayBuffer());
   },

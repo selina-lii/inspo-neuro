@@ -1,7 +1,8 @@
-// The open project, its unsaved edits, and every object the workspace holds.
+// What is open and how much of it shows: the project, session and segment, the links passing the filters, fit progress.
 import { openPanel, patchPanel, setMainHidden } from "../../actions";
+import { visibleLinks } from "../../core/derive";
 import { nodePairs } from "../../core/grid";
-import type { Picked3 } from "../../core/store";
+import { activeSegment, type Picked3 } from "../../core/store";
 import { patchGrid, patchNode, patchStyle, removeNode, removeStyle } from "../../gridActions";
 import { pick3, remove3 } from "../../stackActions";
 import { PANEL_TITLES } from "../map/SpacePanelNode";
@@ -10,8 +11,14 @@ import { gridSource } from "../../core/wires";
 
 export function MetadataBody() {
   const s = useStore();
+  const shown = visibleLinks(s.links, s.filters, s.neurons).length;
   const rows: [string, string][] = [
     ["project", s.project ?? "–"],
+    ["session", s.session ?? "–"],
+    ["segment", activeSegment(s)],
+    ["neurons", String(s.neurons.length)],
+    ["links shown", `${shown} of ${s.links.length} (the filters)`],
+    ["peak fits", s.fitProgress ? `${s.fitProgress.done} of ${s.fitProgress.total}${s.fitProgress.running ? " (running)" : ""}` : "–"],
     ["unsaved edits", String(s.unsaved)],
   ];
   return (

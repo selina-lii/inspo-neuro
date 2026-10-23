@@ -3,9 +3,7 @@ import { fail, targetPairs } from "./actions";
 import { CURVE_DEFAULT, PICK_DEFAULTS, pickQuery, trayKeys, type CcgGrid, type CurveStyle, type PairNode, type StyleNode } from "./core/grid";
 import { activeSegment, store, type State } from "./core/store";
 import { api } from "./io/api";
-import { connect, copyWires, cut, dropPort } from "./wireActions";
-import { gridPairs } from "./stackActions";
-import { gridSource, idOf, traySet } from "./core/wires";
+import { copyWires, cut, dropPort } from "./wireActions";
 
 const newId = () => `g${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`;
 
@@ -107,8 +105,7 @@ export function sendToTray(id: string, keys: string[], to: string | null, copy: 
   const grids = s.grids.map((x) => (x.id === target ? hold(s, x, keys, true) : x.id === id ? { ...(copy ? x : hold(s, x, keys, false)), tray } : x));
   if (!to) grids.push({ ...g, tray, id: target, keys, out: undefined, page: 0, picking: false, p: [g.p[0] + 3, g.p[1] - 3, g.p[2]] });
   setGrids(grids);
-  // the new tray shares the set's source; its config, legend and style start as the grid's
-  if (!to) copyWires(id, target, ["config", "legend", "style"]);
+  if (!to) copyWires(id, target);
   store.set({ cells: new Set() });
 }
 
@@ -124,32 +121,14 @@ export function mergeTray(from: string, into: string): void {
   setGrids(s.grids.filter((g) => g.id !== from).map((g) => (g.id === into ? { ...b, keys: merged.keys, out: merged.out } : g)));
 }
 
-/** Every grid but *id*: the set's first tray hands what it holds to the next one. */
-function without(s: State, id: string): CcgGrid[] {
-  const gone = s.grids.find((g) => g.id === id)!;
-  const rest = s.grids.filter((g) => g.id !== id);
-  const heir = gone.tray && !gone.keys ? rest.find((g) => g.tray === gone.tray) : undefined;
-  return rest.map((g) => (g === heir ? { ...g, keys: undefined, out: hold(s, gone, g.keys ?? [], true).out } : g));
-}
-
 export function removeGrid(id: string): void {
   const s = store.get();
-  const [source, mate] = [gridSource(s, id), traySet(s, id).find((p) => p !== `grid:${id}`)];
-  setGrids(without(s, id));
+  const gone = s.grids.find((g) => g.id === id)!;
+  const rest = s.grids.filter((g) => g.id !== id);
+  // the set's first tray hands what it holds to the next one
+  const heir = gone.tray && !gone.keys ? rest.find((g) => g.tray === gone.tray) : undefined;
+  setGrids(rest.map((g) => (g === heir ? { ...g, keys: undefined, out: hold(s, gone, g.keys ?? [], true).out } : g)));
   dropPort(`grid:${id}`);
-  // the set's source stays with its other trays
-  if (source && mate && !gridSource(store.get(), idOf(mate))) connect(source, mate);
-}
-
-/** Grid *b* joins *a*'s tray set: it keeps the pairs it shows and draws from the set's source. */
-export function joinTray(a: string, b: string): void {
-  const s = store.get();
-  const gb = s.grids.find((g) => g.id === b)!;
-  const tray = s.grids.find((g) => g.id === a)!.tray ?? a;
-  const keys = gridPairs(gb) ?? [];
-  const own = gridSource(s, b);
-  if (own) cut({ from: own, to: `grid:${b}` });
-  setGrids([...without(s, b).map((g) => (g.id === a ? { ...g, tray } : g)), { ...gb, tray, keys, out: undefined }]);
 }
 
 export function removeNode(id: string): void {
